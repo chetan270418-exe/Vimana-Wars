@@ -15,6 +15,7 @@ from constants import (
     COLOR_POWERUP_OVERDRIVE,
 )
 from game.ui.easing import ease_out_cubic, ease_in_out_cubic, lerp, lerp_color, clamp
+from game.ui.vedic_theme import CYAN, GOLD, draw_chamfered_panel, draw_corner_etching
 
 _POWERUP_COLORS = {
     "SHIELD": COLOR_POWERUP_SHIELD,
@@ -179,6 +180,7 @@ class HUD:
             self._combo_scale = max(1.0, self._combo_scale - delta_time * 6.0)
 
     def draw(self, player, score_system, wave_manager, enemies: list, powerups: list, boon_manager) -> None:
+        self._draw_cockpit_frame()
         # Update score target from score_system
         if score_system.score != self._target_score:
             score_change = score_system.score - self._target_score
@@ -207,6 +209,13 @@ class HUD:
 
         if wave_manager.wave_number == 1 and wave_manager.is_fighting:
             self._label_tutorial.draw()
+
+    def _draw_cockpit_frame(self) -> None:
+        """Persistent low-contrast frame matching the Stitch cockpit mockup."""
+        draw_corner_etching(10, WIDTH - 10, 10, HEIGHT - 10, CYAN, length=28, alpha=62)
+        arcade.draw_line(245, HEIGHT - 70, WIDTH - 245, HEIGHT - 70,
+                         (*GOLD, 40), 1)
+        arcade.draw_line(215, 70, 215, HEIGHT - 88, (*CYAN, 28), 1)
 
     def _draw_hp_bar(self, player) -> None:
         frac_actual = clamp(player.hp / player.max_hp)
@@ -417,6 +426,8 @@ class HUD:
                 arcade.draw_text(sdata["name"][:9].upper(), sx + 35, syn_y - 4, sdata["color"], font_size=7, bold=True, anchor_x="center")
 
     def _draw_ability_meters(self, player) -> None:
+        draw_chamfered_panel(12, 174, 8, 62, CYAN, fill=(10, 16, 28),
+                             alpha=185, cut=8)
         # Dash [SPACE]
         cx1, cy1, r1 = 38, 32, 16
         dash_ratio = player.dash_ratio

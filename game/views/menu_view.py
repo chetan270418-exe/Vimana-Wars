@@ -8,8 +8,14 @@ from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_WAVE, COLOR_SCORE, COLOR_WH
 from game.entities.ship_classes import SHIP_CLASSES
 from game.systems import save_system
 from game.systems.sound_manager import SoundManager
+from game.systems.asset_manager import AssetManager
 from game.ui.menu_button import MenuButton
 from game.ui.transitions import transition_to, TransitionOverlay
+from game.ui.vedic_theme import (
+    OBSIDIAN, SURFACE_LOW, GOLD, GOLD_BRIGHT, CYAN, CYAN_BRIGHT,
+    PARCHMENT, MUTED, draw_chamfered_panel, draw_corner_etching,
+    draw_segmented_bar,
+)
 
 
 _RNG = random.Random(42)
@@ -36,45 +42,58 @@ class MenuView(arcade.View):
         last_wave = max(0, int(saved.get("last_wave", 0)))
         unlocked = sum(1 for start in (1, 4, 7, 10, 13, 16, 19) if last_wave >= start)
         unlocked = max(1, unlocked)
+        self._unlocked_realms = unlocked
 
         self._title = arcade.Text(
-            "VIMANA WARS", WIDTH // 2, 515,
-            COLOR_SCORE, font_size=52, bold=True,
-            anchor_x="center", anchor_y="center",
+            "VIMANA WARS", 274, 558,
+            GOLD_BRIGHT, font_size=28, bold=True,
+            anchor_x="left", anchor_y="center",
         )
         self._subtitle = arcade.Text(
-            "Defend the Realm — Defeat the Asuras", WIDTH // 2, 477,
-            COLOR_WAVE, font_size=15,
-            anchor_x="center", anchor_y="center",
+            "CELESTIAL WAR COMMAND CONSOLE", 255, 485,
+            CYAN_BRIGHT, font_size=12, bold=True,
+            anchor_x="left", anchor_y="center",
         )
         self._high_score = arcade.Text(
             f"LOCAL BEST  {high_score:,}   •   LAST MODE  {last_diff}",
-            245, 410, (160, 220, 160), font_size=11, bold=True,
-            anchor_x="center", anchor_y="center",
+            255, 455, (160, 220, 160), font_size=10, bold=True,
+            anchor_x="left", anchor_y="center",
         )
         self._progress = arcade.Text(
             f"CAMPAIGN PROGRESS   {unlocked}/7 REALMS UNLOCKED",
-            245, 382, (190, 200, 230), font_size=11, bold=True,
-            anchor_x="center", anchor_y="center",
+            255, 432, PARCHMENT, font_size=10, bold=True,
+            anchor_x="left", anchor_y="center",
         )
         self._ship_label = arcade.Text(
             f"LAST VIMANA  •  {last_ship_data['name']}",
-            245, 265, last_ship_data["color"], font_size=11, bold=True,
+            744, 110, last_ship_data["color"], font_size=10, bold=True,
             anchor_x="center", anchor_y="center",
         )
         self._hint = arcade.Text(
-            "Mouse / D-pad: Navigate   •   ENTER: Confirm   •   ESC: Quit",
-            WIDTH // 2, 28, (130, 145, 180), font_size=10,
+            "MOUSE / D-PAD: NAVIGATE   •   ENTER: CONFIRM   •   ESC: QUIT",
+            560, 28, MUTED, font_size=9,
             anchor_x="center", anchor_y="center",
         )
         self._version = arcade.Text(
-            "v0.5 Celestial Frontend", WIDTH - 10, 8,
-            (90, 100, 130), font_size=9, anchor_x="right",
+            "VIMANA WARS // ASTRAL SYNC ONLINE", WIDTH - 12, 570,
+            (120, 130, 150), font_size=8, bold=True, anchor_x="right",
+        )
+        self._section = arcade.Text(
+            "MISSION CONTROL", 255, 520, GOLD, font_size=9, bold=True,
+            anchor_x="left", anchor_y="center",
+        )
+        self._vitals = arcade.Text(
+            "VIMANA VITALS", 24, 535, GOLD_BRIGHT, font_size=10, bold=True,
+            anchor_x="left", anchor_y="center",
+        )
+        self._sync = arcade.Text(
+            "ASTRAL SYNC\nACTIVE", 820, 557, CYAN_BRIGHT, font_size=8,
+            bold=True, anchor_x="right", anchor_y="center",
         )
 
-        button_x = 690
-        button_y = 400
-        button_gap = 45
+        button_x = 108
+        button_y = 390
+        button_gap = 39
         button_data = [
             ("PLAY", "play", COLOR_SCORE),
             ("CAMPAIGN MAP", "map", (120, 210, 255)),
@@ -86,7 +105,7 @@ class MenuView(arcade.View):
             ("QUIT", "quit", (255, 90, 100)),
         ]
         self._buttons = [
-            (MenuButton(label, button_x, button_y - i * button_gap, 300, 38, color), action)
+            (MenuButton(label, button_x, button_y - i * button_gap, 190, 32, color), action)
             for i, (label, action, color) in enumerate(button_data)
         ]
 
@@ -103,31 +122,56 @@ class MenuView(arcade.View):
     def on_draw(self) -> None:
         self.clear()
 
+        # Stitch-inspired command rail and holographic content frame.
+        arcade.draw_lrbt_rectangle_filled(0, 220, 0, HEIGHT, (14, 16, 22, 255))
+        arcade.draw_line(220, 0, 220, HEIGHT, (233, 196, 0, 75), 1)
+        arcade.draw_line(220, 548, WIDTH, 548, (233, 196, 0, 80), 1)
+
         # Slow parallax drift keeps the menu alive without distracting from controls.
         for sx, sy, radius, base, speed in _STARS:
-            x = (sx + self._pulse * speed * 5.0) % WIDTH
+            x = 220 + ((sx + self._pulse * speed * 5.0) % (WIDTH - 220))
             y = (sy + self._pulse * speed * 1.5) % HEIGHT
             brightness = int(base + 18 * math.sin(self._pulse * 0.8 + sx * 0.01))
             arcade.draw_circle_filled(x, y, radius, (brightness, brightness, min(255, brightness + 15)))
 
-        # Subtle rotating celestial rings behind the title.
+        # Hero illustration from the supplied Stitch mockup, with a dark glass
+        # scrim so menu text remains readable on every monitor.
+        hero = AssetManager.texture("hero_vimana_wars.png")
+        AssetManager.draw(hero, 570, 315, 620, 414, color=(255, 255, 255, 100))
+        draw_chamfered_panel(235, 880, 145, 475, CYAN, fill=(9, 14, 25), alpha=145, cut=14)
+        draw_corner_etching(235, 880, 145, 475, GOLD, length=18, alpha=120)
+
+        # Subtle rotating celestial rings behind the hero.
         ring_angle = self._pulse * 12.0
         for radius, alpha in ((125, 24), (155, 14)):
-            arcade.draw_arc_outline(WIDTH // 2, 500, radius * 2, radius * 0.55,
+            arcade.draw_arc_outline(570, 315, radius * 2, radius * 0.55,
                                     (100, 180, 255, alpha), ring_angle, ring_angle + 250, 2)
 
         self._title.draw()
         self._subtitle.draw()
+        self._section.draw()
+        self._sync.draw()
+        logo = AssetManager.texture("vimana_wars_logo.png")
+        AssetManager.draw(logo, 245, 558, 34, 34)
 
-        arcade.draw_lrbt_rectangle_filled(70, 420, 330, 445, (12, 18, 42, 210))
-        arcade.draw_lrbt_rectangle_outline(70, 420, 330, 445, (55, 85, 135, 180), 1)
+        # Vitals rail.
+        self._vitals.draw()
+        arcade.draw_text("PRANA", 24, 505, CYAN_BRIGHT, font_size=8, bold=True)
+        arcade.draw_text("108/108", 194, 505, PARCHMENT, font_size=8, bold=True, anchor_x="right")
+        draw_segmented_bar(24, 194, 493, 499, 1.0, CYAN, segments=8, gap=3)
+        arcade.draw_text("MANTRA", 24, 466, GOLD, font_size=8, bold=True)
+        arcade.draw_text(f"{min(100, self._unlocked_realms * 14)}%", 194, 466, PARCHMENT, font_size=8, bold=True, anchor_x="right")
+        draw_segmented_bar(24, 194, 454, 460, min(1.0, self._unlocked_realms / 7), GOLD, segments=8, gap=3)
+
         self._high_score.draw()
         self._progress.draw()
 
         # Last ship mini-preview.
         ship_data = SHIP_CLASSES.get(self._last_ship_id, SHIP_CLASSES["pushpaka"])
-        arcade.draw_triangle_filled(245, 315, 225, 275, 265, 275, ship_data["color"])
-        arcade.draw_circle_filled(245, 284, 5, ship_data["accent"])
+        last_texture = AssetManager.texture(ship_data.get("sprite", "pushpaka.png"))
+        if not AssetManager.draw(last_texture, 744, 155, 74, 74):
+            arcade.draw_triangle_filled(744, 185, 724, 145, 764, 145, ship_data["color"])
+            arcade.draw_circle_filled(744, 154, 5, ship_data["accent"])
         self._ship_label.draw()
 
         for button, _ in self._buttons:

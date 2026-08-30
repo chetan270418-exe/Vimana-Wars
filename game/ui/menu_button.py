@@ -2,6 +2,7 @@
 Small animated button primitive shared by front-end views.
 """
 import arcade
+from game.ui.vedic_theme import GOLD, SURFACE_LOW, draw_chamfered_panel
 
 
 class MenuButton:
@@ -35,17 +36,12 @@ class MenuButton:
         top = self.center_y + height / 2
         r, g, b = self.accent
 
-        fill = (
-            int(24 + 24 * self.hover_amount),
-            int(28 + 28 * self.hover_amount),
-            int(55 + 42 * self.hover_amount),
-            245,
-        )
-        arcade.draw_lrbt_rectangle_filled(left, right, bottom, top, fill)
-        arcade.draw_lrbt_rectangle_outline(
+        fill = tuple(int(base + (target - base) * self.hover_amount)
+                     for base, target in zip(SURFACE_LOW, (45, 52, 72)))
+        draw_chamfered_panel(
             left, right, bottom, top,
-            (r, g, b, int(130 + 125 * self.hover_amount)),
-            2 if self.hover_amount > 0.1 else 1,
+            (r, g, b), fill=fill, alpha=245,
+            border_width=1, selected=self.hover_amount > 0.1, cut=7,
         )
         arcade.draw_text(
             self.label,

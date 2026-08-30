@@ -11,6 +11,10 @@ from game.systems import save_system
 from game.systems.sound_manager import SoundManager
 from game.systems.asset_manager import AssetManager
 from game.ui.transitions import transition_to, TransitionOverlay
+from game.ui.vedic_theme import (
+    GOLD, GOLD_BRIGHT, CYAN_BRIGHT, PARCHMENT, MUTED,
+    draw_chamfered_panel,
+)
 
 
 _SHIPS = list(SHIP_CLASSES.keys())
@@ -35,15 +39,20 @@ class ShipSelectView(arcade.View):
 
         # UI Texts
         self._title = arcade.Text(
-            "SELECT YOUR VIMANA",
+            "ASTRA ARSENAL // VIMANA DEPLOYMENT",
             WIDTH // 2, HEIGHT - 65,
-            COLOR_SCORE, font_size=32, bold=True,
+            GOLD_BRIGHT, font_size=26, bold=True,
             anchor_x="center", anchor_y="center"
         )
+        self._subtitle = arcade.Text(
+            "Configure your celestial hull • Locked vessels unlock through campaign resonance",
+            WIDTH // 2, HEIGHT - 86, CYAN_BRIGHT, font_size=9, bold=True,
+            anchor_x="center", anchor_y="center",
+        )
         self._hint = arcade.Text(
-            "← → or A / D : Select   •   ENTER / SPACE : Launch Vimana   •   ESC : Back",
+            "← → or A / D : Select   •   ENTER / SPACE : Deploy   •   ESC : Back",
             WIDTH // 2, 35,
-            (160, 170, 200), font_size=12, bold=True,
+            MUTED, font_size=11, bold=True,
             anchor_x="center"
         )
 
@@ -58,6 +67,7 @@ class ShipSelectView(arcade.View):
         self.clear()
 
         self._title.draw()
+        self._subtitle.draw()
 
         card_w = 250
         card_h = 390
@@ -81,21 +91,15 @@ class ShipSelectView(arcade.View):
             is_hovered = (i == self._hovered)
             unlocked = self._is_unlocked(ship_id)
 
-            # Card Background
+            # Glassmorphic, chamfered armory card.
             bg_col = ((34, 40, 72) if is_hovered and not is_sel else ((38, 48, 88) if is_sel else (28, 32, 60))) if unlocked else (18, 20, 32)
-            arcade.draw_lrbt_rectangle_filled(
-                cx - card_w // 2, cx + card_w // 2,
-                cy - card_h // 2, cy + card_h // 2,
-                bg_col
-            )
-
-            # Border
             border_col = sdata["accent"] if unlocked and (is_sel or is_hovered) else (70, 80, 110)
             border_w = 3 if is_sel else (2 if is_hovered else 1)
-            arcade.draw_lrbt_rectangle_outline(
+            draw_chamfered_panel(
                 cx - card_w // 2, cx + card_w // 2,
                 cy - card_h // 2, cy + card_h // 2,
-                border_col, border_w
+                border_col, fill=bg_col, alpha=245,
+                border_width=border_w, selected=is_sel, cut=12,
             )
 
             # Ship Title
