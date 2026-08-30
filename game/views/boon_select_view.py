@@ -75,6 +75,15 @@ class BoonSelectView(arcade.View):
     def on_show_view(self) -> None:
         arcade.set_background_color(COLOR_BG)
         
+        if hasattr(self.game_view, "player"):
+            self.game_view.player.keys_pressed.clear()
+            self.game_view.player.mouse_held = False
+            self.game_view.player.vx = 0.0
+            self.game_view.player.vy = 0.0
+            self.game_view.player.is_dashing = False
+            self.game_view.player.joy_dx = 0.0
+            self.game_view.player.joy_dy = 0.0
+        
         for i, card in enumerate(self._cards):
             card.flip_progress = 0.0
             card.lift = 0.0
@@ -119,7 +128,15 @@ class BoonSelectView(arcade.View):
             self._pick_timer -= delta_time
             if self._pick_timer <= 0 and not self._transition_started:
                 self._transition_started = True
-                transition_to(self.window, self.game_view, duration=0.35)
+                if hasattr(self.game_view, "player"):
+                    self.game_view.player.keys_pressed.clear()
+                    self.game_view.player.mouse_held = False
+                    self.game_view.player.vx = 0.0
+                    self.game_view.player.vy = 0.0
+                    self.game_view.player.is_dashing = False
+                    self.game_view.player.joy_dx = 0.0
+                    self.game_view.player.joy_dy = 0.0
+                self.window.show_view(self.game_view)
 
     def on_draw(self) -> None:
         self.clear()
@@ -298,10 +315,38 @@ class BoonSelectView(arcade.View):
         if self._selected_card != old_sel:
             self.sound_manager.play_ui_click()
 
+    def on_key_release(self, key, modifiers) -> None:
+        if hasattr(self.game_view, "player"):
+            self.game_view.player.keys_pressed.discard(key)
+
+    def on_mouse_motion(self, x, y, dx, dy) -> None:
+        if hasattr(self.game_view, "player"):
+            self.game_view.player.mouse_x = x
+            self.game_view.player.mouse_y = y
+            self.game_view.player.mouse_held = False
+        if not self._pick_phase:
+            card_w = 230
+            card_h = 320
+            start_x = WIDTH // 2 - 270
+            spacing = 270
+            cy = HEIGHT // 2 - 20
+            for i in range(len(self.choices)):
+                cx = start_x + i * spacing
+                if cx - card_w // 2 <= x <= cx + card_w // 2 and cy - card_h // 2 <= y <= cy + card_h // 2:
+                    if self._selected_card != i:
+                        self._selected_card = i
+                        self.sound_manager.play_ui_click(volume=0.20)
+                    break
+
     def on_mouse_press(self, x, y, button, modifiers) -> None:
         if self._pick_phase:
             return
             
+        if hasattr(self.game_view, "player"):
+            self.game_view.player.mouse_x = x
+            self.game_view.player.mouse_y = y
+            self.game_view.player.mouse_held = False
+
         card_w = 230
         card_h = 320
         start_x = WIDTH // 2 - 270
@@ -317,6 +362,10 @@ class BoonSelectView(arcade.View):
                     self.sound_manager.play_ui_click()
                 self._claim_selected()
                 break
+
+    def on_mouse_release(self, x, y, button, modifiers) -> None:
+        if hasattr(self.game_view, "player"):
+            self.game_view.player.mouse_held = False
 
     def _claim_selected(self) -> None:
         if self._pick_phase:

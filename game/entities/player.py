@@ -91,11 +91,7 @@ class Player:
         else:
             self.dash_charges_max = 1
             self.dash_charges = 1
-        self.sprite_name = {
-            "pushpaka": "pushpaka.png",
-            "tripura": "tripura.png",
-            "garuda": "garuda.png",
-        }.get(sdata["id"], "pushpaka.png")
+        self.sprite_name = sdata.get("sprite", "pushpaka.png")
         self.texture = AssetManager.texture(self.sprite_name)
 
     # ── Per-frame update with delta_time physics ─────────────────────────

@@ -174,6 +174,15 @@ class GameView(arcade.View):
         self.player.mouse_held = False
         self.player.joy_dx = 0.0
         self.player.joy_dy = 0.0
+        self.player.vx = 0.0
+        self.player.vy = 0.0
+        self.player.is_dashing = False
+        try:
+            if hasattr(self.window, "_mouse_x") and self.window._mouse_x is not None:
+                self.player.mouse_x = self.window._mouse_x
+                self.player.mouse_y = self.window._mouse_y
+        except Exception:
+            pass
 
     def on_key_press(self, key, modifiers) -> None:
         if key == arcade.key.ESCAPE:

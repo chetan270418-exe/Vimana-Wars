@@ -9,10 +9,12 @@ from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_SCORE
 from game.entities.ship_classes import SHIP_CLASSES
 from game.systems import save_system
 from game.systems.sound_manager import SoundManager
+from game.systems.asset_manager import AssetManager
 from game.ui.transitions import transition_to, TransitionOverlay
 
 
-_SHIPS = ["pushpaka", "tripura", "garuda"]
+_SHIPS = list(SHIP_CLASSES.keys())
+_PAGE_SIZE = 3
 
 
 class ShipSelectView(arcade.View):
@@ -25,7 +27,8 @@ class ShipSelectView(arcade.View):
         saved = save_system.load()
         last_ship = saved.get("last_ship", "pushpaka")
         self._last_ship = last_ship
-        self._selected = _SHIPS.index(last_ship) if last_ship in _SHIPS else 0
+        self._last_wave = max(0, int(saved.get("last_wave", 0)))
+        self._selected = _SHIPS.index(last_ship) if last_ship in _SHIPS and self._is_unlocked(last_ship) else 0
         self._hovered = -1
         self._pulse = 0.0
         self.sound_manager = SoundManager()
@@ -62,14 +65,24 @@ class ShipSelectView(arcade.View):
         spacing = 280
         cy = HEIGHT // 2 - 15
 
-        for i, ship_id in enumerate(_SHIPS):
+        page_start = (self._selected // _PAGE_SIZE) * _PAGE_SIZE
+        visible_ships = _SHIPS[page_start:page_start + _PAGE_SIZE]
+        arcade.draw_text(
+            f"ARMORY PAGE {page_start // _PAGE_SIZE + 1}/{(len(_SHIPS) + _PAGE_SIZE - 1) // _PAGE_SIZE}",
+            WIDTH // 2, HEIGHT - 95, (140, 155, 190), font_size=9,
+            bold=True, anchor_x="center",
+        )
+
+        for local_i, ship_id in enumerate(visible_ships):
+            i = page_start + local_i
             sdata = SHIP_CLASSES[ship_id]
-            cx = start_x + i * spacing
+            cx = start_x + local_i * spacing
             is_sel = (i == self._selected)
             is_hovered = (i == self._hovered)
+            unlocked = self._is_unlocked(ship_id)
 
             # Card Background
-            bg_col = (34, 40, 72) if is_hovered and not is_sel else ((38, 48, 88) if is_sel else (28, 32, 60))
+            bg_col = ((34, 40, 72) if is_hovered and not is_sel else ((38, 48, 88) if is_sel else (28, 32, 60))) if unlocked else (18, 20, 32)
             arcade.draw_lrbt_rectangle_filled(
                 cx - card_w // 2, cx + card_w // 2,
                 cy - card_h // 2, cy + card_h // 2,
@@ -77,7 +90,7 @@ class ShipSelectView(arcade.View):
             )
 
             # Border
-            border_col = sdata["accent"] if is_sel or is_hovered else (70, 80, 110)
+            border_col = sdata["accent"] if unlocked and (is_sel or is_hovered) else (70, 80, 110)
             border_w = 3 if is_sel else (2 if is_hovered else 1)
             arcade.draw_lrbt_rectangle_outline(
                 cx - card_w // 2, cx + card_w // 2,
@@ -87,16 +100,16 @@ class ShipSelectView(arcade.View):
 
             # Ship Title
             arcade.draw_text(
-                sdata["name"],
+                sdata["name"] if unlocked else "LOCKED VIMANA",
                 cx, cy + 160,
-                sdata["color"], font_size=15, bold=True, anchor_x="center"
+                sdata["color"] if unlocked else (105, 110, 135), font_size=15, bold=True, anchor_x="center"
             )
             arcade.draw_text(
-                sdata["subtitle"],
+                sdata["subtitle"] if unlocked else f"Unlock at Wave {sdata['unlock_wave']}",
                 cx, cy + 140,
                 (170, 180, 210), font_size=9, bold=True, anchor_x="center"
             )
-            if self._last_ship == ship_id:
+            if self._last_ship == ship_id and unlocked:
                 arcade.draw_text(
                     "LAST USED", cx, cy + 120, (255, 220, 80),
                     font_size=8, bold=True, anchor_x="center",
@@ -104,7 +117,11 @@ class ShipSelectView(arcade.View):
 
             # Vector Ship Preview
             preview_y = cy + 75
-            self._draw_ship_preview(cx, preview_y, ship_id, sdata["color"], sdata["accent"])
+            if unlocked:
+                self._draw_ship_preview(cx, preview_y, ship_id, sdata["color"], sdata["accent"])
+            else:
+                arcade.draw_text("🔒", cx, preview_y, (120, 125, 150), font_size=28,
+                                 anchor_x="center", anchor_y="center")
 
             # Stat Bars
             self._draw_stat_bar("ARMOR / HP", sdata["hp"] / 160.0, cx, cy - 5, (220, 60, 60))
@@ -113,7 +130,7 @@ class ShipSelectView(arcade.View):
 
             # Description (Wrapped)
             desc_lines = self._wrap_text(sdata["desc"], 27)
-            for l_idx, line in enumerate(desc_lines):
+            for l_idx, line in enumerate(desc_lines if unlocked else ["Complete more campaign waves", "to unlock this warship."]):
                 arcade.draw_text(
                     line,
                     cx, cy - 110 - l_idx * 16,
@@ -121,7 +138,7 @@ class ShipSelectView(arcade.View):
                 )
 
             # Ready indicator
-            if is_sel:
+            if is_sel and unlocked:
                 pulse_val = int(200 + 55 * math.sin(self._pulse * 4))
                 arcade.draw_text(
                     "▶ READY FOR LAUNCH ◀",
@@ -138,12 +155,18 @@ class ShipSelectView(arcade.View):
         start_x = WIDTH // 2 - 280
         spacing = 280
         cy = HEIGHT // 2 - 15
-        for i in range(len(_SHIPS)):
-            cx = start_x + i * spacing
+        page_start = (self._selected // _PAGE_SIZE) * _PAGE_SIZE
+        visible_ships = _SHIPS[page_start:page_start + _PAGE_SIZE]
+        for local_i in range(len(visible_ships)):
+            i = page_start + local_i
+            cx = start_x + local_i * spacing
             if (cx - card_w / 2 <= x <= cx + card_w / 2
                     and cy - card_h / 2 <= y <= cy + card_h / 2):
                 return i
         return -1
+
+    def _is_unlocked(self, ship_id: str) -> bool:
+        return self._last_wave >= SHIP_CLASSES[ship_id].get("unlock_wave", 1)
 
     def _select(self, index: int) -> None:
         if index < 0 or index >= len(_SHIPS):
@@ -156,6 +179,9 @@ class ShipSelectView(arcade.View):
         if TransitionOverlay.is_active:
             return
         chosen_ship = _SHIPS[self._selected]
+        if not self._is_unlocked(chosen_ship):
+            self.sound_manager.play_ui_click(volume=0.25)
+            return
         saved = save_system.load()
         saved["last_ship"] = chosen_ship
         self._last_ship = chosen_ship
@@ -206,6 +232,10 @@ class ShipSelectView(arcade.View):
         # Draw rotating/hovering ship preview
         tilt = math.sin(self._pulse * 2.5) * 5.0
         angle_rad = math.radians(90 + tilt)
+
+        if AssetManager.draw(AssetManager.texture(SHIP_CLASSES[ship_id].get("sprite", "pushpaka.png")),
+                             cx, cy, 72, 72, angle=-tilt):
+            return
 
         tip_x = cx + math.cos(angle_rad) * r * 1.8
         tip_y = cy + math.sin(angle_rad) * r * 1.8
