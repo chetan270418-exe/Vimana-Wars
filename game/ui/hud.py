@@ -1,7 +1,8 @@
 """
 game/ui/hud.py
-Comprehensive HUD — animated smooth HP bar, active boons row, ability countdown rings,
-off-screen threat radar arrows, wave objectives, enemy counts, and low-health vignette.
+Comprehensive HUD — reactive HP bar with ghost trail and color crossfade,
+score count-up animation, combo burst particles, ability countdown rings,
+off-screen threat radar arrows, wave objectives, and low-health vignette.
 """
 import math
 import arcade
@@ -12,6 +13,7 @@ from constants import (
     COLOR_POWERUP_SHIELD, COLOR_POWERUP_SPREAD,
     COLOR_POWERUP_SPEED, COLOR_POWERUP_HEALTH, COLOR_POWERUP_BOMB,
 )
+from game.ui.easing import ease_out_cubic, ease_in_out_cubic, lerp, lerp_color, clamp
 
 _POWERUP_COLORS = {
     "SHIELD": COLOR_POWERUP_SHIELD,
@@ -28,11 +30,30 @@ _POWERUP_NAMES = {
 
 _BAR_X, _BAR_Y, _BAR_W, _BAR_H = 16, HEIGHT - 32, 220, 20
 
+# HP bar color thresholds
+_HP_COLOR_HIGH   = (30, 200, 70)     # green > 60%
+_HP_COLOR_MID    = (220, 200, 40)    # amber 30-60%
+_HP_COLOR_LOW    = (220, 60, 0)      # red < 30%
+
 
 class HUD:
     def __init__(self):
         self._displayed_hp = 100.0
+        self._ghost_hp = 100.0       # slower-decaying ghost trail
         self._pulse_timer = 0.0
+
+        # Score count-up animation
+        self._displayed_score = 0.0
+        self._target_score = 0
+        self._score_flash = 0.0      # brief scale/flash on big score changes
+
+        # Combo burst state
+        self._combo_scale = 1.0
+        self._last_combo = 0
+
+        # HP hit flash (red vignette on damage)
+        self._hp_hit_flash = 0.0
+        self._last_hp = 100
 
         # HP bar labels
         self._label_vimana = arcade.Text(
@@ -111,10 +132,56 @@ class HUD:
 
     def update(self, delta_time: float, player) -> None:
         self._pulse_timer += delta_time
-        # Smooth HP bar transition
-        self._displayed_hp += (player.hp - self._displayed_hp) * min(1.0, 10.0 * delta_time)
+
+        # Smooth HP bar transition (eased approach)
+        hp_diff = player.hp - self._displayed_hp
+        self._displayed_hp += hp_diff * min(1.0, 12.0 * delta_time)
+
+        # Ghost HP trail (decays slower — shows damage taken)
+        ghost_diff = player.hp - self._ghost_hp
+        if ghost_diff < 0:
+            # HP decreased — ghost stays high then slowly catches up
+            self._ghost_hp += ghost_diff * min(1.0, 2.5 * delta_time)
+        else:
+            # HP increased (heal) — ghost snaps to match
+            self._ghost_hp = self._displayed_hp
+
+        # HP hit flash on damage
+        if player.hp < self._last_hp:
+            self._hp_hit_flash = 1.0
+        self._last_hp = player.hp
+        if self._hp_hit_flash > 0:
+            self._hp_hit_flash = max(0.0, self._hp_hit_flash - delta_time * 5.0)
+
+        # Score count-up animation
+        self._target_score = getattr(player, '_score_ref', self._target_score)
+        score_diff = self._target_score - self._displayed_score
+        if abs(score_diff) > 0.5:
+            self._displayed_score += score_diff * min(1.0, 8.0 * delta_time)
+        else:
+            self._displayed_score = self._target_score
+
+        # Score flash decay
+        if self._score_flash > 0:
+            self._score_flash = max(0.0, self._score_flash - delta_time * 4.0)
+
+        # Combo burst scale decay
+        if self._combo_scale > 1.0:
+            self._combo_scale = max(1.0, self._combo_scale - delta_time * 6.0)
 
     def draw(self, player, score_system, wave_manager, enemies: list, powerups: list, boon_manager) -> None:
+        # Update score target from score_system
+        if score_system.score != self._target_score:
+            score_change = score_system.score - self._target_score
+            if score_change > 500:
+                self._score_flash = 1.0
+            self._target_score = score_system.score
+
+        # Combo burst detection
+        if score_system.combo > self._last_combo and score_system.combo >= 3:
+            self._combo_scale = 1.35
+        self._last_combo = score_system.combo
+
         self._draw_hp_bar(player)
         self._draw_score(score_system)
         self._draw_wave_and_objective(wave_manager, len(enemies))
@@ -133,27 +200,84 @@ class HUD:
             self._label_tutorial.draw()
 
     def _draw_hp_bar(self, player) -> None:
-        frac_actual = max(0.0, player.hp / player.max_hp)
-        frac_ghost = max(0.0, self._displayed_hp / player.max_hp)
+        frac_actual = clamp(player.hp / player.max_hp)
+        frac_display = clamp(self._displayed_hp / player.max_hp)
+        frac_ghost = clamp(self._ghost_hp / player.max_hp)
 
-        fill_color = COLOR_HP_GREEN if frac_actual > 0.35 else COLOR_HP_LOW
+        # Color crossfade: green > 60%, amber 30-60%, red < 30%
+        if frac_actual > 0.6:
+            fill_color = _HP_COLOR_HIGH
+        elif frac_actual > 0.3:
+            t = clamp((frac_actual - 0.3) / 0.3)
+            fill_color = lerp_color(_HP_COLOR_MID, _HP_COLOR_HIGH, ease_out_cubic(t))
+        else:
+            t = clamp(frac_actual / 0.3)
+            fill_color = lerp_color(_HP_COLOR_LOW, _HP_COLOR_MID, ease_out_cubic(t))
 
         # Background
         arcade.draw_lrbt_rectangle_filled(_BAR_X, _BAR_X + _BAR_W, _BAR_Y, _BAR_Y + _BAR_H, COLOR_HP_BG)
-        # Red damage ghosting trail
-        if frac_ghost > frac_actual:
-            arcade.draw_lrbt_rectangle_filled(_BAR_X, _BAR_X + _BAR_W * frac_ghost, _BAR_Y, _BAR_Y + _BAR_H, (220, 40, 40, 180))
-        # Actual green fill
-        if frac_actual > 0:
-            arcade.draw_lrbt_rectangle_filled(_BAR_X, _BAR_X + _BAR_W * frac_actual, _BAR_Y, _BAR_Y + _BAR_H, fill_color)
-        arcade.draw_lrbt_rectangle_outline(_BAR_X, _BAR_X + _BAR_W, _BAR_Y, _BAR_Y + _BAR_H, COLOR_WHITE, 1)
 
-        self._label_hp.text = f"{max(0, player.hp)}/{player.max_hp}"
+        # Ghost trail (red damage indicator — slower decay)
+        if frac_ghost > frac_display:
+            arcade.draw_lrbt_rectangle_filled(
+                _BAR_X, _BAR_X + _BAR_W * frac_ghost,
+                _BAR_Y, _BAR_Y + _BAR_H, (220, 40, 40, 160))
+
+        # Actual HP fill
+        if frac_display > 0:
+            arcade.draw_lrbt_rectangle_filled(
+                _BAR_X, _BAR_X + _BAR_W * frac_display,
+                _BAR_Y, _BAR_Y + _BAR_H, fill_color)
+
+        # Low-HP pulsing bar border
+        if frac_actual < 0.28 and player.alive:
+            pulse_t = ease_in_out_cubic(clamp((math.sin(self._pulse_timer * 5.0) + 1.0) * 0.5))
+            pulse_a = int(lerp(100, 255, pulse_t))
+            arcade.draw_lrbt_rectangle_outline(
+                _BAR_X - 1, _BAR_X + _BAR_W + 1,
+                _BAR_Y - 1, _BAR_Y + _BAR_H + 1,
+                (255, 50, 50, pulse_a), 2)
+        else:
+            arcade.draw_lrbt_rectangle_outline(
+                _BAR_X, _BAR_X + _BAR_W,
+                _BAR_Y, _BAR_Y + _BAR_H, COLOR_WHITE, 1)
+
+        # HP hit flash — red screen-edge vignette on damage
+        if self._hp_hit_flash > 0:
+            flash_a = int(60 * ease_out_cubic(self._hp_hit_flash))
+            arcade.draw_lrbt_rectangle_filled(
+                _BAR_X, _BAR_X + _BAR_W,
+                _BAR_Y, _BAR_Y + _BAR_H, (255, 30, 30, flash_a))
+
+        # HP number — flashes when low
+        hp_text = f"{max(0, player.hp)}/{player.max_hp}"
+        hp_col = COLOR_WHITE
+        if frac_actual < 0.28 and player.alive:
+            pulse_t = ease_in_out_cubic(clamp((math.sin(self._pulse_timer * 5.0) + 1.0) * 0.5))
+            hp_col = lerp_color((255, 100, 80), (255, 255, 255), pulse_t)
+
+        self._label_hp.text = hp_text
+        self._label_hp.color = hp_col
         self._label_vimana.draw()
         self._label_hp.draw()
 
     def _draw_score(self, score_system) -> None:
-        self._label_score.text = f"{score_system.score:,}"
+        # Animated score count-up
+        displayed = int(self._displayed_score)
+        self._label_score.text = f"{displayed:,}"
+
+        # Flash effect on big score changes
+        if self._score_flash > 0:
+            flash_scale = 1.0 + 0.15 * ease_out_cubic(self._score_flash)
+            self._label_score.font_size = int(18 * flash_scale)
+            glow_a = int(80 * self._score_flash)
+            arcade.draw_lrbt_rectangle_filled(
+                WIDTH - 200, WIDTH - 8,
+                HEIGHT - 32, HEIGHT - 8,
+                (255, 220, 50, glow_a))
+        else:
+            self._label_score.font_size = 18
+
         self._label_score.draw()
 
         if score_system.combo_active:
@@ -167,16 +291,27 @@ class HUD:
             else:
                 col = (255, 140, 30)     # Orange Warmup
 
+            # Combo text with burst scale
+            combo_size = int(11 * self._combo_scale)
             self._label_combo.text = f"×{combo} COMBO"
             self._label_combo.color = col
+            self._label_combo.font_size = combo_size
             self._label_combo.draw()
+
+            # Combo burst ring on increment
+            if self._combo_scale > 1.05:
+                ring_r = int(15 * self._combo_scale)
+                ring_a = int(120 * (self._combo_scale - 1.0) / 0.35)
+                cx = WIDTH - 55
+                cy = HEIGHT - 50
+                arcade.draw_circle_outline(cx, cy, ring_r, (*col, ring_a), 2)
 
             # Combo timer bar
             bar_w = 90
             bar_h = 3
             bx = WIDTH - 16 - bar_w
             by = HEIGHT - 64
-            frac = max(0.0, score_system.combo_timer / score_system.combo_timeout)
+            frac = clamp(score_system.combo_timer / score_system.combo_timeout)
             arcade.draw_lrbt_rectangle_filled(bx, bx + bar_w, by, by + bar_h, (40, 20, 20))
             if frac > 0:
                 arcade.draw_lrbt_rectangle_filled(bx, bx + bar_w * frac, by, by + bar_h, col)
@@ -198,7 +333,8 @@ class HUD:
         if wave_manager.is_fighting:
             self._label_objective.text = f"OBJECTIVE: {wave_manager.current_objective}"
             self._label_objective.draw()
-            self._label_enemy_count.text = f"ENEMIES REMAINING: {enemy_count}"
+            total = max(enemy_count, getattr(wave_manager, "total_wave_enemies", enemy_count))
+            self._label_enemy_count.text = f"ENEMIES REMAINING: {enemy_count} / {total}"
             self._label_enemy_count.draw()
 
     def _draw_boons_row(self, boon_manager) -> None:
@@ -206,7 +342,7 @@ class HUD:
             return
         start_x = _BAR_X
         start_y = _BAR_Y - 24
-        from game.systems.boon_system import BOONS_DATABASE
+        from game.systems.boon_system import BOONS_DATABASE, SYNERGIES_DATABASE
         
         rune_abbr = {
             "agni_fury": "AG",
@@ -233,6 +369,20 @@ class HUD:
             if lvl > 1:
                 arcade.draw_circle_filled(bx + 19, start_y + 8, 5, (255, 215, 60))
                 arcade.draw_text(str(lvl), bx + 19, start_y + 4, (10, 10, 10), font_size=7, bold=True, anchor_x="center")
+
+        # ── Synergy Badges Row ─────────────────────────────────────────
+        if hasattr(boon_manager, "active_synergies") and boon_manager.active_synergies:
+            syn_y = start_y - 24
+            for j, sid in enumerate(boon_manager.active_synergies):
+                sdata = next((s for s in SYNERGIES_DATABASE if s["id"] == sid), None)
+                if not sdata: continue
+                sx = start_x + j * 75
+                # Glowing synergy capsule
+                pulse = (math.sin(self._pulse_timer * 4.0) + 1.0) * 0.5
+                border_col = (*sdata["color"][:3], int(180 + 75 * pulse))
+                arcade.draw_lrbt_rectangle_filled(sx, sx + 70, syn_y - 8, syn_y + 9, (25, 18, 45))
+                arcade.draw_lrbt_rectangle_outline(sx, sx + 70, syn_y - 8, syn_y + 9, border_col, 2)
+                arcade.draw_text(sdata["name"][:9].upper(), sx + 35, syn_y - 4, sdata["color"], font_size=7, bold=True, anchor_x="center")
 
     def _draw_ability_meters(self, player) -> None:
         # Dash [SPACE]
@@ -311,10 +461,26 @@ class HUD:
     def _draw_low_health_vignette(self, player) -> None:
         frac = player.hp / player.max_hp
         if frac < 0.28 and player.alive:
-            pulse = (math.sin(self._pulse_timer * 6) + 1.0) * 0.5
-            alpha = int(70 * pulse)
-            # Red screen border vignette
-            arcade.draw_lrbt_rectangle_outline(4, WIDTH - 4, 4, HEIGHT - 4, (255, 30, 30, alpha), 8)
+            # Smooth eased pulse instead of raw sin()
+            pulse_t = ease_in_out_cubic(clamp((math.sin(self._pulse_timer * 5.0) + 1.0) * 0.5))
+            alpha = int(lerp(30, 90, pulse_t))
+            # Red screen border vignette — thicker at lower HP
+            border_w = int(lerp(4, 12, 1.0 - frac / 0.28))
+            arcade.draw_lrbt_rectangle_outline(
+                4, WIDTH - 4, 4, HEIGHT - 4,
+                (255, 30, 30, alpha), border_w)
+
+            # Corner vignette glow for extra urgency
+            corner_a = int(lerp(10, 40, pulse_t))
+            for cx, cy in [(0, 0), (WIDTH, 0), (0, HEIGHT), (WIDTH, HEIGHT)]:
+                arcade.draw_circle_filled(cx, cy, 120, (180, 0, 0, corner_a))
+
+        # Damage hit flash (from _hp_hit_flash)
+        if self._hp_hit_flash > 0:
+            edge_a = int(50 * ease_out_cubic(self._hp_hit_flash))
+            arcade.draw_lrbt_rectangle_outline(
+                2, WIDTH - 2, 2, HEIGHT - 2,
+                (255, 60, 40, edge_a), 6)
 
     def _draw_powerup(self, player) -> None:
         if not player.active_powerup or player.active_powerup.expired:

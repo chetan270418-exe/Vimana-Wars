@@ -7,6 +7,7 @@ import math
 import arcade
 from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_SCORE, COLOR_WAVE, COLOR_WHITE
 from game.entities.ship_classes import SHIP_CLASSES
+from game.ui.transitions import transition_to, TransitionOverlay
 
 
 _SHIPS = ["pushpaka", "tripura", "garuda"]
@@ -37,6 +38,7 @@ class ShipSelectView(arcade.View):
         arcade.set_background_color(COLOR_BG)
 
     def on_update(self, delta_time: float) -> None:
+        TransitionOverlay.update(delta_time)
         self._pulse += delta_time
 
     def on_draw(self) -> None:
@@ -112,6 +114,7 @@ class ShipSelectView(arcade.View):
                 )
 
         self._hint.draw()
+        TransitionOverlay.draw()
 
     def _draw_stat_bar(self, label: str, frac: float, cx: float, cy: float, col: tuple) -> None:
         arcade.draw_text(label, cx - 100, cy, (160, 170, 190), font_size=8, bold=True)
@@ -179,8 +182,10 @@ class ShipSelectView(arcade.View):
             self._selected = (self._selected + 1) % len(_SHIPS)
         elif key in (arcade.key.ENTER, arcade.key.RETURN, arcade.key.SPACE):
             chosen_ship = _SHIPS[self._selected]
+            is_endless = (self.difficulty == "endless")
+            eff_diff = "normal" if is_endless else self.difficulty
             from game.views.game_view import GameView
-            self.window.show_view(GameView(difficulty=self.difficulty, ship_class=chosen_ship))
+            self.window.show_view(GameView(difficulty=eff_diff, ship_class=chosen_ship, is_endless=is_endless))
         elif key == arcade.key.ESCAPE:
             from game.views.difficulty_view import DifficultyView
-            self.window.show_view(DifficultyView())
+            transition_to(self.window, DifficultyView())

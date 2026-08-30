@@ -7,6 +7,7 @@ import random
 import arcade
 from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_WAVE, COLOR_SCORE, COLOR_WHITE
 from game.systems import save_system
+from game.ui.transitions import transition_to, TransitionOverlay
 
 # Static star field — seeded so it never changes
 _RNG = random.Random(42)
@@ -78,6 +79,7 @@ class MenuView(arcade.View):
         SoundManager.stop_music()
 
     def on_update(self, delta_time: float) -> None:
+        TransitionOverlay.update(delta_time)
         self._pulse += delta_time
         alpha = max(0, min(255, int(200 + 55 * math.sin(self._pulse * 2.5))))
         self._prompt.color = (*COLOR_WHITE, alpha)
@@ -93,20 +95,27 @@ class MenuView(arcade.View):
         for t in self._ctrl_texts:
             t.draw()
         self._version.draw()
+        TransitionOverlay.draw()
 
     def on_key_press(self, key, modifiers) -> None:
+        from game.systems.sound_manager import SoundManager
+        sm = SoundManager()
         if key in (arcade.key.ENTER, arcade.key.RETURN):
+            sm.play_ui_click()
             from game.views.difficulty_view import DifficultyView
-            self.window.show_view(DifficultyView())
+            transition_to(self.window, DifficultyView())
         elif key == arcade.key.L:
+            sm.play_ui_click()
             from game.views.leaderboard_view import LeaderboardView
-            self.window.show_view(LeaderboardView(return_view=self))
+            transition_to(self.window, LeaderboardView(return_view=self))
         elif key == arcade.key.C:
+            sm.play_ui_click()
             from game.views.codex_view import CodexView
-            self.window.show_view(CodexView(return_view=self))
+            transition_to(self.window, CodexView(return_view=self))
         elif key == arcade.key.O:
+            sm.play_ui_click()
             from game.views.settings_view import SettingsView
-            self.window.show_view(SettingsView(return_view=self))
+            transition_to(self.window, SettingsView(return_view=self))
         elif key == arcade.key.ESCAPE:
             arcade.exit()
 

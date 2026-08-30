@@ -43,23 +43,30 @@ class BossBar:
             arcade.draw_lrbt_rectangle_filled(
                 bar_x, bar_x + bar_w * frac, bar_y, bar_y + bar_h, fill_color)
 
-        # Threshold markers for Ravana
-        if boss_name == "RAVANA":
-            for threshold in (0.66, 0.33):
-                mx = bar_x + bar_w * threshold
-                arcade.draw_line(mx, bar_y, mx, bar_y + bar_h, COLOR_WHITE, 1)
+        # Threshold markers for Boss phases (Phase 2 at 66%, Phase 3 at 33%)
+        for threshold, p_tag in ((0.66, "P2"), (0.33, "P3")):
+            mx = bar_x + bar_w * threshold
+            arcade.draw_line(mx, bar_y - 2, mx, bar_y + bar_h + 2, (255, 220, 80), 2)
+            arcade.draw_triangle_filled(mx, bar_y + bar_h + 6, mx - 4, bar_y + bar_h, mx + 4, bar_y + bar_h, (255, 220, 80))
+
+        # Enraged outline pulsing when boss is below 33% HP
+        border_col = COLOR_WHITE
+        if frac < 0.33:
+            import time
+            pulse = int(180 + 75 * (time.time() * 6 % 1.0))
+            border_col = (255, 50, 50, pulse)
 
         # Border
         arcade.draw_lrbt_rectangle_outline(
-            bar_x, bar_x + bar_w, bar_y, bar_y + bar_h, COLOR_WHITE, 2)
+            bar_x, bar_x + bar_w, bar_y, bar_y + bar_h, border_col, 2)
 
         # Label formatting
         if boss_name == "RAVANA":
-            phase_labels = ["Phase I", "Phase II", "Phase III"]
+            phase_labels = ["Phase I (Spread)", "Phase II (Spiral Void)", "Phase III (Fleet Summons)"]
             p_idx = getattr(boss, "phase", 1) - 1
-            self._label_name.text = f"RAVANA  —  {phase_labels[p_idx]}"
+            self._label_name.text = f"👑 EMPEROR RAVANA  —  {phase_labels[p_idx]}"
         else:
-            self._label_name.text = f"MINI-BOSS: {boss_name}  (THE ARMORED TITAN)"
+            self._label_name.text = f"🛡️ MINI-BOSS: {boss_name}  (THE ARMORED TITAN)"
 
         self._label_hp.text = f"{max(0, boss.hp):,} / {boss.max_hp:,}"
         self._label_name.draw()

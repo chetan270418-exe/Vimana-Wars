@@ -4,8 +4,23 @@ game/views/boon_select_view.py
 Presented during wave transitions so the player can choose an astral upgrade.
 """
 import math
+import random
 import arcade
 from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_SCORE, COLOR_WAVE, COLOR_WHITE
+from game.ui.easing import ease_out_back, ease_out_cubic, lerp, clamp
+from game.ui.tween import TweenManager, Tween
+from game.ui.transitions import transition_to, TransitionOverlay
+from game.systems.sound_manager import SoundManager
+
+
+class CardState:
+    def __init__(self):
+        self.flip_progress = 0.0
+        self.lift = 0.0
+        self.scale = 1.0
+        self.alpha = 255.0
+        self.fly_text_y = 0.0
+        self.fly_text_alpha = 0.0
 
 
 class BoonSelectView(arcade.View):
@@ -15,6 +30,27 @@ class BoonSelectView(arcade.View):
         self.choices = choices
         self._selected_card = 0
         self._pulse = 0.0
+
+        self.sound_manager = SoundManager()
+        self._tweens = TweenManager()
+        
+        self._pick_phase = False
+        self._pick_timer = 0.0
+        self._transition_started = False
+        
+        self._cards = [CardState() for _ in range(len(self.choices))]
+        
+        # Background Particles
+        self._particles = []
+        for _ in range(20):
+            self._particles.append({
+                "x": random.uniform(0, WIDTH),
+                "y": random.uniform(0, HEIGHT),
+                "speed": random.uniform(10, 30),
+                "wobble_offset": random.uniform(0, math.pi * 2),
+                "wobble_speed": random.uniform(1, 3),
+                "wobble_amp": random.uniform(5, 15)
+            })
 
         # UI Text Objects
         self._title = arcade.Text(
@@ -38,14 +74,64 @@ class BoonSelectView(arcade.View):
 
     def on_show_view(self) -> None:
         arcade.set_background_color(COLOR_BG)
+        
+        for i, card in enumerate(self._cards):
+            card.flip_progress = 0.0
+            card.lift = 0.0
+            card.scale = 1.0
+            card.alpha = 255.0
+            card.fly_text_y = 0.0
+            card.fly_text_alpha = 0.0
+            
+            self._tweens.tween(
+                target=card,
+                attr="flip_progress",
+                end=1.0,
+                duration=0.4,
+                ease=ease_out_back,
+                delay=i * 0.15
+            )
 
     def on_update(self, delta_time: float) -> None:
         self._pulse += delta_time
+        self._tweens.update(delta_time)
+        TransitionOverlay.update(delta_time)
+        
+        # Update particles
+        for p in self._particles:
+            p["y"] += p["speed"] * delta_time
+            if p["y"] > HEIGHT + 20:
+                p["y"] = -20
+                p["x"] = random.uniform(0, WIDTH)
+
+        # Handle smooth hover states if not picked
+        if not self._pick_phase:
+            for i, card in enumerate(self._cards):
+                is_sel = (i == self._selected_card)
+                target_lift = 12.0 if is_sel else 0.0
+                target_scale = 1.05 if is_sel else 1.0
+                target_alpha = 255.0 if is_sel else 153.0
+                
+                card.lift = lerp(card.lift, target_lift, delta_time * 10)
+                card.scale = lerp(card.scale, target_scale, delta_time * 10)
+                card.alpha = lerp(card.alpha, target_alpha, delta_time * 10)
+        else:
+            self._pick_timer -= delta_time
+            if self._pick_timer <= 0 and not self._transition_started:
+                self._transition_started = True
+                transition_to(self.window, self.game_view, duration=0.35)
 
     def on_draw(self) -> None:
         self.clear()
+        
+        # Draw background particles
+        chosen = self.choices[self._selected_card]
+        p_color = chosen["color"]
+        for p in self._particles:
+            px = p["x"] + math.sin(p["wobble_offset"] + self._pulse * p["wobble_speed"]) * p["wobble_amp"]
+            py = p["y"]
+            arcade.draw_circle_filled(px, py, 2, (p_color[0], p_color[1], p_color[2], 100))
 
-        # Render frozen game view in the background with a dark overlay
         self._title.draw()
         self._sub.draw()
 
@@ -56,68 +142,119 @@ class BoonSelectView(arcade.View):
         cy = HEIGHT // 2 - 20
 
         for i, boon in enumerate(self.choices):
-            cx = start_x + i * spacing
+            card = self._cards[i]
             is_sel = (i == self._selected_card)
+            
+            # Draw Face Down Back
+            if card.flip_progress <= 0.0:
+                cx = start_x + i * spacing
+                bg_color = (20, 25, 45)
+                arcade.draw_lrbt_rectangle_filled(
+                    cx - card_w // 2, cx + card_w // 2,
+                    cy - card_h // 2, cy + card_h // 2,
+                    bg_color
+                )
+                # Rotating glow rings
+                arcade.draw_arc_outline(
+                    cx, cy, 80, 80, (100, 120, 200, 150),
+                    0, 270, border_width=4, tilt_angle=math.degrees(self._pulse * 3)
+                )
+                arcade.draw_arc_outline(
+                    cx, cy, 50, 50, (80, 100, 180, 100),
+                    0, 180, border_width=2, tilt_angle=math.degrees(-self._pulse * 4)
+                )
+                continue
 
+            width_scale = card.flip_progress
+            cx = start_x + i * spacing
+            cy_lifted = cy + card.lift
+            
+            w = card_w * width_scale * card.scale
+            h = card_h * card.scale
+            
+            alpha = int(clamp(card.alpha))
+            
             # Card Background
-            bg_color = (25, 30, 55) if not is_sel else (35, 45, 80)
+            bg_color = (25, 30, 55, alpha) if not is_sel else (35, 45, 80, alpha)
             arcade.draw_lrbt_rectangle_filled(
-                cx - card_w // 2, cx + card_w // 2,
-                cy - card_h // 2, cy + card_h // 2,
+                cx - w // 2, cx + w // 2,
+                cy_lifted - h // 2, cy_lifted + h // 2,
                 bg_color
             )
 
-            # Golden glowing card border
-            border_col = boon["color"] if is_sel else (70, 80, 110)
-            border_width = 3 if is_sel else 1
+            # Glowing Border
+            if is_sel:
+                t = (math.sin(self._pulse * 4) + 1.0) / 2.0
+                pulse_val = int(200 + 55 * ease_out_cubic(t))
+                border_col = (boon["color"][0], boon["color"][1], boon["color"][2], min(alpha, pulse_val))
+                border_width = int(3 * card.scale)
+            else:
+                border_col = (70, 80, 110, alpha)
+                border_width = int(1 * card.scale)
+                
             arcade.draw_lrbt_rectangle_outline(
-                cx - card_w // 2, cx + card_w // 2,
-                cy - card_h // 2, cy + card_h // 2,
+                cx - w // 2, cx + w // 2,
+                cy_lifted - h // 2, cy_lifted + h // 2,
                 border_col, border_width
             )
 
-            # Card Header (God Name)
+            text_alpha = int(alpha * clamp(width_scale))
+            if text_alpha <= 0:
+                continue
+
+            # God Name Header
             arcade.draw_text(
                 boon["deva"],
-                cx, cy + 125,
-                (200, 210, 240), font_size=9, bold=True, anchor_x="center"
+                cx, cy_lifted + 125 * card.scale,
+                (200, 210, 240, text_alpha), font_size=int(9 * card.scale), bold=True, anchor_x="center"
             )
 
             # Boon Name
+            b_col = boon["color"]
             arcade.draw_text(
                 boon["name"],
-                cx, cy + 90,
-                boon["color"], font_size=13, bold=True, anchor_x="center"
+                cx, cy_lifted + 90 * card.scale,
+                (b_col[0], b_col[1], b_col[2], text_alpha), font_size=int(13 * card.scale), bold=True, anchor_x="center"
             )
 
-            # Card Decorative Emblem Box
-            arcade.draw_circle_filled(cx, cy + 20, 36, (15, 20, 35))
-            arcade.draw_circle_outline(cx, cy + 20, 36, boon["color"], 2)
+            # Decorative Emblem
+            arcade.draw_circle_filled(cx, cy_lifted + 20 * card.scale, 36 * card.scale, (15, 20, 35, alpha))
+            arcade.draw_circle_outline(cx, cy_lifted + 20 * card.scale, 36 * card.scale, (b_col[0], b_col[1], b_col[2], alpha), int(2 * card.scale))
             arcade.draw_text(
                 f"[{i + 1}]",
-                cx, cy + 12,
-                COLOR_WHITE, font_size=18, bold=True, anchor_x="center"
+                cx, cy_lifted + 12 * card.scale,
+                (255, 255, 255, text_alpha), font_size=int(18 * card.scale), bold=True, anchor_x="center"
             )
 
-            # Boon Description Text (Wrapped)
+            # Description (Wrapped)
             desc_lines = self._wrap_text(boon["desc"], 24)
             for l_idx, line in enumerate(desc_lines):
                 arcade.draw_text(
                     line,
-                    cx, cy - 45 - l_idx * 18,
-                    (210, 215, 230), font_size=10, bold=True, anchor_x="center"
+                    cx, cy_lifted - 45 * card.scale - l_idx * 18 * card.scale,
+                    (210, 215, 230, text_alpha), font_size=int(10 * card.scale), bold=True, anchor_x="center"
                 )
 
             # Selection Tag
-            if is_sel:
-                pulse_val = int(200 + 55 * math.sin(self._pulse * 4))
+            if is_sel and not self._pick_phase:
+                t2 = (math.sin(self._pulse * 4) + 1.0) / 2.0
+                pulse_val2 = int(200 + 55 * ease_out_cubic(t2))
                 arcade.draw_text(
                     "★ PRESS ENTER TO CLAIM ★",
-                    cx, cy - 135,
-                    (255, 220, 50, pulse_val), font_size=9, bold=True, anchor_x="center"
+                    cx, cy_lifted - 135 * card.scale,
+                    (255, 220, 50, pulse_val2), font_size=int(9 * card.scale), bold=True, anchor_x="center"
+                )
+                
+            # Picked Fly Text
+            if card.fly_text_alpha > 0:
+                arcade.draw_text(
+                    "+1 BOON OBTAINED",
+                    cx, cy_lifted + card.fly_text_y,
+                    (255, 215, 0, int(card.fly_text_alpha)), font_size=16, bold=True, anchor_x="center"
                 )
 
         self._hint.draw()
+        TransitionOverlay.draw()
 
     def _wrap_text(self, text: str, max_chars: int) -> list[str]:
         words = text.split()
@@ -137,6 +274,11 @@ class BoonSelectView(arcade.View):
         return lines
 
     def on_key_press(self, key, modifiers) -> None:
+        if self._pick_phase:
+            return
+            
+        old_sel = self._selected_card
+        
         if key in (arcade.key.LEFT, arcade.key.A):
             self._selected_card = (self._selected_card - 1) % len(self.choices)
         elif key in (arcade.key.RIGHT, arcade.key.D):
@@ -152,8 +294,14 @@ class BoonSelectView(arcade.View):
             self._claim_selected()
         elif key in (arcade.key.ENTER, arcade.key.RETURN, arcade.key.SPACE):
             self._claim_selected()
+            
+        if self._selected_card != old_sel:
+            self.sound_manager.play_ui_click()
 
     def on_mouse_press(self, x, y, button, modifiers) -> None:
+        if self._pick_phase:
+            return
+            
         card_w = 230
         card_h = 320
         start_x = WIDTH // 2 - 270
@@ -163,11 +311,29 @@ class BoonSelectView(arcade.View):
         for i in range(len(self.choices)):
             cx = start_x + i * spacing
             if cx - card_w // 2 <= x <= cx + card_w // 2 and cy - card_h // 2 <= y <= cy + card_h // 2:
+                old_sel = self._selected_card
                 self._selected_card = i
+                if old_sel != i:
+                    self.sound_manager.play_ui_click()
                 self._claim_selected()
                 break
 
     def _claim_selected(self) -> None:
+        if self._pick_phase:
+            return
+            
+        self._pick_phase = True
+        self._pick_timer = 0.6
+        self._transition_started = False
+        
         chosen = self.choices[self._selected_card]
         self.game_view.apply_boon(chosen)
-        self.window.show_view(self.game_view)
+        
+        for i, card in enumerate(self._cards):
+            if i == self._selected_card:
+                self._tweens.tween(card, "scale", 1.3, 0.3, ease=ease_out_back)
+                self._tweens.tween(card, "fly_text_y", 40.0, 0.5, ease=ease_out_cubic)
+                card.fly_text_alpha = 255.0
+                self._tweens.tween(card, "fly_text_alpha", 0.0, 0.5, ease=ease_out_cubic, delay=0.2)
+            else:
+                self._tweens.tween(card, "alpha", 76.5, 0.2, ease=ease_out_cubic)

@@ -26,15 +26,19 @@ from pathlib import Path
 _ASSETS = Path(__file__).resolve().parent.parent.parent / "assets" / "sounds"
 
 _SOUND_FILES: dict[str, str] = {
-    "shoot":      "shoot.wav",
-    "dash":       "dash.wav",
-    "hit":        "hit.wav",
-    "explosion":  "explosion.wav",
-    "powerup":    "powerup.wav",
-    "boss_roar":  "boss_roar.wav",
-    "victory":    "victory.wav",
-    "game_over":  "game_over.wav",
-    "wave_clear": "wave_clear.wav",
+    "shoot":         "shoot.wav",
+    "dash":          "dash.wav",
+    "hit":           "hit.wav",
+    "explosion":     "explosion.wav",
+    "powerup":       "powerup.wav",
+    "boss_roar":     "boss_roar.wav",
+    "victory":       "victory.wav",
+    "game_over":     "game_over.wav",
+    "wave_clear":    "wave_clear.wav",
+    "ui_click":      "ui_click.wav",
+    "warning_siren": "warning_siren.wav",
+    "dodge_chime":   "dodge_chime.wav",
+    "synergy":       "synergy.wav",
 }
 _MUSIC_FILE = _ASSETS / "combat_loop.mp3"
 
@@ -129,11 +133,15 @@ class SoundManager:
     def play_dash(self, volume: float = 0.55) -> None: self._play("dash", volume)
 
     # ── Convenience methods ──────────────────────────────────────────
-    def play_shoot(self,      volume: float = 0.35) -> None: self._play("shoot",      volume)
-    def play_hit(self,        volume: float = 0.70) -> None: self._play("hit",        volume)
-    def play_explosion(self,  volume: float = 0.80) -> None: self._play("explosion",  volume)
-    def play_powerup(self,    volume: float = 1.00) -> None: self._play("powerup",    volume)
-    def play_boss_roar(self,  volume: float = 1.00) -> None: self._play("boss_roar",  volume)
-    def play_victory(self,    volume: float = 1.00) -> None: self._play("victory",    volume)
-    def play_game_over(self,  volume: float = 0.90) -> None: self._play("game_over",  volume)
-    def play_wave_clear(self, volume: float = 0.70) -> None: self._play("wave_clear", volume)
+    def play_shoot(self,         volume: float = 0.35) -> None: self._play("shoot",         volume)
+    def play_hit(self,           volume: float = 0.70) -> None: self._play("hit",           volume)
+    def play_explosion(self,     volume: float = 0.80) -> None: self._play("explosion",     volume)
+    def play_powerup(self,       volume: float = 1.00) -> None: self._play("powerup",       volume)
+    def play_boss_roar(self,     volume: float = 1.00) -> None: self._play("boss_roar",     volume)
+    def play_victory(self,       volume: float = 1.00) -> None: self._play("victory",       volume)
+    def play_game_over(self,     volume: float = 0.90) -> None: self._play("game_over",     volume)
+    def play_wave_clear(self,    volume: float = 0.70) -> None: self._play("wave_clear",    volume)
+    def play_ui_click(self,      volume: float = 0.60) -> None: self._play("ui_click",      volume)
+    def play_warning_siren(self, volume: float = 0.85) -> None: self._play("warning_siren", volume)
+    def play_dodge_chime(self,   volume: float = 0.75) -> None: self._play("dodge_chime",   volume)
+    def play_synergy(self,       volume: float = 1.00) -> None: self._play("synergy",       volume)

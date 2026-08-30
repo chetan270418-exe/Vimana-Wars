@@ -33,12 +33,13 @@ def _wave_config(wave_num: int) -> dict:
 
 
 class WaveManager:
-    def __init__(self, spawn_mult: float = 1.0, enemy_spd_mult: float = 1.0):
+    def __init__(self, spawn_mult: float = 1.0, enemy_spd_mult: float = 1.0, is_endless: bool = False):
         self.wave_number = 0
         self.boss_alive = False
         self.boss_wave_cleared = False
         self._difficulty_mult = spawn_mult
         self.enemy_speed_mult = enemy_spd_mult
+        self.is_endless = is_endless
 
         # State machine: CLEAR_PAUSE -> COUNTDOWN -> SPAWNING -> FIGHTING
         self._state = "CLEAR_PAUSE"
@@ -48,8 +49,9 @@ class WaveManager:
         self.announce_alpha = 0
         self.countdown_val = 3
 
-        # Objective tracking
+        # Objective & Enemy tracking
         self.current_objective = "Defeat all Asuras"
+        self.total_wave_enemies = 0
         self.wave_time = 0.0
         self.took_damage_this_wave = False
 
@@ -67,6 +69,7 @@ class WaveManager:
 
         elif self._state == "SPAWNING":
             self._spawn_wave(enemies, player)
+            self.total_wave_enemies = len(enemies)
             self._state = "FIGHTING"
             self.wave_time = 0.0
             self.took_damage_this_wave = False
@@ -79,7 +82,7 @@ class WaveManager:
                     self.boss_alive = False
                     self._waves_since_powerup += 1
                     self._maybe_spawn_powerup(powerups)
-                    if self.wave_number == BOSS_WAVE_NUMBER:
+                    if self.wave_number == BOSS_WAVE_NUMBER and not self.is_endless:
                         self.boss_wave_cleared = True
                         return
                 self._state = "CLEAR_PAUSE"

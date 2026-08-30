@@ -18,12 +18,16 @@ _DEFAULTS = {
     "difficulty":    "normal",   # "easy" | "normal" | "hard"
     "total_kills":   0,
     "games_played":  0,
-    "volume":        80,         # 0 - 100 (master/legacy)
-    "sfx_volume":    80,         # 0 - 100
-    "music_volume":  80,         # 0 - 100
-    "screen_shake":  "full",     # "full" | "low" | "off"
-    "particles":     "high",     # "high" | "low"
-    "fullscreen":    False,
+    "volume":             80,         # 0 - 100 (master/legacy)
+    "sfx_volume":         80,         # 0 - 100
+    "music_volume":       80,         # 0 - 100
+    "screen_shake":       "full",     # "full" | "low" | "off"
+    "particles":          "high",     # "high" | "low"
+    "reduced_flashes":    False,      # True | False (accessibility)
+    "colorblind_mode":    "off",      # "off" | "protan" | "deutan" | "tritan"
+    "fullscreen":         False,
+    "endless_high_wave":  0,
+    "endless_high_score": 0,
 }
 
 

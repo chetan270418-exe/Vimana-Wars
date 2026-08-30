@@ -160,3 +160,124 @@ class TestAchievementsAndSave:
         assert loaded["high_score"] == 12345
         assert loaded["sfx_volume"] == 60
         assert loaded["music_volume"] == 40
+
+
+class TestEasingSystem:
+    def test_ease_out_cubic_bounds(self):
+        from game.ui.easing import ease_out_cubic, clamp, lerp, lerp_color
+        assert ease_out_cubic(0.0) == 0.0
+        assert ease_out_cubic(1.0) == 1.0
+        assert 0.0 < ease_out_cubic(0.5) < 1.0
+        # Should be past midpoint (easing out is fast then slow)
+        assert ease_out_cubic(0.5) > 0.5
+
+    def test_lerp(self):
+        from game.ui.easing import lerp
+        assert lerp(0, 100, 0.0) == 0
+        assert lerp(0, 100, 1.0) == 100
+        assert lerp(0, 100, 0.5) == 50
+
+    def test_lerp_color(self):
+        from game.ui.easing import lerp_color
+        c = lerp_color((0, 0, 0), (255, 255, 255), 0.5)
+        assert c == (127, 127, 127)
+
+    def test_clamp(self):
+        from game.ui.easing import clamp
+        assert clamp(-0.5) == 0.0
+        assert clamp(1.5) == 1.0
+        assert clamp(0.5) == 0.5
+
+    def test_ease_out_elastic(self):
+        from game.ui.easing import ease_out_elastic
+        assert ease_out_elastic(0.0) == 0.0
+        assert ease_out_elastic(1.0) == 1.0
+        # Elastic can overshoot > 1.0 briefly
+        assert ease_out_elastic(0.5) > 0.5
+
+
+class TestTweenSystem:
+    def test_tween_basic(self):
+        from game.ui.tween import Tween, TweenManager
+
+        class Target:
+            value = 0.0
+
+        t = Target()
+        tw = Tween(t, "value", end=100.0, duration=1.0)
+        tw.update(0.5)
+        assert 0 < t.value < 100
+        tw.update(0.6)
+        assert t.value == 100.0
+        assert tw.done
+
+    def test_tween_manager(self):
+        from game.ui.tween import TweenManager
+
+        class Target:
+            x = 0.0
+            y = 0.0
+
+        t = Target()
+        tm = TweenManager()
+        tm.tween(t, "x", 50.0, 0.5)
+        tm.tween(t, "y", 100.0, 1.0)
+        assert tm.active
+        tm.update(0.6)
+        assert t.x == 50.0  # completed
+        assert 0 < t.y < 100  # still running
+        tm.update(0.5)
+        assert t.y == 100.0
+        assert not tm.active
+
+    def test_tween_with_delay(self):
+        from game.ui.tween import Tween
+
+        class Target:
+            value = 0.0
+
+        t = Target()
+        tw = Tween(t, "value", end=10.0, duration=0.5, delay=0.3)
+        tw.update(0.2)
+        assert t.value == 0.0  # still in delay
+        tw.update(0.2)  # delay ends, 0.1s into tween
+        assert t.value > 0.0
+        tw.update(0.5)
+        assert t.value == 10.0
+
+    def test_tween_callback(self):
+        from game.ui.tween import Tween
+
+        class Target:
+            value = 0.0
+
+        t = Target()
+        callback_called = []
+        tw = Tween(t, "value", end=5.0, duration=0.1, on_done=lambda: callback_called.append(True))
+        tw.update(0.2)
+        assert len(callback_called) == 1
+
+
+class TestSynergySystem:
+    def test_synergy_unlock(self):
+        from game.systems.boon_system import BoonManager
+        bm = BoonManager()
+        # Add first half of plasma_storm pair
+        result1 = bm.add_boon("agni_fury")
+        assert len(result1) == 0  # no synergy yet
+
+        # Add second half
+        result2 = bm.add_boon("indra_thunder")
+        assert len(result2) == 1
+        assert result2[0]["id"] == "plasma_storm"
+        assert bm.has_synergy("plasma_storm")
+
+    def test_no_duplicate_synergy(self):
+        from game.systems.boon_system import BoonManager
+        bm = BoonManager()
+        bm.add_boon("agni_fury")
+        result = bm.add_boon("indra_thunder")
+        assert len(result) == 1
+        # Adding same boons again should not re-unlock
+        result2 = bm.add_boon("agni_fury")
+        assert len(result2) == 0

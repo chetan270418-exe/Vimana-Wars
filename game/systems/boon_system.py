@@ -73,9 +73,47 @@ BOONS_DATABASE = [
 ]
 
 
+SYNERGIES_DATABASE = [
+    {
+        "id": "plasma_storm",
+        "name": "Celestial Plasma Storm",
+        "parents": ("agni_fury", "indra_thunder"),
+        "desc": "Chain lightning strikes detonate blazing plasma explosions on all struck enemies.",
+        "color": (255, 160, 240),
+        "icon": "⚡🔥",
+    },
+    {
+        "id": "solar_cyclone",
+        "name": "Solar Flare Cyclone",
+        "parents": ("vayu_tempest", "surya_beam"),
+        "desc": "Vayu dashes leave behind a persistent fiery solar tornado that incinerates enemies.",
+        "color": (255, 215, 60),
+        "icon": "🌪️☀️",
+    },
+    {
+        "id": "oceanic_surge",
+        "name": "Oceanic Amrita Surge",
+        "parents": ("varuna_ward", "garuda_magnet"),
+        "desc": "Collecting magnetized power-ups releases a holy wave restoring 15 HP and clearing nearby bullets.",
+        "color": (80, 240, 255),
+        "icon": "🌊🦅",
+    },
+    {
+        "id": "executioner_disc",
+        "name": "Yama's Executioner Disc",
+        "parents": ("sudarshana_keen", "yama_execution"),
+        "desc": "Sudarshana Chakram instantly executes non-boss enemies below 25% HP with double critical score.",
+        "color": (255, 60, 100),
+        "icon": "🪓💀",
+    },
+]
+
+
 class BoonManager:
     def __init__(self):
         self.active_boons: dict[str, int] = {}
+        self.active_synergies: set[str] = set()
+        self.newly_unlocked_synergies: list[dict] = []
         self.shot_counter = 0
         self.regen_timer = 0.0
 
@@ -85,11 +123,26 @@ class BoonManager:
     def get_boon_level(self, boon_id: str) -> int:
         return self.active_boons.get(boon_id, 0)
 
-    def add_boon(self, boon_id: str) -> None:
+    def has_synergy(self, synergy_id: str) -> bool:
+        return synergy_id in self.active_synergies
+
+    def add_boon(self, boon_id: str) -> list[dict]:
+        """Add a boon level and check if any new synergy was unlocked."""
         if boon_id in self.active_boons:
             self.active_boons[boon_id] += 1
         else:
             self.active_boons[boon_id] = 1
+
+        newly_formed = []
+        for syn in SYNERGIES_DATABASE:
+            sid = syn["id"]
+            if sid not in self.active_synergies:
+                p1, p2 = syn["parents"]
+                if self.has_boon(p1) and self.has_boon(p2):
+                    self.active_synergies.add(sid)
+                    newly_formed.append(syn)
+                    self.newly_unlocked_synergies.append(syn)
+        return newly_formed
 
     def get_random_choices(self, count: int = 3) -> list[dict]:
         # Filter available boons not yet maxed out (max level 3)

@@ -8,11 +8,12 @@ import arcade
 from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_SCORE, COLOR_WAVE, COLOR_WHITE
 from game.systems import save_system
 from game.systems.leaderboard_client import leaderboard_client
+from game.ui.transitions import transition_to, TransitionOverlay
 
 
 class NameEntryView(arcade.View):
     def __init__(self, score: int, wave: int, kills: int, highest_combo: int,
-                 difficulty: str = "normal", is_victory: bool = False):
+                 difficulty: str = "normal", is_victory: bool = False, stats: dict = None):
         super().__init__()
         self.score = score
         self.wave = wave
@@ -20,6 +21,7 @@ class NameEntryView(arcade.View):
         self.highest_combo = highest_combo
         self.difficulty = difficulty
         self.is_victory = is_victory
+        self.stats = stats or {}
 
         saved = save_system.load()
         self.player_name = saved.get("player_name", "Warrior")
@@ -64,6 +66,7 @@ class NameEntryView(arcade.View):
         SoundManager.stop_music()
 
     def on_update(self, delta_time: float) -> None:
+        TransitionOverlay.update(delta_time)
         self._cursor_timer += delta_time
         pending = getattr(self, "_pending_result", None)
         if pending is not None:
@@ -93,6 +96,7 @@ class NameEntryView(arcade.View):
             self._status_text.draw()
 
         self._hint.draw()
+        TransitionOverlay.draw()
 
     def on_key_press(self, key, modifiers) -> None:
         if self._submitting:
@@ -139,11 +143,12 @@ class NameEntryView(arcade.View):
     def _proceed_to_results(self) -> None:
         if self.is_victory:
             from game.views.victory_view import VictoryView
-            self.window.show_view(VictoryView(
+            transition_to(self.window, VictoryView(
                 score=self.score,
                 kills=self.kills,
                 highest_combo=self.highest_combo,
                 difficulty=self.difficulty,
+                stats=self.stats,
             ))
         else:
             from game.views.game_over_view import GameOverView
@@ -152,11 +157,12 @@ class NameEntryView(arcade.View):
                 wave=self.wave,
                 kills=self.kills,
             )
-            self.window.show_view(GameOverView(
+            transition_to(self.window, GameOverView(
                 score=self.score,
                 wave=self.wave,
                 kills=self.kills,
                 highest_combo=self.highest_combo,
                 high_score=updated["high_score"],
                 difficulty=self.difficulty,
+                stats=self.stats,
             ))

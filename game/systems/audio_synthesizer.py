@@ -157,3 +157,57 @@ def generate_all_sounds() -> None:
         sample = (math.sin(2 * math.pi * freq * t) + 0.3 * math.sin(2 * math.pi * (freq * 0.5) * t)) * vol
         samples.append(sample)
     _write_wav("game_over.wav", samples, sample_rate)
+
+    # 10. ui_click.wav — Crisp gentle UI selection click
+    samples = []
+    dur = 0.05
+    total_samples = int(sample_rate * dur)
+    for i in range(total_samples):
+        t = i / sample_rate
+        freq = 1200 - (t / dur) * 700
+        vol = (1.0 - (t / dur)) ** 3
+        sample = math.sin(2 * math.pi * freq * t) * vol * 0.7
+        samples.append(sample)
+    _write_wav("ui_click.wav", samples, sample_rate)
+
+    # 11. warning_siren.wav — Pulsing danger klaxon for boss warning
+    samples = []
+    dur = 0.55
+    total_samples = int(sample_rate * dur)
+    for i in range(total_samples):
+        t = i / sample_rate
+        freq = 600 + math.sin(t * 28) * 250
+        vol = math.sin(math.pi * (t / dur)) * 0.85
+        sample = math.sin(2 * math.pi * freq * t) * vol
+        samples.append(sample)
+    _write_wav("warning_siren.wav", samples, sample_rate)
+
+    # 12. dodge_chime.wav — Sparkling high chime for perfect dodge / near miss
+    samples = []
+    dur = 0.22
+    total_samples = int(sample_rate * dur)
+    notes = [1046.50, 1318.51, 1567.98]  # High C Major
+    for i in range(total_samples):
+        t = i / sample_rate
+        note_idx = min(int((t / dur) * len(notes)), len(notes) - 1)
+        freq = notes[note_idx]
+        vol = (1.0 - (t / dur)) * 0.75
+        sample = (math.sin(2 * math.pi * freq * t) + 0.4 * math.sin(4 * math.pi * freq * t)) * vol
+        samples.append(sample)
+    _write_wav("dodge_chime.wav", samples, sample_rate)
+
+    # 13. synergy.wav — Grand harmonic resonance for Deva Boon Fusion
+    samples = []
+    dur = 0.85
+    total_samples = int(sample_rate * dur)
+    notes = [523.25, 659.25, 783.99, 1046.50, 1318.51]  # Full ascending arpeggio with shimmering harmonics
+    for i in range(total_samples):
+        t = i / sample_rate
+        note_idx = min(int((t / dur) * len(notes)), len(notes) - 1)
+        freq = notes[note_idx]
+        vol = (1.0 - (t / dur) * 0.8) * 0.9
+        sample = (math.sin(2 * math.pi * freq * t) * 0.6 +
+                  math.sin(2 * math.pi * (freq * 1.5) * t) * 0.25 +
+                  math.sin(4 * math.pi * freq * t) * 0.15) * vol
+        samples.append(sample)
+    _write_wav("synergy.wav", samples, sample_rate)
