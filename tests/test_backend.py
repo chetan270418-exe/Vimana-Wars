@@ -159,3 +159,43 @@ def test_password_reset_token_flow(client, monkeypatch):
     assert client.post("/auth/login", json={
         "email": "reset@example.com", "password": "newpassword",
     }).status_code == 200
+
+
+def test_required_email_verification_flow(client, monkeypatch):
+    monkeypatch.setattr("backend.app.REQUIRE_EMAIL_VERIFICATION", True)
+    monkeypatch.setattr("backend.app.SHOW_DEV_AUTH_TOKENS", True)
+    register = client.post("/auth/register", json={
+        "email": "verify@example.com",
+        "password": "celestial123",
+        "player_name": "Verified Hero",
+    })
+    assert register.status_code == 201
+    body = register.get_json()
+    assert body["verification_required"] is True
+    assert "token" not in body or body["token"] is None
+    assert client.post("/auth/login", json={
+        "email": "verify@example.com", "password": "celestial123",
+    }).status_code == 403
+
+    verified = client.post("/auth/verify-email", json={"token": body["verification_token"]})
+    assert verified.status_code == 200
+    assert client.post("/auth/login", json={
+        "email": "verify@example.com", "password": "celestial123",
+    }).status_code == 200
+
+
+def test_score_sanity_validation(client):
+    negative = client.post("/scores", json={
+        "score": -1, "level_reached": 1,
+    })
+    assert negative.status_code == 422
+
+    impossible_wave = client.post("/scores", json={
+        "score": 100, "level_reached": 21, "difficulty": "normal",
+    })
+    assert impossible_wave.status_code == 422
+
+    impossible_stats = client.post("/scores", json={
+        "score": 100, "level_reached": 1, "kills": -2,
+    })
+    assert impossible_stats.status_code == 422

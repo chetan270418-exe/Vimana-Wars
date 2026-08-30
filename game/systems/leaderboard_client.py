@@ -34,9 +34,23 @@ class LeaderboardClient:
         if not isinstance(profile, dict):
             return
         data = save_system.load()
+        max_keys = {
+            "high_score", "last_wave", "last_realm", "total_kills", "games_played",
+            "total_damage", "best_combo", "total_boons", "playtime_seconds",
+            "endless_high_wave", "endless_high_score",
+        }
+        union_keys = {"realm_unlock_seen", "bosses_defeated", "ships_mastered", "achievements"}
         for key in save_system.profile_for_sync().keys():
             if key in profile:
-                data[key] = profile[key]
+                if key in max_keys:
+                    try:
+                        data[key] = max(data.get(key, 0), profile[key])
+                    except (TypeError, ValueError):
+                        pass
+                elif key in union_keys:
+                    data[key] = sorted(set(data.get(key) or []) | set(profile[key] or []))
+                else:
+                    data[key] = profile[key]
         save_system.save(data)
 
     @staticmethod
@@ -79,13 +93,17 @@ class LeaderboardClient:
                     timeout=NETWORK_TIMEOUT,
                 )
                 body = resp.json() if resp.content else {}
-                if resp.status_code in (200, 201) and body.get("token"):
+                if resp.status_code in (200, 201) and body.get("success"):
                     success = True
                     user = body.get("user") or {}
-                    self._save_account(body["token"], user)
-                    # Pull cloud progression after authentication. This runs
-                    # independently so login remains fast when the profile is empty.
-                    self.sync_profile()
+                    user["verification_required"] = bool(body.get("verification_required"))
+                    if body.get("verification_token"):
+                        user["verification_token"] = body["verification_token"]
+                    if body.get("token"):
+                        self._save_account(body["token"], user)
+                        # Pull cloud progression after authentication. This runs
+                        # independently so login remains fast when the profile is empty.
+                        self.sync_profile()
                 else:
                     error = body.get("error", f"Account request failed ({resp.status_code})")
             except (requests.exceptions.RequestException, ValueError):
@@ -110,6 +128,37 @@ class LeaderboardClient:
     def login(self, email: str, password: str, on_complete=None) -> None:
         self._account_request(
             "/auth/login", {"email": email, "password": password}, on_complete
+        )
+
+    def _action_request(self, endpoint: str, payload: dict, on_complete=None) -> None:
+        """Run verification/reset calls without blocking the game thread."""
+        def _worker():
+            success, error, body = False, None, {}
+            try:
+                resp = requests.post(f"{self.api_url}{endpoint}", json=payload, timeout=NETWORK_TIMEOUT)
+                body = resp.json() if resp.content else {}
+                if resp.status_code == 200 and body.get("success"):
+                    success = True
+                    if body.get("token") and body.get("user"):
+                        self._save_account(body["token"], body["user"])
+                else:
+                    error = body.get("error", f"Account action failed ({resp.status_code})")
+            except (requests.exceptions.RequestException, ValueError):
+                error = "Account server offline"
+            if on_complete:
+                on_complete(success, error, body)
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def verify_email(self, token: str, on_complete=None) -> None:
+        self._action_request("/auth/verify-email", {"token": token}, on_complete)
+
+    def request_password_reset(self, email: str, on_complete=None) -> None:
+        self._action_request("/auth/request-password-reset", {"email": email}, on_complete)
+
+    def reset_password(self, token: str, password: str, on_complete=None) -> None:
+        self._action_request(
+            "/auth/reset-password", {"token": token, "password": password}, on_complete
         )
 
     def logout(self, on_complete=None) -> None:

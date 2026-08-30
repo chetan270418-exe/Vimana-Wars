@@ -107,8 +107,8 @@ displayed Game ID.
 
 For production hosting, deploy `backend.app:app` with Gunicorn and provide a
 managed PostgreSQL `DATABASE_URL`. The included `render.yaml` is a starting
-point for HTTPS-hosted deployment; configure the game’s `LEADERBOARD_API_URL`
-to the resulting HTTPS API URL before releasing a build.
+point for HTTPS-hosted deployment; set `VIMANA_API_URL` to the resulting HTTPS
+API URL before releasing a build.
 
 ---
 

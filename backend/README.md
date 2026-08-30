@@ -34,6 +34,12 @@ HTTPS in front of Gunicorn.
 - `POST /auth/login` — Sign in with `email` and `password`; returns a new token
 - `GET /auth/me` — Read the current profile with `Authorization: Bearer <token>`
 - `POST /auth/logout` — Revoke the current bearer token
+- `POST /auth/verify-email` — Consume a one-time verification token
+- `POST /auth/request-password-reset` — Start a reset flow without revealing whether an email exists
+- `POST /auth/reset-password` — Consume a reset token and revoke old sessions
+- `GET /account/profile` — Read cloud-synced progression and achievements
+- `PUT /account/profile` — Sync whitelisted local progression and achievements
+- `GET /account/stats` — Read server-calculated personal run statistics
 - `POST /scores` — Submit a score
   ```json
   {
@@ -54,6 +60,12 @@ public deployment. Email delivery is intentionally provider-neutral: connect
 the verification and reset tokens to your transactional email provider before
 launching publicly. Never enable `SHOW_DEV_AUTH_TOKENS` outside local testing.
 
+Authentication and score endpoints have process-local rate limits and generous
+score/wave/statistics sanity checks. For multiple production instances, move
+rate-limit state to Redis and add server-issued run attestations or replay
+validation; a client-only game can never make score submissions fully
+trustworthy by itself.
+
 ## Deploying for Free
 
 You can deploy this on **Render**, **Railway**, or **PythonAnywhere** in 2 minutes:
@@ -61,4 +73,6 @@ You can deploy this on **Render**, **Railway**, or **PythonAnywhere** in 2 minut
 2. Link the repository to Render (Web Service).
 3. Set Build Command: `pip install -r requirements.txt`
 4. Set Start Command: `python backend/app.py`
-5. Copy your live URL (e.g. `https://vimana-wars.onrender.com`) and update `API_BASE_URL` in `constants.py` or your settings!
+5. Copy your live URL (e.g. `https://vimana-wars.onrender.com`) and launch the
+   game with `VIMANA_API_URL=https://vimana-wars.onrender.com` set in its
+   environment. This avoids changing source code between local and hosted builds.
