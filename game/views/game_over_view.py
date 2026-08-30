@@ -15,11 +15,14 @@ from game.ui.transitions import transition_to, TransitionOverlay
 class GameOverView(arcade.View):
     def __init__(self, score: int, wave: int, kills: int,
                  highest_combo: int, high_score: int = 0, difficulty: str = "normal",
-                 ship_class: str = "pushpaka", stats: dict = None):
+                 ship_class: str = "pushpaka", stats: dict = None,
+                 start_wave: int = 1, is_endless: bool = False):
         super().__init__()
         self._pulse = 0.0
         self.difficulty = difficulty
         self.ship_class = ship_class
+        self.start_wave = start_wave
+        self.is_endless = is_endless
         self.stats = stats or {}
         is_new_record = score >= high_score and score > 0
 
@@ -88,7 +91,7 @@ class GameOverView(arcade.View):
 
         # ── Prompt ───────────────────────────────────────────────────
         self._prompt = arcade.Text(
-            "R — Quick Restart   •   L — Leaderboard   •   ESC — Main Menu",
+            "R — Quick Restart   •   L — Leaderboard   •   S — Stats   •   ESC — Main Menu",
             WIDTH // 2, int(HEIGHT * 0.06),
             COLOR_WHITE, font_size=12, bold=True,
             anchor_x="center",
@@ -214,10 +217,21 @@ class GameOverView(arcade.View):
     def on_key_press(self, key, modifiers) -> None:
         if key == arcade.key.R:
             from game.views.game_view import GameView
-            transition_to(self.window, GameView(difficulty=self.difficulty, ship_class=self.ship_class))
+            transition_to(
+                self.window,
+                GameView(
+                    difficulty=self.difficulty,
+                    ship_class=self.ship_class,
+                    start_wave=self.start_wave,
+                    is_endless=self.is_endless,
+                ),
+            )
         elif key == arcade.key.L:
             from game.views.leaderboard_view import LeaderboardView
             transition_to(self.window, LeaderboardView(return_view=self))
+        elif key == arcade.key.S:
+            from game.views.stats_view import StatsView
+            transition_to(self.window, StatsView(return_view=self))
         elif key == arcade.key.ESCAPE:
             from game.views.menu_view import MenuView
             transition_to(self.window, MenuView())

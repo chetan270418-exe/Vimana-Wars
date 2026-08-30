@@ -7,6 +7,8 @@ import math
 import arcade
 from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_SCORE
 from game.entities.ship_classes import SHIP_CLASSES
+from game.systems import save_system
+from game.systems.sound_manager import SoundManager
 from game.ui.transitions import transition_to, TransitionOverlay
 
 
@@ -14,11 +16,19 @@ _SHIPS = ["pushpaka", "tripura", "garuda"]
 
 
 class ShipSelectView(arcade.View):
-    def __init__(self, difficulty: str = "normal"):
+    def __init__(self, difficulty: str = "normal", start_wave: int = 1,
+                 realm_id: int | None = None):
         super().__init__()
         self.difficulty = difficulty
-        self._selected = 0
+        self.start_wave = max(1, int(start_wave))
+        self.realm_id = realm_id
+        saved = save_system.load()
+        last_ship = saved.get("last_ship", "pushpaka")
+        self._last_ship = last_ship
+        self._selected = _SHIPS.index(last_ship) if last_ship in _SHIPS else 0
+        self._hovered = -1
         self._pulse = 0.0
+        self.sound_manager = SoundManager()
 
         # UI Texts
         self._title = arcade.Text(
@@ -56,9 +66,10 @@ class ShipSelectView(arcade.View):
             sdata = SHIP_CLASSES[ship_id]
             cx = start_x + i * spacing
             is_sel = (i == self._selected)
+            is_hovered = (i == self._hovered)
 
             # Card Background
-            bg_col = (28, 32, 60) if not is_sel else (38, 48, 88)
+            bg_col = (34, 40, 72) if is_hovered and not is_sel else ((38, 48, 88) if is_sel else (28, 32, 60))
             arcade.draw_lrbt_rectangle_filled(
                 cx - card_w // 2, cx + card_w // 2,
                 cy - card_h // 2, cy + card_h // 2,
@@ -66,8 +77,8 @@ class ShipSelectView(arcade.View):
             )
 
             # Border
-            border_col = sdata["accent"] if is_sel else (70, 80, 110)
-            border_w = 3 if is_sel else 1
+            border_col = sdata["accent"] if is_sel or is_hovered else (70, 80, 110)
+            border_w = 3 if is_sel else (2 if is_hovered else 1)
             arcade.draw_lrbt_rectangle_outline(
                 cx - card_w // 2, cx + card_w // 2,
                 cy - card_h // 2, cy + card_h // 2,
@@ -85,6 +96,11 @@ class ShipSelectView(arcade.View):
                 cx, cy + 140,
                 (170, 180, 210), font_size=9, bold=True, anchor_x="center"
             )
+            if self._last_ship == ship_id:
+                arcade.draw_text(
+                    "LAST USED", cx, cy + 120, (255, 220, 80),
+                    font_size=8, bold=True, anchor_x="center",
+                )
 
             # Vector Ship Preview
             preview_y = cy + 75
@@ -115,6 +131,68 @@ class ShipSelectView(arcade.View):
 
         self._hint.draw()
         TransitionOverlay.draw()
+
+    def _card_at(self, x: float, y: float) -> int:
+        card_w = 250
+        card_h = 390
+        start_x = WIDTH // 2 - 280
+        spacing = 280
+        cy = HEIGHT // 2 - 15
+        for i in range(len(_SHIPS)):
+            cx = start_x + i * spacing
+            if (cx - card_w / 2 <= x <= cx + card_w / 2
+                    and cy - card_h / 2 <= y <= cy + card_h / 2):
+                return i
+        return -1
+
+    def _select(self, index: int) -> None:
+        if index < 0 or index >= len(_SHIPS):
+            return
+        if index != self._selected:
+            self.sound_manager.play_ui_click(volume=0.35)
+        self._selected = index
+
+    def _confirm(self) -> None:
+        if TransitionOverlay.is_active:
+            return
+        chosen_ship = _SHIPS[self._selected]
+        saved = save_system.load()
+        saved["last_ship"] = chosen_ship
+        self._last_ship = chosen_ship
+        if self.realm_id is not None:
+            saved["last_realm"] = self.realm_id
+        save_system.save(saved)
+        self.sound_manager.play_ui_click()
+        is_endless = self.difficulty == "endless"
+        eff_diff = "normal" if is_endless else self.difficulty
+        from game.views.game_view import GameView
+        transition_to(
+            self.window,
+            GameView(
+                difficulty=eff_diff,
+                ship_class=chosen_ship,
+                is_endless=is_endless,
+                start_wave=1 if is_endless else self.start_wave,
+            ),
+            style="wipe",
+        )
+
+    def on_mouse_motion(self, x, y, dx, dy) -> None:
+        new_hovered = self._card_at(x, y)
+        if new_hovered != self._hovered and new_hovered >= 0:
+            self.sound_manager.play_ui_click(volume=0.20)
+        self._hovered = new_hovered
+
+    def on_mouse_press(self, x, y, button, modifiers) -> None:
+        if button != arcade.MOUSE_BUTTON_LEFT:
+            return
+        index = self._card_at(x, y)
+        if index < 0:
+            return
+        if index == self._selected:
+            self._confirm()
+        else:
+            self._select(index)
 
     def _draw_stat_bar(self, label: str, frac: float, cx: float, cy: float, col: tuple) -> None:
         arcade.draw_text(label, cx - 100, cy, (160, 170, 190), font_size=8, bold=True)
@@ -177,15 +255,20 @@ class ShipSelectView(arcade.View):
 
     def on_key_press(self, key, modifiers) -> None:
         if key in (arcade.key.LEFT, arcade.key.A):
-            self._selected = (self._selected - 1) % len(_SHIPS)
+            self._select((self._selected - 1) % len(_SHIPS))
         elif key in (arcade.key.RIGHT, arcade.key.D):
-            self._selected = (self._selected + 1) % len(_SHIPS)
+            self._select((self._selected + 1) % len(_SHIPS))
         elif key in (arcade.key.ENTER, arcade.key.RETURN, arcade.key.SPACE):
-            chosen_ship = _SHIPS[self._selected]
-            is_endless = (self.difficulty == "endless")
-            eff_diff = "normal" if is_endless else self.difficulty
-            from game.views.game_view import GameView
-            self.window.show_view(GameView(difficulty=eff_diff, ship_class=chosen_ship, is_endless=is_endless))
+            self._confirm()
         elif key == arcade.key.ESCAPE:
             from game.views.difficulty_view import DifficultyView
-            transition_to(self.window, DifficultyView())
+            transition_to(
+                self.window,
+                DifficultyView(start_wave=self.start_wave, realm_id=self.realm_id),
+            )
+
+    def on_joyhat_motion(self, joystick, hat_x, hat_y) -> None:
+        if hat_x < 0:
+            self._select((self._selected - 1) % len(_SHIPS))
+        elif hat_x > 0:
+            self._select((self._selected + 1) % len(_SHIPS))

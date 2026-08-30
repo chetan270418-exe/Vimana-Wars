@@ -57,6 +57,22 @@ CODEX_ENTRIES = [
         "lore": "Master of all ten cosmic directions and ruler of the underworld. Commands the celestial Pushpaka fleet, deploying multi-stage spread lasers, bullet spirals, and demonic reinforcements.",
         "tip": "Save your Brahmastra bomb for Phase 3 when his summon swarms and spiral attacks intensify."
     },
+    {
+        "category": "ASURAS",
+        "title": "Mahishasura",
+        "subtitle": "The Warlord of the Setu Expanse (Wave 15 Mini-Boss)",
+        "color": (255, 120, 40),
+        "lore": "A shape-shifting warlord whose shockwave roars scatter celestial formations. When wounded, Mahishasura calls fast assault vessels into the breach.",
+        "tip": "Keep moving through the radial shockwave and save your dash for the phase-two barrage."
+    },
+    {
+        "category": "ASURAS",
+        "title": "Vritra",
+        "subtitle": "The Storm Serpent of the Final Citadel (Wave 20 Boss)",
+        "color": (190, 80, 255),
+        "lore": "The last sky-blocking dragon, coiled around the Mahayuddha Citadel. Its storm bullets accelerate as each phase breaks.",
+        "tip": "Read the attack line, circle the arena, and keep the Brahmastra for the final phase."
+    },
 ]
 
 
@@ -96,10 +112,10 @@ class CodexView(arcade.View):
         # Left Sidebar (Entries List)
         sidebar_x = 70
         sidebar_w = 260
-        start_y = HEIGHT - 120
+        start_y = HEIGHT - 95
 
         for i, entry in enumerate(CODEX_ENTRIES):
-            y = start_y - i * 65
+            y = start_y - i * 52
             is_sel = (i == self._selected)
 
             if is_sel:

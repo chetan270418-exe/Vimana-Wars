@@ -13,7 +13,8 @@ from game.ui.transitions import transition_to, TransitionOverlay
 class NameEntryView(arcade.View):
     def __init__(self, score: int, wave: int, kills: int, highest_combo: int,
                  difficulty: str = "normal", ship_class: str = "pushpaka",
-                 is_victory: bool = False, stats: dict = None):
+                 is_victory: bool = False, stats: dict = None,
+                 start_wave: int = 1, is_endless: bool = False):
         super().__init__()
         self.score = score
         self.wave = wave
@@ -23,6 +24,8 @@ class NameEntryView(arcade.View):
         self.ship_class = ship_class
         self.is_victory = is_victory
         self.stats = stats or {}
+        self.start_wave = start_wave
+        self.is_endless = is_endless
 
         saved = save_system.load()
         self.player_name = saved.get("player_name", "Warrior")
@@ -138,6 +141,7 @@ class NameEntryView(arcade.View):
             score=self.score,
             level_reached=self.wave,
             difficulty=self.difficulty,
+            ship_class=self.ship_class,
             on_complete=_on_done
         )
 
@@ -159,6 +163,12 @@ class NameEntryView(arcade.View):
                 score=self.score,
                 wave=self.wave,
                 kills=self.kills,
+                highest_combo=self.highest_combo,
+                total_damage=self.stats.get("total_damage", 0),
+                boons_claimed=self.stats.get("boons_claimed", 0),
+                bosses_defeated=self.stats.get("bosses_defeated", []),
+                ship_class=self.ship_class,
+                campaign_cleared=self.is_victory,
             )
             transition_to(self.window, GameOverView(
                 score=self.score,
@@ -169,4 +179,6 @@ class NameEntryView(arcade.View):
                 difficulty=self.difficulty,
                 ship_class=self.ship_class,
                 stats=self.stats,
+                start_wave=self.start_wave,
+                is_endless=self.is_endless,
             ))

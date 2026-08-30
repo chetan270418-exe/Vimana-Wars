@@ -172,7 +172,7 @@ class BoonSelectView(arcade.View):
             w = card_w * width_scale * card.scale
             h = card_h * card.scale
             
-            alpha = int(clamp(card.alpha))
+            alpha = int(clamp(card.alpha, 0.0, 255.0))
             
             # Card Background
             bg_color = (25, 30, 55, alpha) if not is_sel else (35, 45, 80, alpha)
@@ -198,7 +198,7 @@ class BoonSelectView(arcade.View):
                 border_col, border_width
             )
 
-            text_alpha = int(alpha * clamp(width_scale))
+            text_alpha = int(alpha * clamp(width_scale, 0.0, 1.0))
             if text_alpha <= 0:
                 continue
 

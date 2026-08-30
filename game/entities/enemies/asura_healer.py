@@ -7,6 +7,7 @@ import math
 import arcade
 from constants import WIDTH, HEIGHT, COLOR_WHITE
 from game.entities.enemies.base_enemy import BaseEnemy
+from game.systems.asset_manager import AssetManager
 
 
 class AsuraHealer(BaseEnemy):
@@ -15,6 +16,7 @@ class AsuraHealer(BaseEnemy):
         super().__init__(x, y, hp=45, speed=1.6, score_value=250, radius=18)
         self._heal_timer = 2.5
         self._pulse_anim = 0.0
+        self.texture = AssetManager.texture("asura_healer.png")
 
     def update(self, delta_time: float, player_x: float, player_y: float) -> list:
         if not self.alive:
@@ -47,6 +49,13 @@ class AsuraHealer(BaseEnemy):
         self._draw_elite_aura()
         flash = self._hit_flash > 0
         body_col = COLOR_WHITE if flash else (40, 210, 140)
+
+        if self._draw_sprite(width=self.radius * 2.3, height=self.radius * 2.3,
+                             color=COLOR_WHITE if flash else (255, 255, 255, 255)):
+            pulse_r = self.radius + 6 + math.sin(self._pulse_anim * 4) * 3
+            arcade.draw_circle_outline(self.x, self.y, pulse_r, (50, 240, 150, 160), 2)
+            self._draw_hp_bar()
+            return
 
         # Emerald Core
         arcade.draw_circle_filled(self.x, self.y, self.radius, body_col)

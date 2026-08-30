@@ -8,6 +8,7 @@ import arcade
 from constants import WIDTH, HEIGHT, COLOR_WHITE
 from game.entities.enemies.base_enemy import BaseEnemy
 from game.entities.bullet import EnemyBullet
+from game.systems.asset_manager import AssetManager
 
 
 class AsuraSniper(BaseEnemy):
@@ -17,6 +18,7 @@ class AsuraSniper(BaseEnemy):
         self._charge_timer = 2.8
         self._is_aiming = False
         self._aim_angle = 0.0
+        self.texture = AssetManager.texture("asura_sniper.png")
 
     def update(self, delta_time: float, player_x: float, player_y: float) -> list:
         if not self.alive:
@@ -62,6 +64,11 @@ class AsuraSniper(BaseEnemy):
             end_y = self.y + math.sin(rad) * 600
             arcade.draw_line(self.x, self.y, end_x, end_y, (255, 30, 70, 180), 2)
             arcade.draw_circle_filled(self.x, self.y, self.radius + 4, (255, 60, 100, 90))
+
+        if self._draw_sprite(width=self.radius * 2.3, height=self.radius * 2.3,
+                             color=COLOR_WHITE if flash else (255, 255, 255, 255)):
+            self._draw_hp_bar()
+            return
 
         # Diamond Sniper Chassis
         rad = math.radians(self._aim_angle)

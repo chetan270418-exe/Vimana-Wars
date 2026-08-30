@@ -12,9 +12,14 @@ from constants import (
 )
 from game.entities.enemies.base_enemy import BaseEnemy
 from game.entities.bullet import EnemyBullet
+from game.systems.asset_manager import AssetManager
 
 
 class BossKumbhakarna(BaseEnemy):
+    name = "KUMBHAKARNA"
+    boss_id = "kumbhakarna"
+    is_boss = True
+
     def __init__(self):
         super().__init__(WIDTH / 2, HEIGHT + KUMBHAKARNA_RADIUS + 10,
                          hp=KUMBHAKARNA_HP, speed=KUMBHAKARNA_SPEED,
@@ -31,6 +36,7 @@ class BossKumbhakarna(BaseEnemy):
         self._charge_aim = 0.0
         self._is_charging = False
         self.current_attack_name = "RADIAL MACE"
+        self.texture = AssetManager.texture("boss_kumbhakarna.png")
 
     def update(self, delta_time: float, player_x: float, player_y: float) -> list:
         if not self.alive:
@@ -116,6 +122,12 @@ class BossKumbhakarna(BaseEnemy):
             arcade.draw_line(self.x, self.y, end_x, end_y, (255, 40, 40, 190), 4)
             arcade.draw_circle_filled(self.x, self.y, self.radius + 20, (255, 40, 40, 90))
             arcade.draw_circle_outline(self.x, self.y, self.radius + 22, (255, 80, 80), 2)
+
+        if self._draw_sprite(width=self.radius * 2.5, height=self.radius * 2.5,
+                             color=COLOR_WHITE if flash else (255, 255, 255, 255)):
+            arcade.draw_circle_outline(self.x, self.y, self.radius + 4, (255, 200, 60), 3)
+            arcade.draw_text(self.current_attack_name, self.x, self.y - self.radius - 18, (255, 160, 40), font_size=9, bold=True, anchor_x="center")
+            return
 
         # Heavy Armored Titan Hull
         arcade.draw_circle_filled(self.x, self.y, self.radius, body_col)

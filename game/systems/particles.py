@@ -44,12 +44,15 @@ class ParticleManager:
         self.particles: list[Particle] = []
         self._trail_timer = 0.0
         self.quality_multiplier = 1.0
+        self.reduced_flashes = False
         self.reload_settings()
 
     def reload_settings(self) -> None:
         try:
             from game.systems import save_system
-            q = save_system.load().get("particles", "high")
+            settings = save_system.load()
+            q = settings.get("particles", "high")
+            self.reduced_flashes = bool(settings.get("reduced_flashes", False))
             if q == "low":
                 self.quality_multiplier = 0.4
             elif q == "off":
@@ -58,6 +61,13 @@ class ParticleManager:
                 self.quality_multiplier = 1.0
         except Exception:
             self.quality_multiplier = 1.0
+            self.reduced_flashes = False
+
+    def _flash_count(self, count: int, minimum: int = 1) -> int:
+        if self.quality_multiplier <= 0:
+            return 0
+        flash_scale = 0.45 if self.reduced_flashes else 1.0
+        return max(minimum, int(count * self.quality_multiplier * flash_scale))
 
     def update(self, delta_time: float) -> None:
         self.particles = [p for p in self.particles if p.update(delta_time)]
@@ -92,7 +102,7 @@ class ParticleManager:
     def spawn_hit_sparks(self, x: float, y: float, count: int = 5,
                          color: tuple = (255, 240, 100)) -> None:
         """Spawns sharp sparks upon bullet impacts."""
-        adj_count = max(1, int(count * self.quality_multiplier)) if self.quality_multiplier > 0 else 0
+        adj_count = self._flash_count(count)
         for _ in range(adj_count):
             angle = random.uniform(0, 2 * math.pi)
             speed = random.uniform(80, 220)
@@ -109,7 +119,7 @@ class ParticleManager:
     def spawn_explosion(self, x: float, y: float, radius: float = 20, count: int = 24,
                         base_color: tuple = (255, 120, 30)) -> None:
         """Spawns an energetic burst of fiery debris and shockwave particles."""
-        adj_count = max(2, int(count * self.quality_multiplier)) if self.quality_multiplier > 0 else 0
+        adj_count = self._flash_count(count, minimum=2)
         for _ in range(adj_count):
             angle = random.uniform(0, 2 * math.pi)
             dist_factor = random.uniform(0.5, 1.8)
@@ -133,7 +143,7 @@ class ParticleManager:
 
     def spawn_powerup_sparkle(self, x: float, y: float, color: tuple) -> None:
         """Spawns celestial aura sparkles when picking up an Astra."""
-        adj_count = max(4, int(30 * self.quality_multiplier)) if self.quality_multiplier > 0 else 0
+        adj_count = self._flash_count(30, minimum=4)
         for _ in range(adj_count):
             angle = random.uniform(0, 2 * math.pi)
             speed = random.uniform(60, 200)
@@ -149,7 +159,7 @@ class ParticleManager:
 
     def spawn_dash_flash(self, x: float, y: float, color: tuple = (140, 220, 255)) -> None:
         """Spawns a radiant flare burst at the start of a dash."""
-        adj_count = max(4, int(18 * self.quality_multiplier)) if self.quality_multiplier > 0 else 0
+        adj_count = self._flash_count(18, minimum=4)
         for _ in range(adj_count):
             angle = random.uniform(0, 2 * math.pi)
             speed = random.uniform(120, 340)
@@ -165,7 +175,7 @@ class ParticleManager:
 
     def spawn_dash_shockwave(self, x: float, y: float, color: tuple = (200, 240, 255)) -> None:
         """Spawns a ring-expanding deceleration shockwave at the end of a dash."""
-        adj_count = max(6, int(22 * self.quality_multiplier)) if self.quality_multiplier > 0 else 0
+        adj_count = self._flash_count(22, minimum=6)
         for i in range(adj_count):
             angle = (i / max(1, adj_count)) * 2 * math.pi
             speed = random.uniform(70, 150)

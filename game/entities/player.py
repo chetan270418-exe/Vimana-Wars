@@ -12,6 +12,7 @@ from constants import (
     PLAYER_INVINCIBILITY_TIME, SHIELD_MAX_HITS, HEALTH_RESTORE,
     COLOR_SHIELD, COLOR_WHITE,
 )
+from game.systems.asset_manager import AssetManager
 
 
 class Player:
@@ -75,6 +76,8 @@ class Player:
         # Stats
         self.enemies_killed = 0
         self.total_score = 0
+        self.sprite_name = "pushpaka.png"
+        self.texture = AssetManager.texture(self.sprite_name)
 
     def apply_ship_class(self, sdata: dict) -> None:
         self.max_hp = sdata["hp"]
@@ -88,6 +91,12 @@ class Player:
         else:
             self.dash_charges_max = 1
             self.dash_charges = 1
+        self.sprite_name = {
+            "pushpaka": "pushpaka.png",
+            "tripura": "tripura.png",
+            "garuda": "garuda.png",
+        }.get(sdata["id"], "pushpaka.png")
+        self.texture = AssetManager.texture(self.sprite_name)
 
     # ── Per-frame update with delta_time physics ─────────────────────────
 
@@ -367,6 +376,9 @@ class Player:
             arcade.draw_circle_filled(self.x, self.y, self.radius + 12, (60, 160, 255, 35))
 
     def _draw_ship_body(self, sx: float, sy: float, angle_deg: float, main_color: tuple) -> None:
+        if AssetManager.draw(self.texture, sx, sy, self.radius * 3.0,
+                             self.radius * 3.0, angle=angle_deg - 90):
+            return
         r = self.radius
         angle_rad = math.radians(angle_deg)
 

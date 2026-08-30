@@ -15,9 +15,18 @@ _DEFAULTS = {
     "player_name":   "Warrior",
     "high_score":    0,
     "last_wave":     0,
-    "difficulty":    "normal",   # "easy" | "normal" | "hard"
+    "difficulty":    "normal",   # "easy" | "normal" | "hard" | "endless"
+    "last_ship":     "pushpaka",
+    "last_realm":    1,
+    "realm_unlock_seen": [],
     "total_kills":   0,
     "games_played":  0,
+    "total_damage":      0,            # lifetime damage dealt
+    "best_combo":        1,            # highest single-run combo ever
+    "total_boons":       0,            # total boons claimed across all runs
+    "bosses_defeated":   [],           # list of boss ids the player has beaten
+    "playtime_seconds":  0,            # total in-game time across sessions
+    "ships_mastered":    [],           # ship ids used to clear campaign
     "volume":             80,         # 0 - 100 (master/legacy)
     "sfx_volume":         80,         # 0 - 100
     "music_volume":       80,         # 0 - 100
@@ -60,15 +69,44 @@ def save(data: dict) -> None:
         pass   # graceful degradation — never crash over a save failure
 
 
-def update_after_game(score: int, wave: int, kills: int) -> dict:
+def update_after_game(score: int, wave: int, kills: int,
+                      *, highest_combo: int = 1,
+                      total_damage: int = 0,
+                      boons_claimed: int = 0,
+                      bosses_defeated: list = None,
+                      ship_class: str = None,
+                      campaign_cleared: bool = False) -> dict:
     """
-    Convenience: load, update high score / wave / kills, save, return updated data.
+    Convenience: load, update lifetime stats, save, return updated data.
+    All new args are optional for backward compatibility.
     """
     data = load()
     data["high_score"]   = max(data["high_score"], score)
     data["last_wave"]    = max(data["last_wave"], wave)
     data["total_kills"] += kills
     data["games_played"] += 1
+    data["total_damage"] += max(0, total_damage)
+    data["best_combo"]   = max(data["best_combo"], max(1, highest_combo))
+    data["total_boons"]  += max(0, boons_claimed)
+    if bosses_defeated:
+        existing = set(data.get("bosses_defeated") or [])
+        for bid in bosses_defeated:
+            existing.add(bid)
+        data["bosses_defeated"] = sorted(existing)
+    if ship_class and campaign_cleared:
+        mastered = set(data.get("ships_mastered") or [])
+        mastered.add(ship_class)
+        data["ships_mastered"] = sorted(mastered)
+    save(data)
+    return data
+
+
+def add_playtime(seconds: float) -> dict:
+    """Accumulate playtime (called each frame from the active game view)."""
+    if seconds <= 0:
+        return load()
+    data = load()
+    data["playtime_seconds"] = float(data.get("playtime_seconds", 0)) + seconds
     save(data)
     return data
 
@@ -78,7 +116,7 @@ def get_difficulty() -> str:
 
 
 def set_difficulty(level: str) -> None:
-    assert level in ("easy", "normal", "hard"), f"Unknown difficulty: {level}"
+    assert level in ("easy", "normal", "hard", "endless"), f"Unknown difficulty: {level}"
     data = load()
     data["difficulty"] = level
     save(data)

@@ -64,7 +64,8 @@ class LeaderboardClient:
         t.start()
 
     def submit_score(self, player_name: str, score: int, level_reached: int,
-                     difficulty: str = "normal", on_complete=None) -> None:
+                     difficulty: str = "normal", ship_class: str = "pushpaka",
+                     on_complete=None) -> None:
         """
         Submit a score record asynchronously.
         """
@@ -82,6 +83,7 @@ class LeaderboardClient:
                     "score": score,
                     "level_reached": level_reached,
                     "difficulty": difficulty,
+                    "ship_class": ship_class,
                 }
                 resp = requests.post(
                     f"{self.api_url}/scores",

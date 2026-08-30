@@ -27,7 +27,7 @@ class BossBar:
         bar_w, bar_h = WIDTH - 40, 20
         frac = max(0.0, boss.hp / boss.max_hp)
 
-        boss_name = getattr(boss, "name", "RAVANA")
+        boss_name = getattr(boss, "name", "BOSS").upper()
 
         # Background
         arcade.draw_lrbt_rectangle_filled(bar_x, bar_x + bar_w, bar_y, bar_y + bar_h, (30, 10, 10))
@@ -35,6 +35,11 @@ class BossBar:
         # Fill — color shifts by phase or boss type
         if boss_name == "KUMBHAKARNA":
             fill_color = (210, 140, 20) if frac > 0.4 else (230, 60, 20)
+        elif boss_name == "MAHISHASURA":
+            fill_color = (200, 70, 30) if frac > 0.4 else (255, 30, 80)
+        elif boss_name == "VRITRA":
+            phase_fills = [(100, 220, 255), (180, 80, 255), (255, 40, 140)]
+            fill_color = phase_fills[min(2, max(0, getattr(boss, "phase", 1) - 1))]
         else:
             phase_fills = [(200, 0, 60), (255, 80, 0), (220, 0, 200)]
             fill_color = phase_fills[getattr(boss, "phase", 1) - 1]
@@ -65,8 +70,12 @@ class BossBar:
             phase_labels = ["Phase I (Spread)", "Phase II (Spiral Void)", "Phase III (Fleet Summons)"]
             p_idx = getattr(boss, "phase", 1) - 1
             self._label_name.text = f"👑 EMPEROR RAVANA  —  {phase_labels[p_idx]}"
+        elif boss_name == "MAHISHASURA":
+            self._label_name.text = f"🐂 WARLORD MAHISHASURA  —  PHASE {getattr(boss, 'phase', 1)}"
+        elif boss_name == "VRITRA":
+            self._label_name.text = f"⚡ STORM SERPENT VRITRA  —  PHASE {getattr(boss, 'phase', 1)}"
         else:
-            self._label_name.text = f"🛡️ MINI-BOSS: {boss_name}  (THE ARMORED TITAN)"
+            self._label_name.text = f"🛡️ MINI-BOSS: {boss_name}"
 
         self._label_hp.text = f"{max(0, boss.hp):,} / {boss.max_hp:,}"
         self._label_name.draw()

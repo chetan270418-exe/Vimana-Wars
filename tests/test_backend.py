@@ -31,11 +31,13 @@ def test_submit_and_get_scores(client):
         "score": 50000,
         "level_reached": 10,
         "difficulty": "hard",
+        "ship_class": "garuda",
     }
     res = client.post("/scores", json=payload)
     assert res.status_code == 201
     res_data = res.get_json()
     assert res_data["success"] is True
+    assert res_data["ship_class"] == "garuda"
 
     # Retrieve top scores
     res_top = client.get("/scores/top")
@@ -44,6 +46,7 @@ def test_submit_and_get_scores(client):
     assert top_data["count"] == 1
     assert top_data["leaderboard"][0]["player_name"] == "Arjuna"
     assert top_data["leaderboard"][0]["score"] == 50000
+    assert top_data["leaderboard"][0]["ship_class"] == "garuda"
 
 
 def test_stats_route(client):

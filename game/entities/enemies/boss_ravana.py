@@ -15,9 +15,14 @@ from constants import (
 )
 from game.entities.enemies.base_enemy import BaseEnemy
 from game.entities.bullet import EnemyBullet
+from game.systems.asset_manager import AssetManager
 
 
 class BossRavana(BaseEnemy):
+    name = "RAVANA"
+    boss_id = "ravana"
+    is_boss = True
+
     def __init__(self):
         super().__init__(WIDTH / 2, HEIGHT + RAVANA_RADIUS + 10,
                          hp=RAVANA_HP, speed=RAVANA_SPEED,
@@ -36,6 +41,7 @@ class BossRavana(BaseEnemy):
         self._telegraph_timer = 0.0
         self.current_attack_name = "SPREAD BARRAGE"
         self._telegraph_aim = 0.0
+        self.texture = AssetManager.texture("boss_ravana.png")
 
     def _update_phase(self) -> None:
         frac = self.hp / self.max_hp
@@ -128,6 +134,13 @@ class BossRavana(BaseEnemy):
             end_y = self.y + math.sin(rad) * 450
             arcade.draw_line(self.x, self.y, end_x, end_y, (255, 30, 50, 160), 2)
             arcade.draw_circle_outline(self.x, self.y, r + 16, (255, 50, 50, 140), 2)
+
+        if self._draw_sprite(width=r * 2.5, height=r * 2.5,
+                             color=COLOR_WHITE if flash else (255, 255, 255, 255)):
+            phase_colors = [(255, 200, 0), (255, 100, 0), (255, 0, 50)]
+            arcade.draw_circle_outline(self.x, self.y, r + 4, phase_colors[self.phase - 1], 3)
+            arcade.draw_text(self.current_attack_name, self.x, self.y - self.radius - 18, (255, 80, 80), font_size=9, bold=True, anchor_x="center")
+            return
 
         # 10 Golden Crown Spikes
         for i in range(10):

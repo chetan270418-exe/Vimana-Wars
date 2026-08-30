@@ -11,6 +11,14 @@ try:
 except ImportError:
     SoundManager = None
 
+
+class _FloatRef:
+    """Mutable float holder so we can tween list-element 'alpha' values.
+    Lists don't support setattr(list, idx, val) so we wrap each alpha."""
+    __slots__ = ("val",)
+    def __init__(self, val: float = 0.0):
+        self.val = val
+
 class ConfettiParticle:
     def __init__(self, x, y, dx, dy, color):
         self.x = x
@@ -56,7 +64,10 @@ class VictoryView(arcade.View):
         
         self._title_y = HEIGHT + 100.0
         self._displayed_score = 0.0
-        self._row_alphas = [0.0] * 5  # Score, Kills, Combo, Difficulty, Prompts
+        # Wrapped float refs so each row alpha can be independently tweened.
+        self._alpha_refs = [_FloatRef(0.0) for _ in range(5)]
+        # Mirror list kept for the on_draw reads (avoids changing the draw code).
+        self._row_alphas = [ref.val for ref in self._alpha_refs]
         
         self.particles = []
         self.particle_timer = 0.0
@@ -67,47 +78,62 @@ class VictoryView(arcade.View):
     def on_show_view(self):
         if SoundManager:
             SoundManager.stop_music()
-            
+
         arcade.set_background_color((5, 8, 20))
-        
+
+        # Reset animation state for repeat visits.
+        self._title_y = HEIGHT + 100.0
+        self._displayed_score = 0.0
+        for ref in self._alpha_refs:
+            ref.val = 0.0
+        self._row_alphas = [ref.val for ref in self._alpha_refs]
+
+        self._tweens.cancel_all()
+
         # Title slam-in
-        self._tweens.add(
-            obj=self,
+        self._tweens.tween(
+            target=self,
             attr='_title_y',
-            start_val=HEIGHT + 100.0,
-            end_val=HEIGHT * 0.82,
+            end=HEIGHT * 0.82,
             duration=0.8,
-            easing=ease_out_elastic
+            ease=ease_out_elastic,
+            start=HEIGHT + 100.0,
         )
-        
+
         # Score count-up
-        self._tweens.add(
-            obj=self,
+        self._tweens.tween(
+            target=self,
             attr='_displayed_score',
-            start_val=0.0,
-            end_val=float(self.score),
+            end=float(self.score),
             duration=1.2,
             delay=0.5,
-            easing=ease_out_cubic
+            ease=ease_out_cubic,
+            start=0.0,
         )
-        
-        # Staggered stat reveal
-        for i in range(5):
-            self._tweens.add(
-                obj=self._row_alphas,
-                attr=i,
-                start_val=0.0,
-                end_val=255.0,
+
+        # Staggered stat reveal — tween each FloatRef's .val (lists don't support attr-by-index).
+        for i, ref in enumerate(self._alpha_refs):
+            self._tweens.tween(
+                target=ref,
+                attr='val',
+                end=255.0,
                 duration=0.5,
                 delay=1.0 + i * 0.15,
-                easing=ease_out_cubic
+                ease=ease_out_cubic,
+                start=0.0,
             )
-            
+
         try:
             save_system.update_after_game(
                 score=self.score,
                 wave=self.wave,
                 kills=self.kills,
+                highest_combo=self.highest_combo,
+                total_damage=self.stats.get("total_damage", 0),
+                boons_claimed=self.stats.get("boons_claimed", 0),
+                bosses_defeated=self.stats.get("bosses_defeated", []),
+                ship_class=self.ship_class,
+                campaign_cleared=True,
             )
         except Exception:
             pass
@@ -116,6 +142,10 @@ class VictoryView(arcade.View):
         self.time_elapsed += dt
         self._tweens.update(dt)
         TransitionOverlay.update(dt)
+
+        # Sync the alpha mirror from the tweenable refs (draw code reads the list).
+        for i, ref in enumerate(self._alpha_refs):
+            self._row_alphas[i] = ref.val
         
         # Pulse for glow
         self._glow_pulse = ease_in_out_cubic((math.sin(self.time_elapsed * 3.0) + 1.0) / 2.0)
@@ -190,9 +220,19 @@ class VictoryView(arcade.View):
         # Difficulty
         alpha3 = int(clamp(self._row_alphas[3], 0, 255))
         arcade.draw_text(f"Difficulty: {self.difficulty.capitalize()}", WIDTH // 2, base_y - spacing * 3, COLOR_WHITE[:3] + (alpha3,), font_size=20, font_name="Kenney Future", anchor_x="center", anchor_y="center")
+
+        # Compact combat breakdown
+        alpha4 = int(clamp(self._row_alphas[4], 0, 255))
+        total_damage = int(self.stats.get("total_damage", 0))
+        perfect_dodges = int(self.stats.get("perfect_dodges", 0))
+        arcade.draw_text(
+            f"Total Damage: {total_damage:,}  •  Perfect Dodges: {perfect_dodges}",
+            WIDTH // 2, base_y - spacing * 4,
+            (255, 170, 80, alpha4), font_size=15,
+            font_name="Kenney Future", anchor_x="center", anchor_y="center",
+        )
         
         # Prompts
-        alpha4 = int(clamp(self._row_alphas[4], 0, 255))
         prompt_y = int(HEIGHT * 0.15)
         arcade.draw_text("Press ENTER to Continue", WIDTH // 2, prompt_y + 30, COLOR_WHITE[:3] + (alpha4,), font_size=16, font_name="Kenney Future", anchor_x="center", anchor_y="center")
         arcade.draw_text("Press L for Leaderboard", WIDTH // 2, prompt_y, COLOR_WHITE[:3] + (alpha4,), font_size=16, font_name="Kenney Future", anchor_x="center", anchor_y="center")
@@ -201,7 +241,7 @@ class VictoryView(arcade.View):
         TransitionOverlay.draw()
 
     def on_key_press(self, symbol, modifiers):
-        if TransitionOverlay.is_active():
+        if TransitionOverlay.is_active:
             return
             
         if symbol == arcade.key.ENTER:

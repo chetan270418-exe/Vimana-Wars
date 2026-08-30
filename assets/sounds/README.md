@@ -17,6 +17,10 @@ Place sound files in this directory. The game loads them automatically.
 | `wave_clear.wav` | Wave completed | "stage clear short" |
 | `combat_loop.mp3` | Looping combat background music | OpenGameArt CC0 track |
 
+The `online_*.ogg` files are selected CC0 variations from Kenney's Sci-fi
+Sounds pack. The game prefers them for shooting, impacts, explosions, and
+dashes, and falls back to the generated WAVs if the OGG files are unavailable.
+
 ## License Reminder
 The generated WAV effects require no external attribution.
 The combat loop is a CC0 track; its source and author are recorded in

@@ -31,11 +31,13 @@ from game.ui.easing import ease_out_cubic, ease_out_elastic, ease_out_back, ease
 
 
 class GameView(arcade.View):
-    def __init__(self, difficulty: str = "normal", ship_class: str = "pushpaka", is_endless: bool = False):
+    def __init__(self, difficulty: str = "normal", ship_class: str = "pushpaka",
+                 is_endless: bool = False, start_wave: int = 1):
         super().__init__()
         self._difficulty = difficulty
         self._ship_class_id = ship_class
         self.is_endless = is_endless
+        self.start_wave = max(1, int(start_wave))
         self._mults = get_difficulty_mults(difficulty)
 
         sdata = SHIP_CLASSES.get(ship_class, SHIP_CLASSES["pushpaka"])
@@ -58,7 +60,8 @@ class GameView(arcade.View):
         self.wave_manager = WaveManager(
             spawn_mult=self._mults["spawn"],
             enemy_spd_mult=self._mults["enemy_spd"],
-            is_endless=is_endless
+            is_endless=is_endless,
+            start_wave=self.start_wave,
         )
         self.score_system = ScoreSystem()
         self.sound_manager = SoundManager()
@@ -74,7 +77,9 @@ class GameView(arcade.View):
             "perfect_dodges": 0,
             "near_misses": 0,
             "bombs_used": 0,
+            "boons_claimed": 0,
             "synergies_activated": [],
+            "bosses_defeated": [],
         }
 
         # ── Boss Cinematic Intro State ──────────────────────────────────
@@ -90,16 +95,25 @@ class GameView(arcade.View):
 
         # Pause text objects
         self._pause_title = arcade.Text(
-            "GAME PAUSED", WIDTH // 2, HEIGHT // 2 + 50,
-            (200, 200, 255), font_size=36, bold=True,
+            "GAME PAUSED", WIDTH // 2, int(HEIGHT * 0.82),
+            (200, 200, 255), font_size=32, bold=True,
             anchor_x="center", anchor_y="center",
         )
         self._pause_hint = arcade.Text(
-            "ESC : Resume   •   R : Restart Run   •   O : Settings   •   M : Menu",
-            WIDTH // 2, HEIGHT // 2 - 40,
-            (160, 180, 220), font_size=13, bold=True,
+            "ESC to resume  •  click a button or use the hotkey",
+            WIDTH // 2, int(HEIGHT * 0.20),
+            (140, 160, 200), font_size=11, bold=True,
             anchor_x="center",
         )
+
+        # ── Pause menu buttons (replaces the old key-hint overlay) ──────
+        self._mouse_x = 0.0
+        self._mouse_y = 0.0
+        self._init_pause_buttons()
+
+        # Playtime accumulator for lifetime stats
+        self._run_playtime = 0.0
+        self._playtime_save_every = 30.0  # flush to save every 30s of play
 
         # ── State & Juice ───────────────────────────────────────────────
         self.paused = False
@@ -123,6 +137,10 @@ class GameView(arcade.View):
 
         saved = save_system.load()
         self.shake_setting = saved.get("screen_shake", "full")
+        self.reduced_flashes = bool(saved.get("reduced_flashes", False))
+        self.colorblind_mode = saved.get("colorblind_mode", "off")
+        self.hud.colorblind_mode = self.colorblind_mode
+        self.hud.reduced_flashes = self.reduced_flashes
 
         # ── Gamepad Setup ───────────────────────────────────────────────
         self.right_stick_x = 0.0
@@ -142,22 +160,42 @@ class GameView(arcade.View):
         arcade.set_background_color(COLOR_BG)
         saved = save_system.load()
         self.shake_setting = saved.get("screen_shake", "full")
+        self.reduced_flashes = bool(saved.get("reduced_flashes", False))
+        self.colorblind_mode = saved.get("colorblind_mode", "off")
+        self.hud.colorblind_mode = self.colorblind_mode
+        self.hud.reduced_flashes = self.reduced_flashes
+        saved["last_ship"] = self._ship_class_id
+        saved["last_realm"] = min(7, ((self.start_wave - 1) // 3) + 1)
+        save_system.save(saved)
         self.sound_manager.start_music()
+        
+        # Reset keys and mouse state to prevent getting stuck moving or firing after view switch
+        self.player.keys_pressed.clear()
+        self.player.mouse_held = False
+        self.player.joy_dx = 0.0
+        self.player.joy_dy = 0.0
 
     def on_key_press(self, key, modifiers) -> None:
         if key == arcade.key.ESCAPE:
             self.paused = not self.paused
+            self.player.keys_pressed.clear()
+            self.player.mouse_held = False
             return
 
         if self.paused:
-            if key == arcade.key.R:
-                self.window.show_view(GameView(difficulty=self._difficulty, ship_class=self._ship_class_id))
+            # Keyboard navigation of pause menu
+            if key in (arcade.key.UP, arcade.key.W):
+                self._pause_selected = (self._pause_selected - 1) % len(self._pause_buttons)
+            elif key in (arcade.key.DOWN, arcade.key.S):
+                self._pause_selected = (self._pause_selected + 1) % len(self._pause_buttons)
+            elif key in (arcade.key.ENTER, arcade.key.RETURN, arcade.key.SPACE):
+                self._pause_buttons[self._pause_selected].activate()
+            elif key == arcade.key.R:
+                self._pause_restart()
             elif key == arcade.key.O:
-                from game.views.settings_view import SettingsView
-                self.window.show_view(SettingsView(return_view=self))
+                self._pause_settings()
             elif key == arcade.key.M:
-                from game.views.menu_view import MenuView
-                self.window.show_view(MenuView())
+                self._pause_quit()
             return
 
         if key in (arcade.key.SPACE, arcade.key.LSHIFT, arcade.key.RSHIFT):
@@ -177,9 +215,31 @@ class GameView(arcade.View):
         self.player.mouse_x = x
         self.player.mouse_y = y
         self.player.joy_aim_angle = None
+        # Track for pause-menu hover detection
+        self._mouse_x = x
+        self._mouse_y = y
 
     def on_mouse_press(self, x, y, button, modifiers) -> None:
         if button == arcade.MOUSE_BUTTON_LEFT:
+            # If paused, route click to pause menu buttons first
+            if self.paused:
+                for btn in self._pause_buttons:
+                    if btn.hit_test(x, y):
+                        btn.press()
+                return
+
+            # Check if clicked on HUD ability meters at bottom-left
+            if math.hypot(x - 38, y - 32) <= 24:
+                self._trigger_dash()
+                return
+            elif math.hypot(x - 88, y - 32) <= 24:
+                self._trigger_chakram()
+                return
+            elif math.hypot(x - 145, y - 32) <= 24:
+                if self.player.use_bomb():
+                    self._activate_bomb()
+                return
+
             self.player.mouse_held = True
         elif button == arcade.MOUSE_BUTTON_RIGHT:
             self._trigger_dash()
@@ -188,9 +248,22 @@ class GameView(arcade.View):
 
     def on_mouse_release(self, x, y, button, modifiers) -> None:
         if button == arcade.MOUSE_BUTTON_LEFT:
+            if self.paused:
+                for btn in self._pause_buttons:
+                    if btn.was_pressed:
+                        btn.release()  # calls on_click if still hovered
+                return
             self.player.mouse_held = False
 
     def on_joybutton_press(self, joystick, button) -> None:
+        if self.paused:
+            if button in (0, 5):
+                self._pause_buttons[self._pause_selected].activate()
+            elif button in (1, 4):
+                self._pause_resume()
+            elif button in (6, 7, 9):
+                self._pause_resume()
+            return
         if button in (0, 5):
             self.player.mouse_held = True
         elif button in (1, 4):
@@ -202,6 +275,14 @@ class GameView(arcade.View):
                 self._activate_bomb()
         elif button in (6, 7, 9):
             self.paused = not self.paused
+
+    def on_joyhat_motion(self, joystick, hat_x, hat_y) -> None:
+        if not self.paused:
+            return
+        if hat_y > 0:
+            self._pause_selected = (self._pause_selected - 1) % len(self._pause_buttons)
+        elif hat_y < 0:
+            self._pause_selected = (self._pause_selected + 1) % len(self._pause_buttons)
 
     def on_joybutton_release(self, joystick, button) -> None:
         if button in (0, 5):
@@ -271,6 +352,7 @@ class GameView(arcade.View):
     def apply_boon(self, boon_data: dict) -> None:
         bid = boon_data["id"]
         new_syns = self.boon_manager.add_boon(bid)
+        self.combat_stats["boons_claimed"] += 1
         self.sound_manager.play_powerup()
         
         level = self.boon_manager.get_boon_level(bid)
@@ -304,7 +386,19 @@ class GameView(arcade.View):
         self._tweens.update(delta_time)
 
         if self.paused:
+            # Keep the pause-menu buttons responsive (hover anim, pulse).
+            self._update_pause_buttons(delta_time)
             return
+
+        # Track playtime for lifetime stats (not when paused or in death seq)
+        if self._death_phase is None:
+            self._run_playtime += delta_time
+            if self._run_playtime >= self._playtime_save_every:
+                try:
+                    save_system.add_playtime(self._run_playtime)
+                except Exception:
+                    pass
+                self._run_playtime = 0.0
 
         # ── Death Sequence ──────────────────────────────────────────────
         if self._death_phase is not None:
@@ -477,6 +571,17 @@ class GameView(arcade.View):
         self.wave_manager.update(delta_time, self.enemies, self.powerups, self.player)
         self.score_system.update(delta_time)
 
+        # Campaign milestone trophies are checked at wave start and persist
+        # across runs through AchievementManager.
+        wave_trophies = {
+            5: "wave_5_veteran",
+            10: "wave_10_breaker",
+            15: "wave_15_conqueror",
+        }
+        trophy_id = wave_trophies.get(self.wave_manager.wave_number)
+        if trophy_id:
+            self.achievement_manager.check_unlock(trophy_id)
+
         # Inter-Wave Boon Card Trigger
         if self.wave_manager.is_clearing:
             wn = self.wave_manager.wave_number
@@ -582,30 +687,53 @@ class GameView(arcade.View):
         # Boss Tracking & Achievements
         from game.entities.enemies.boss_ravana import BossRavana
         from game.entities.enemies.boss_kumbhakarna import BossKumbhakarna
+        from game.entities.enemies.boss_mahishasura import BossMahishasura
+        from game.entities.enemies.boss_vritra import BossVritra
+        boss_types = (BossRavana, BossKumbhakarna, BossMahishasura, BossVritra)
         prev_boss = self._boss
         self._boss = next(
-            (e for e in self.enemies if isinstance(e, (BossRavana, BossKumbhakarna))), None
+            (e for e in self.enemies if isinstance(e, boss_types)), None
         )
         if self._boss and not self._boss_announced:
             self._cinematic_timer = 2.4
             self.sound_manager.play_warning_siren()
             self.sound_manager.play_boss_roar()
-            if isinstance(self._boss, BossRavana):
-                self._cinematic_title = "👑 LANKAPATI RAVANA"
-                self._cinematic_subtitle = "LORD OF THE TEN HEADS — DEMON EMPEROR OF LANKA"
-                self._cinematic_color = (255, 60, 80)
-            else:
-                self._cinematic_title = "🛡️ TITAN KUMBHAKARNA"
-                self._cinematic_subtitle = "THE GIGANTIC ARMORED TITAN AWAKENS"
-                self._cinematic_color = (255, 180, 40)
+            boss_intro = {
+                "ravana": ("👑 LANKAPATI RAVANA", "LORD OF THE TEN HEADS — DEMON EMPEROR OF LANKA", (255, 60, 80)),
+                "kumbhakarna": ("🛡️ TITAN KUMBHAKARNA", "THE GIGANTIC ARMORED TITAN AWAKENS", (255, 180, 40)),
+                "mahishasura": ("🐂 WARLORD MAHISHASURA", "THE BUFFALO-DEMON WARLORD CHARGES", (255, 120, 40)),
+                "vritra": ("⚡ STORM SERPENT VRITRA", "THE FINAL SKY-BLOCKING DRAGON RISES", (190, 80, 255)),
+            }
+            title, subtitle, color = boss_intro.get(getattr(self._boss, "boss_id", ""), ("⚔️ BOSS INCOMING", "THE ASURA WARLORD APPROACHES", (255, 80, 100)))
+            self._cinematic_title = title
+            self._cinematic_subtitle = subtitle
+            self._cinematic_color = color
             self._boss_announced = True
         elif not self._boss:
-            if isinstance(prev_boss, BossKumbhakarna):
-                self.achievement_manager.check_unlock("kumbhakarna_bane")
+            if prev_boss is not None:
+                boss_id = getattr(prev_boss, "boss_id", None)
+                if boss_id and boss_id not in self.combat_stats["bosses_defeated"]:
+                    self.combat_stats["bosses_defeated"].append(boss_id)
+                    # Record boss clears immediately so a player can collect
+                    # all four across separate runs, including a run that
+                    # ends before the final score screen.
+                    saved_bosses = save_system.load()
+                    defeated = set(saved_bosses.get("bosses_defeated") or [])
+                    defeated.add(boss_id)
+                    saved_bosses["bosses_defeated"] = sorted(defeated)
+                    save_system.save(saved_bosses)
+                    self.achievement_manager.check_unlock({
+                        "kumbhakarna": "kumbhakarna_bane",
+                        "ravana": "ravana_vanquisher",
+                        "mahishasura": "mahishasura_bane",
+                        "vritra": "vritra_vanquisher",
+                    }.get(boss_id, ""))
+                    if len(defeated) >= 4:
+                        self.achievement_manager.check_unlock("boss_collector")
             self._boss_announced = False
 
         if self.wave_manager.boss_wave_cleared and not self.is_endless:
-            self.achievement_manager.check_unlock("ravana_vanquisher")
+            self.achievement_manager.check_unlock("campaign_conqueror")
             if self._difficulty == "hard":
                 self.achievement_manager.check_unlock("hardcore_hero")
             self._go_to_victory()
@@ -696,6 +824,7 @@ class GameView(arcade.View):
         TransitionOverlay.draw()
 
     def _draw_boss_cinematic(self) -> None:
+        flash_factor = 0.25 if self.reduced_flashes else 1.0
         # Widescreen cinematic letterbox bars
         bar_height = 65
         arcade.draw_lrbt_rectangle_filled(0, WIDTH, HEIGHT - bar_height, HEIGHT, (5, 5, 12, 240))
@@ -718,20 +847,21 @@ class GameView(arcade.View):
         if self._cinematic_timer > 1.8:
             scan_t = clamp(1.0 - (self._cinematic_timer - 1.8) / 0.6)
             scan_y = int(HEIGHT * ease_out_cubic(scan_t))
-            arcade.draw_lrbt_rectangle_filled(0, WIDTH, scan_y - 2, scan_y + 3, (255, 255, 255, 60))
+            arcade.draw_lrbt_rectangle_filled(0, WIDTH, scan_y - 2, scan_y + 3, (255, 255, 255, int(60 * flash_factor)))
 
         arcade.draw_lrbt_rectangle_filled(WIDTH // 2 - 300, WIDTH // 2 + 300, cy - 35 - title_y_offset, cy + 45 - title_y_offset, (15, 10, 25, 210))
-        arcade.draw_lrbt_rectangle_outline(WIDTH // 2 - 300, WIDTH // 2 + 300, cy - 35 - title_y_offset, cy + 45 - title_y_offset, (*self._cinematic_color, glow_a), 2)
+        arcade.draw_lrbt_rectangle_outline(WIDTH // 2 - 300, WIDTH // 2 + 300, cy - 35 - title_y_offset, cy + 45 - title_y_offset, (*self._cinematic_color, int(glow_a * flash_factor)), 2)
 
-        arcade.draw_text(self._cinematic_title, WIDTH // 2, cy + 12 - title_y_offset, (*self._cinematic_color, glow_a), font_size=22, bold=True, anchor_x="center", anchor_y="center")
+        arcade.draw_text(self._cinematic_title, WIDTH // 2, cy + 12 - title_y_offset, (*self._cinematic_color, int(glow_a * flash_factor)), font_size=22, bold=True, anchor_x="center", anchor_y="center")
 
         # Subtitle fades in 0.3s after title
         sub_alpha = int(255 * clamp((1.0 - self._cinematic_timer / 1.8) * 3.0)) if self._cinematic_timer < 1.8 else 0
         if sub_alpha > 0:
-            arcade.draw_text(self._cinematic_subtitle, WIDTH // 2, cy - 18 - title_y_offset, (220, 230, 255, sub_alpha), font_size=10, bold=True, anchor_x="center", anchor_y="center")
+            arcade.draw_text(self._cinematic_subtitle, WIDTH // 2, cy - 18 - title_y_offset, (220, 230, 255, int(sub_alpha * flash_factor)), font_size=10, bold=True, anchor_x="center", anchor_y="center")
 
     def _draw_death_overlay(self) -> None:
         """Cinematic death overlay: desaturation → freeze flash → fade to dark red."""
+        flash_factor = 0.25 if self.reduced_flashes else 1.0
         if self._death_desat > 0:
             # Grey desaturation overlay
             a = int(120 * self._death_desat)
@@ -741,7 +871,7 @@ class GameView(arcade.View):
             # Brief white flash at start of freeze
             flash = max(0, 1.0 - self._death_timer * 5.0)
             if flash > 0:
-                arcade.draw_lrbt_rectangle_filled(0, WIDTH, 0, HEIGHT, (255, 255, 255, int(80 * flash)))
+                arcade.draw_lrbt_rectangle_filled(0, WIDTH, 0, HEIGHT, (255, 255, 255, int(80 * flash * flash_factor)))
             # Full desaturation hold
             arcade.draw_lrbt_rectangle_filled(0, WIDTH, 0, HEIGHT, (80, 80, 80, 100))
 
@@ -750,10 +880,123 @@ class GameView(arcade.View):
             a = int(255 * ease_out_cubic(self._death_fade))
             arcade.draw_lrbt_rectangle_filled(0, WIDTH, 0, HEIGHT, (25, 5, 8, a))
 
+    # ── Pause menu ─────────────────────────────────────────────────────
+
+    def _init_pause_buttons(self) -> None:
+        """Build the four clickable buttons in the pause overlay."""
+        from game.ui.button import Button
+        bx = WIDTH // 2
+        btn_w, btn_h = 240, 42
+        gap = 14
+        # First button starts at HEIGHT//2 + 30, stack downward
+        start_y = HEIGHT // 2 + 30
+        # Order: Resume, Restart, Settings, Quit to Menu
+        self._pause_buttons = [
+            Button(bx, start_y,            btn_w, btn_h,
+                   "RESUME",       hotkey="ESC",
+                   on_click=self._pause_resume),
+            Button(bx, start_y - (btn_h + gap),       btn_w, btn_h,
+                   "RESTART RUN",  hotkey="R",
+                   on_click=self._pause_restart),
+            Button(bx, start_y - 2 * (btn_h + gap),   btn_w, btn_h,
+                   "SETTINGS",     hotkey="O",
+                   on_click=self._pause_settings),
+            Button(bx, start_y - 3 * (btn_h + gap),   btn_w, btn_h,
+                   "QUIT TO MENU", hotkey="M",
+                   on_click=self._pause_quit),
+        ]
+        # Index of currently-highlighted button (for keyboard nav)
+        self._pause_selected = 0
+
+    def _pause_resume(self) -> None:
+        self.paused = False
+
+    def _pause_restart(self) -> None:
+        from game.ui.transitions import transition_to
+        transition_to(self.window, GameView(
+            difficulty=self._difficulty,
+            ship_class=self._ship_class_id,
+            is_endless=self.is_endless,
+            start_wave=self.start_wave,
+        ))
+
+    def _pause_settings(self) -> None:
+        from game.views.settings_view import SettingsView
+        from game.ui.transitions import transition_to
+        transition_to(self.window, SettingsView(return_view=self))
+
+    def _pause_quit(self) -> None:
+        from game.views.menu_view import MenuView
+        from game.ui.transitions import transition_to
+        # Flush playtime before leaving
+        try:
+            save_system.add_playtime(self._run_playtime)
+        except Exception:
+            pass
+        self._run_playtime = 0.0
+        transition_to(self.window, MenuView())
+
+    def _update_pause_buttons(self, dt: float) -> None:
+        for btn in self._pause_buttons:
+            btn.update(dt, self._mouse_x, self._mouse_y)
+
     def _draw_pause(self) -> None:
-        arcade.draw_lrbt_rectangle_filled(0, WIDTH, 0, HEIGHT, (0, 0, 0, 170))
+        # Dim backdrop
+        arcade.draw_lrbt_rectangle_filled(0, WIDTH, 0, HEIGHT, (0, 0, 0, 190))
+        # Subtle vignette ring for depth
+        arcade.draw_lrbt_rectangle_outline(0, WIDTH, 0, HEIGHT, (60, 80, 130, 80), 1)
+
         self._pause_title.draw()
+
+        # Mini-stats panel above the buttons
+        self._draw_pause_mini_stats()
+
+        # Buttons
+        for btn in self._pause_buttons:
+            btn.draw()
+
         self._pause_hint.draw()
+
+    def _draw_pause_mini_stats(self) -> None:
+        """Compact in-pause summary: wave, score, HP, boons, time-in-run."""
+        cx = WIDTH // 2
+        # Panel position: between the title and the first button
+        panel_y = HEIGHT // 2 + 100
+        panel_w, panel_h = 360, 60
+        arcade.draw_lrbt_rectangle_filled(
+            cx - panel_w / 2, cx + panel_w / 2,
+            panel_y - panel_h / 2, panel_y + panel_h / 2,
+            (15, 20, 42, 200),
+        )
+        arcade.draw_lrbt_rectangle_outline(
+            cx - panel_w / 2, cx + panel_w / 2,
+            panel_y - panel_h / 2, panel_y + panel_h / 2,
+            (90, 110, 150, 160), 1,
+        )
+
+        # Two rows of stats
+        wave = self.wave_manager.wave_number
+        score = self.score_system.score
+        hp = self.player.hp
+        max_hp = self.player.max_hp
+        boons = len(self.boon_manager.active_boons)
+        mins = int(self._run_playtime // 60)
+        secs = int(self._run_playtime % 60)
+
+        # Row 1: WAVE  SCORE  HP
+        row1 = f"WAVE  {wave:<3}     SCORE  {score:>7,}     HP  {int(hp):>3}/{int(max_hp):<3}"
+        arcade.draw_text(
+            row1, cx, panel_y + 12,
+            (220, 230, 250), font_size=11, bold=True,
+            anchor_x="center", anchor_y="center",
+        )
+        # Row 2: BOONS  TIME
+        row2 = f"BOONS  {boons:<2}     TIME  {mins:02d}:{secs:02d}"
+        arcade.draw_text(
+            row2, cx, panel_y - 12,
+            (160, 200, 240), font_size=10, bold=True,
+            anchor_x="center", anchor_y="center",
+        )
 
     # ── Helpers ─────────────────────────────────────────────────────────
 
@@ -789,6 +1032,8 @@ class GameView(arcade.View):
             highest_combo=self.score_system.highest_combo,
             difficulty=self._difficulty,
             ship_class=self._ship_class_id,
+            start_wave=self.start_wave,
+            is_endless=self.is_endless,
             is_victory=True,
             stats=self.combat_stats,
         ), duration=0.5, style="wipe")
@@ -819,6 +1064,8 @@ class GameView(arcade.View):
             highest_combo=self.score_system.highest_combo,
             difficulty=self._difficulty,
             ship_class=self._ship_class_id,
+            start_wave=self.start_wave,
+            is_endless=self.is_endless,
             is_victory=False,
             stats=self.combat_stats,
         ))

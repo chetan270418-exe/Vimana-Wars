@@ -13,6 +13,7 @@ from constants import (
     WIDTH, HEIGHT,
 )
 from game.entities.enemies.base_enemy import BaseEnemy
+from game.systems.asset_manager import AssetManager
 
 
 class AsuraKamikaze(BaseEnemy):
@@ -31,6 +32,7 @@ class AsuraKamikaze(BaseEnemy):
         self.explosion_damage = ASURA_KAMIKAZE_EXPLOSION_DAMAGE
         self._flash_cycle = 0.0
         self._visible = True
+        self.texture = AssetManager.texture("asura_kamikaze.png")
 
     def update(self, delta_time: float, player_x: float, player_y: float) -> list:
         if not self.alive:
@@ -59,5 +61,8 @@ class AsuraKamikaze(BaseEnemy):
             return
         self._draw_elite_aura()
         color = COLOR_WHITE if self._hit_flash > 0 else COLOR_ASURA_KAMIKAZE
+        if self._draw_sprite(width=self.radius * 2.2, height=self.radius * 2.2,
+                             color=COLOR_WHITE if self._hit_flash > 0 else (255, 255, 255, 255)):
+            return
         arcade.draw_circle_filled(self.x, self.y, self.radius, color)
         # No HP bar — it dies in one hit anyway; bar would clutter the tiny sprite

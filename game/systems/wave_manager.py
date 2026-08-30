@@ -5,16 +5,21 @@ Controls wave progression, 3-2-1 countdowns, wave objectives, and diverse enemy 
 import random
 from constants import (
     WAVE_CLEAR_DELAY,
-    BOSS_WAVE_NUMBER, POWERUP_SPAWN_EVERY_N_WAVES,
+    BOSS_WAVE_NUMBER, CAMPAIGN_FINAL_WAVE, CAMPAIGN_BOSS_WAVES,
+    CAMPAIGN_MINI_BOSS_WAVES, POWERUP_SPAWN_EVERY_N_WAVES,
     MAX_POWERUPS_ACTIVE, get_realm_for_wave,
 )
 
 
 def _wave_config(wave_num: int) -> dict:
-    effective = ((wave_num - 1) % BOSS_WAVE_NUMBER) + 1
+    effective = ((wave_num - 1) % CAMPAIGN_FINAL_WAVE) + 1
 
-    if effective == 10:
-        return {"boss": True}
+    if effective == 20:
+        return {"boss": "vritra"}
+    elif effective == 15:
+        return {"mini_boss": "mahishasura", "fast": 4, "tank": 1}
+    elif effective == 10:
+        return {"boss": "ravana"}
     elif effective == 5:
         return {"mini_boss": True, "fast": 3, "kamikaze": 2}
 
@@ -28,13 +33,25 @@ def _wave_config(wave_num: int) -> dict:
         {"fast": 4, "ranged": 3, "sniper": 2},                # 7
         {"fast": 5, "tank": 3, "ranged": 2, "healer": 1},     # 8
         {"fast": 6, "tank": 3, "sniper": 2, "kamikaze": 4},   # 9
+        {"boss": "ravana"},                                    # 10
+        {"fast": 7, "ranged": 2, "kamikaze": 4},              # 11
+        {"fast": 5, "tank": 3, "healer": 2, "sniper": 2},     # 12
+        {"fast": 7, "ranged": 4, "sniper": 2, "kamikaze": 4}, # 13
+        {"fast": 5, "tank": 4, "healer": 2, "sniper": 3},     # 14
+        {"mini_boss": "mahishasura", "fast": 4, "tank": 1},   # 15
+        {"fast": 8, "ranged": 4, "kamikaze": 5},              # 16
+        {"fast": 6, "tank": 4, "healer": 2, "sniper": 3},    # 17
+        {"fast": 8, "tank": 4, "ranged": 4, "kamikaze": 5},  # 18
+        {"fast": 10, "ranged": 4, "sniper": 4, "healer": 2}, # 19
+        {"boss": "vritra"},                                    # 20
     ]
     return configs[effective - 1]
 
 
 class WaveManager:
-    def __init__(self, spawn_mult: float = 1.0, enemy_spd_mult: float = 1.0, is_endless: bool = False):
-        self.wave_number = 0
+    def __init__(self, spawn_mult: float = 1.0, enemy_spd_mult: float = 1.0,
+                 is_endless: bool = False, start_wave: int = 1):
+        self.wave_number = max(0, int(start_wave) - 1)
         self.boss_alive = False
         self.boss_wave_cleared = False
         self._difficulty_mult = spawn_mult
@@ -82,7 +99,7 @@ class WaveManager:
                     self.boss_alive = False
                     self._waves_since_powerup += 1
                     self._maybe_spawn_powerup(powerups)
-                    if self.wave_number == BOSS_WAVE_NUMBER and not self.is_endless:
+                    if self.wave_number == CAMPAIGN_FINAL_WAVE and not self.is_endless:
                         self.boss_wave_cleared = True
                         return
                 self._state = "CLEAR_PAUSE"
@@ -97,8 +114,8 @@ class WaveManager:
         self.wave_number += 1
         realm = get_realm_for_wave(self.wave_number)
 
-        if self.wave_number > BOSS_WAVE_NUMBER:
-            loops = (self.wave_number - 1) // BOSS_WAVE_NUMBER
+        if self.wave_number > CAMPAIGN_FINAL_WAVE:
+            loops = (self.wave_number - 1) // CAMPAIGN_FINAL_WAVE
             self._difficulty_mult = 1.0 + loops * 0.3
 
         self._waves_since_powerup += 1
@@ -114,16 +131,28 @@ class WaveManager:
             8: "Break the Phalanx: Dismantle Heavy Battlefleet",
             9: "Armageddon Swarm: Annihilate vanguard assault fleet",
             10: "Vanquish the Ten-Headed Demon King Ravana",
+            11: "Break the Lanka blockade",
+            12: "Survive the molten counterattack",
+            13: "Cross the Setu Expanse under fire",
+            14: "Crack the warlord escort fleet",
+            15: "Defeat the buffalo-demon warlord Mahishasura",
+            16: "Enter the Naraka Forge",
+            17: "Destroy the foundry guardians",
+            18: "Endure the forge armada",
+            19: "Prepare the final astral assault",
+            20: "Vanquish the storm-serpent Vritra",
         }
 
-        effective = ((self.wave_number - 1) % BOSS_WAVE_NUMBER) + 1
+        effective = ((self.wave_number - 1) % CAMPAIGN_FINAL_WAVE) + 1
         self.current_objective = wave_objectives.get(effective, "Eliminate all incoming Asura vessels")
 
-        if self.wave_number == BOSS_WAVE_NUMBER:
+        if effective in (10, 20):
             self.announce_text = "BOSS WAVE — RAVANA APPROACHES!"
+            if effective == 20:
+                self.announce_text = "FINAL BOSS — VRITRA RISES!"
             self.announce_subtitle = f"Realm of {realm['name']} • {realm['subtitle']}"
-        elif (self.wave_number % BOSS_WAVE_NUMBER) == 5:
-            self.announce_text = "MINI-BOSS — KUMBHAKARNA AWAKENS!"
+        elif effective in (5, 15):
+            self.announce_text = "MINI-BOSS — KUMBHAKARNA AWAKENS!" if effective == 5 else "MINI-BOSS — MAHISHASURA CHARGES!"
             self.announce_subtitle = f"Realm of {realm['name']} • {realm['subtitle']}"
         else:
             self.announce_text = f"Wave {self.wave_number}"
@@ -136,16 +165,24 @@ class WaveManager:
         config = _wave_config(self.wave_number)
 
         if config.get("boss"):
-            from game.entities.enemies.boss_ravana import BossRavana
-            boss = BossRavana()
+            if config["boss"] == "vritra":
+                from game.entities.enemies.boss_vritra import BossVritra
+                boss = BossVritra()
+            else:
+                from game.entities.enemies.boss_ravana import BossRavana
+                boss = BossRavana()
             boss.speed *= self.enemy_speed_mult
             enemies.append(boss)
             self.boss_alive = True
             return
 
         if config.get("mini_boss"):
-            from game.entities.enemies.boss_kumbhakarna import BossKumbhakarna
-            mini = BossKumbhakarna()
+            if config["mini_boss"] == "mahishasura":
+                from game.entities.enemies.boss_mahishasura import BossMahishasura
+                mini = BossMahishasura()
+            else:
+                from game.entities.enemies.boss_kumbhakarna import BossKumbhakarna
+                mini = BossKumbhakarna()
             mini.speed *= self.enemy_speed_mult
             enemies.append(mini)
             self.boss_alive = True
@@ -193,11 +230,13 @@ class WaveManager:
 
     @property
     def is_boss_wave(self) -> bool:
-        return (self.wave_number % BOSS_WAVE_NUMBER) == 0
+        effective = ((self.wave_number - 1) % CAMPAIGN_FINAL_WAVE) + 1
+        return effective in CAMPAIGN_BOSS_WAVES
 
     @property
     def is_mini_boss_wave(self) -> bool:
-        return (self.wave_number % BOSS_WAVE_NUMBER) == 5
+        effective = ((self.wave_number - 1) % CAMPAIGN_FINAL_WAVE) + 1
+        return effective in CAMPAIGN_MINI_BOSS_WAVES
 
     @property
     def is_announcing(self) -> bool:

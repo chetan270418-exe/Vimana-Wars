@@ -9,6 +9,7 @@ from constants import (
     COLOR_ASURA_FAST, COLOR_WHITE,
 )
 from game.entities.enemies.base_enemy import BaseEnemy
+from game.systems.asset_manager import AssetManager
 
 
 class AsuraFast(BaseEnemy):
@@ -17,6 +18,7 @@ class AsuraFast(BaseEnemy):
         super().__init__(x, y,
                          hp=ASURA_FAST_HP, speed=ASURA_FAST_SPEED,
                          score_value=ASURA_FAST_SCORE, radius=ASURA_FAST_RADIUS)
+        self.texture = AssetManager.texture("asura_fast.png")
 
     def update(self, delta_time: float, player_x: float, player_y: float) -> list:
         if not self.alive:
@@ -29,6 +31,9 @@ class AsuraFast(BaseEnemy):
     def draw(self) -> None:
         self._draw_elite_aura()
         color = COLOR_WHITE if self._hit_flash > 0 else COLOR_ASURA_FAST
+        if self._draw_sprite(color=COLOR_WHITE if self._hit_flash > 0 else (255, 255, 255, 255)):
+            self._draw_hp_bar()
+            return
         arcade.draw_circle_filled(self.x, self.y, self.radius, color)
         # Pupils — two small dots to give it a face
         arcade.draw_circle_filled(self.x - 4, self.y + 3, 2, COLOR_WHITE)

@@ -15,7 +15,7 @@ class EnvironmentalHazardManager:
         self.spawn_timer = 0.0
 
     def update(self, delta_time: float, wave_num: int, player, enemies: list, bullets: list) -> None:
-        realm_id = ((wave_num - 1) % 10) + 1
+        realm_id = ((wave_num - 1) % 20) + 1
         self.spawn_timer += delta_time
 
         # ── Dandaka Void (Waves 7–9): Astral Crystal Asteroids ─────────

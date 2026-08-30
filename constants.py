@@ -56,23 +56,52 @@ REALMS = {
     4: {
         "name": "Lanka",
         "subtitle": "The Molten Rift of Ravana",
-        "waves": (10,),
+        "waves": (10, 11, 12),
         "bg_color": (22, 4, 10),
         "nebula_palette": [(110, 15, 25), (140, 40, 10), (80, 0, 40)],
         "accent_color": (255, 70, 70),
     },
+    5: {
+        "name": "Setu Expanse",
+        "subtitle": "The Bridge Between Celestial Worlds",
+        "waves": (13, 14, 15),
+        "bg_color": (9, 12, 30),
+        "nebula_palette": [(35, 45, 120), (100, 35, 90), (30, 90, 130)],
+        "accent_color": (255, 150, 80),
+    },
+    6: {
+        "name": "Naraka Forge",
+        "subtitle": "The Burning Foundry of Asura Warships",
+        "waves": (16, 17, 18),
+        "bg_color": (25, 7, 5),
+        "nebula_palette": [(150, 35, 10), (100, 10, 30), (180, 65, 5)],
+        "accent_color": (255, 100, 40),
+    },
+    7: {
+        "name": "Mahayuddha Citadel",
+        "subtitle": "The Final Astral Battlefield",
+        "waves": (19, 20),
+        "bg_color": (18, 4, 24),
+        "nebula_palette": [(120, 15, 120), (70, 10, 80), (180, 30, 100)],
+        "accent_color": (255, 80, 190),
+    },
 }
 
 def get_realm_for_wave(wave_num: int) -> dict:
-    effective_wave = ((wave_num - 1) % 10) + 1
+    effective_wave = ((wave_num - 1) % 20) + 1
     if effective_wave <= 3:
         return REALMS[1]
     elif effective_wave <= 6:
         return REALMS[2]
     elif effective_wave <= 9:
         return REALMS[3]
-    else:
+    elif effective_wave <= 12:
         return REALMS[4]
+    elif effective_wave <= 15:
+        return REALMS[5]
+    elif effective_wave <= 18:
+        return REALMS[6]
+    return REALMS[7]
 
 
 # Player
@@ -141,6 +170,17 @@ RAVANA_FIRE_RATE_P3 = 0.7
 RAVANA_SPIRAL_RATE = 0.08  # seconds between spiral shots
 RAVANA_SUMMON_RATE = 5.0   # seconds between summons in phase 3
 
+# Additional campaign bosses (Waves 15 and 20)
+MAHISHASURA_HP = 2200
+MAHISHASURA_RADIUS = 50
+MAHISHASURA_SPEED = 1.1
+MAHISHASURA_SCORE = 7000
+
+VRITRA_HP = 3000
+VRITRA_RADIUS = 56
+VRITRA_SPEED = 0.9
+VRITRA_SCORE = 10000
+
 # Power-ups
 POWERUP_RADIUS = 14
 SHIELD_MAX_HITS = 3
@@ -154,6 +194,9 @@ MAX_POWERUPS_ACTIVE = 2       # max collectables on map at once
 WAVE_ANNOUNCE_DURATION = 2.5  # seconds the "Wave X!" banner shows
 WAVE_CLEAR_DELAY = 3.0        # seconds between last kill and next wave
 BOSS_WAVE_NUMBER = 10
+CAMPAIGN_FINAL_WAVE = 20
+CAMPAIGN_BOSS_WAVES = (10, 20)
+CAMPAIGN_MINI_BOSS_WAVES = (5, 15)
 POWERUP_SPAWN_EVERY_N_WAVES = 2
 
 # Score / combo

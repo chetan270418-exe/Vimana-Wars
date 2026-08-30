@@ -12,6 +12,7 @@ from constants import (
 )
 from game.entities.enemies.base_enemy import BaseEnemy
 from game.entities.bullet import EnemyBullet
+from game.systems.asset_manager import AssetManager
 
 
 class AsuraRanged(BaseEnemy):
@@ -21,6 +22,7 @@ class AsuraRanged(BaseEnemy):
                          hp=ASURA_RANGED_HP, speed=ASURA_RANGED_SPEED,
                          score_value=ASURA_RANGED_SCORE, radius=ASURA_RANGED_RADIUS)
         self._fire_timer = ASURA_RANGED_FIRE_RATE  # wait before first shot
+        self.texture = AssetManager.texture("asura_ranged.png")
 
     def update(self, delta_time: float, player_x: float, player_y: float) -> list:
         if not self.alive:
@@ -53,6 +55,9 @@ class AsuraRanged(BaseEnemy):
     def draw(self) -> None:
         self._draw_elite_aura()
         color = COLOR_WHITE if self._hit_flash > 0 else COLOR_ASURA_RANGED
+        if self._draw_sprite(color=COLOR_WHITE if self._hit_flash > 0 else (255, 255, 255, 255)):
+            self._draw_hp_bar()
+            return
         arcade.draw_circle_filled(self.x, self.y, self.radius, color)
         # A small 'barrel' pointing at the last known player direction
         arcade.draw_circle_filled(self.x, self.y + self.radius - 4, 4, (80, 0, 130))

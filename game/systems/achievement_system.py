@@ -46,6 +46,48 @@ ACHIEVEMENTS_LIST = [
         "icon": "👑",
     },
     {
+        "id": "wave_5_veteran",
+        "name": "Into the Deep",
+        "desc": "Reach Wave 5 and awaken your first campaign boss.",
+        "icon": "🌊",
+    },
+    {
+        "id": "wave_10_breaker",
+        "name": "Break Lanka's Gate",
+        "desc": "Reach Wave 10 and enter the second half of the campaign.",
+        "icon": "🚪",
+    },
+    {
+        "id": "mahishasura_bane",
+        "name": "Warlord Breaker",
+        "desc": "Defeat Mahishasura in the Setu Expanse.",
+        "icon": "🐂",
+    },
+    {
+        "id": "wave_15_conqueror",
+        "name": "Forge Walker",
+        "desc": "Reach Wave 15 in the final half of the campaign.",
+        "icon": "🔥",
+    },
+    {
+        "id": "vritra_vanquisher",
+        "name": "Storm Breaker",
+        "desc": "Defeat Vritra at the Mahayuddha Citadel.",
+        "icon": "⚡",
+    },
+    {
+        "id": "boss_collector",
+        "name": "Four Thrones Fall",
+        "desc": "Defeat all four campaign bosses across your runs.",
+        "icon": "👑",
+    },
+    {
+        "id": "campaign_conqueror",
+        "name": "Conqueror of the Mahayuddha",
+        "desc": "Clear all 20 campaign waves and defeat the final boss.",
+        "icon": "🏅",
+    },
+    {
         "id": "hardcore_hero",
         "name": "Immortal Warrior",
         "desc": "Complete the entire campaign on Hard difficulty.",

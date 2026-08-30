@@ -39,6 +39,11 @@ _SOUND_FILES: dict[str, str] = {
     "warning_siren": "warning_siren.wav",
     "dodge_chime":   "dodge_chime.wav",
     "synergy":       "synergy.wav",
+    # Optional CC0 Kenney variations.  The generated WAVs remain fallbacks.
+    "shoot_online":  "online_laser_small.ogg",
+    "hit_online":    "online_impact_metal.ogg",
+    "explosion_online": "online_explosion_crunch.ogg",
+    "dash_online":   "online_thruster_fire.ogg",
 }
 _MUSIC_FILE = _ASSETS / "combat_loop.mp3"
 
@@ -130,12 +135,27 @@ class SoundManager:
             except Exception:
                 pass
 
-    def play_dash(self, volume: float = 0.55) -> None: self._play("dash", volume)
+    def _play_any(self, keys: tuple[str, ...], volume: float = 1.0) -> None:
+        """Play the first loaded variant, keeping generated audio as fallback."""
+        final_vol = max(0.0, min(1.0, volume * self.sfx_vol))
+        if final_vol <= 0.01:
+            return
+        for key in keys:
+            sound = self._sounds.get(key)
+            if sound is None:
+                continue
+            try:
+                arcade.play_sound(sound, volume=final_vol)
+            except Exception:
+                pass
+            return
+
+    def play_dash(self, volume: float = 0.55) -> None: self._play_any(("dash_online", "dash"), volume)
 
     # ── Convenience methods ──────────────────────────────────────────
-    def play_shoot(self,         volume: float = 0.35) -> None: self._play("shoot",         volume)
-    def play_hit(self,           volume: float = 0.70) -> None: self._play("hit",           volume)
-    def play_explosion(self,     volume: float = 0.80) -> None: self._play("explosion",     volume)
+    def play_shoot(self,         volume: float = 0.35) -> None: self._play_any(("shoot_online", "shoot"), volume)
+    def play_hit(self,           volume: float = 0.70) -> None: self._play_any(("hit_online", "hit"), volume)
+    def play_explosion(self,     volume: float = 0.80) -> None: self._play_any(("explosion_online", "explosion"), volume)
     def play_powerup(self,       volume: float = 1.00) -> None: self._play("powerup",       volume)
     def play_boss_roar(self,     volume: float = 1.00) -> None: self._play("boss_roar",     volume)
     def play_victory(self,       volume: float = 1.00) -> None: self._play("victory",       volume)

@@ -8,6 +8,7 @@ import random
 import arcade
 from abc import ABC, abstractmethod
 from constants import WIDTH, HEIGHT
+from game.systems.asset_manager import AssetManager
 
 
 class BaseEnemy(ABC):
@@ -25,6 +26,7 @@ class BaseEnemy(ABC):
         self._stagger_vx = 0.0
         self._stagger_vy = 0.0
         self._burning = 0.0
+        self.texture = None
 
     @abstractmethod
     def update(self, delta_time: float, player_x: float, player_y: float) -> list:
@@ -92,6 +94,14 @@ class BaseEnemy(ABC):
                 bg_y, bg_y + bar_h,
                 color
             )
+
+    def _draw_sprite(self, width: float = None, height: float = None,
+                     angle: float = 0.0,
+                     color=(255, 255, 255, 255)) -> bool:
+        width = width or self.radius * 2.2
+        height = height or self.radius * 2.2
+        return AssetManager.draw(self.texture, self.x, self.y, width, height,
+                                 angle=angle, color=color)
 
     def _draw_elite_aura(self) -> None:
         if getattr(self, "is_elite", False):

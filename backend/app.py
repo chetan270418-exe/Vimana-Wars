@@ -5,8 +5,16 @@ Uses SQLite for zero-config persistence.
 """
 import sqlite3
 import os
+import logging
 from pathlib import Path
 from flask import Flask, request, jsonify
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+logger = logging.getLogger("VimanaWarsBackend")
 
 app = Flask(__name__)
 
@@ -28,9 +36,15 @@ def init_db():
                 score INTEGER NOT NULL,
                 level_reached INTEGER NOT NULL,
                 difficulty TEXT DEFAULT 'normal',
+                ship_class TEXT DEFAULT 'pushpaka',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        # Safe migration if table exists without ship_class column
+        try:
+            conn.execute("ALTER TABLE scores ADD COLUMN ship_class TEXT DEFAULT 'pushpaka'")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
         conn.commit()
 
 
@@ -40,12 +54,13 @@ init_db()
 
 @app.route("/", methods=["GET"])
 def index():
+    logger.info("API Root status checked from %s", request.remote_addr)
     return jsonify({
         "game": "Vimana Wars API",
         "status": "online",
         "endpoints": {
-            "GET /scores/top": "Get top leaderboard entries (?limit=10)",
-            "POST /scores": "Submit a new score {player_name, score, level_reached, difficulty}",
+            "GET /scores/top": "Get top leaderboard entries (?limit=10&difficulty=normal)",
+            "POST /scores": "Submit a new score {player_name, score, level_reached, difficulty, ship_class}",
             "GET /scores/stats": "Global gameplay metrics",
         }
     })
@@ -60,32 +75,46 @@ def submit_score():
         score = int(data.get("score", 0))
         level_reached = int(data.get("level_reached", 1))
     except (ValueError, TypeError):
+        logger.warning("Invalid score/level submission from %s: %s", request.remote_addr, data)
         return jsonify({"error": "Invalid score or level format"}), 400
 
     difficulty = str(data.get("difficulty", "normal")).lower()
-    if difficulty not in ("easy", "normal", "hard"):
+    if difficulty not in ("easy", "normal", "hard", "endless"):
         difficulty = "normal"
 
+    ship_class = str(data.get("ship_class", "pushpaka")).lower()
+    if ship_class not in ("pushpaka", "tripura", "garuda"):
+        ship_class = "pushpaka"
+
     if score < 0:
+        logger.warning("Negative score rejected from %s: %s", request.remote_addr, score)
         return jsonify({"error": "Score cannot be negative"}), 400
 
     with get_db() as conn:
         cursor = conn.execute(
             """
-            INSERT INTO scores (player_name, score, level_reached, difficulty)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO scores (player_name, score, level_reached, difficulty, ship_class)
+            VALUES (?, ?, ?, ?, ?)
             """,
-            (player_name, score, level_reached, difficulty)
+            (player_name, score, level_reached, difficulty, ship_class)
         )
         conn.commit()
         inserted_id = cursor.lastrowid
+
+    logger.info(
+        "🏆 Score Recorded [ID=%s]: Warrior='%s' | Ship='%s' | Score=%s | Wave=%s | Diff='%s'",
+        inserted_id, player_name, ship_class.upper(), score, level_reached, difficulty.upper()
+    )
 
     return jsonify({
         "success": True,
         "message": "Score recorded successfully",
         "id": inserted_id,
         "player_name": player_name,
+        "ship_class": ship_class,
         "score": score,
+        "level_reached": level_reached,
+        "difficulty": difficulty,
     }), 201
 
 
@@ -97,12 +126,13 @@ def get_top_scores():
         limit = 10
 
     difficulty = request.args.get("difficulty")
+    logger.info("Fetching leaderboard: limit=%s, difficulty=%s", limit, difficulty)
 
     with get_db() as conn:
-        if difficulty and difficulty in ("easy", "normal", "hard"):
+        if difficulty and difficulty in ("easy", "normal", "hard", "endless"):
             rows = conn.execute(
                 """
-                SELECT id, player_name, score, level_reached, difficulty, created_at
+                SELECT id, player_name, score, level_reached, difficulty, ship_class, created_at
                 FROM scores
                 WHERE difficulty = ?
                 ORDER BY score DESC, created_at ASC
@@ -113,7 +143,7 @@ def get_top_scores():
         else:
             rows = conn.execute(
                 """
-                SELECT id, player_name, score, level_reached, difficulty, created_at
+                SELECT id, player_name, score, level_reached, difficulty, ship_class, created_at
                 FROM scores
                 ORDER BY score DESC, created_at ASC
                 LIMIT ?
@@ -128,6 +158,7 @@ def get_top_scores():
             "score": row["score"],
             "level_reached": row["level_reached"],
             "difficulty": row["difficulty"],
+            "ship_class": row["ship_class"] or "pushpaka",
             "created_at": row["created_at"],
         }
         for i, row in enumerate(rows)
@@ -146,6 +177,7 @@ def get_stats():
         max_score = conn.execute("SELECT MAX(score) FROM scores").fetchone()[0] or 0
         avg_score = conn.execute("SELECT AVG(score) FROM scores").fetchone()[0] or 0
 
+    logger.info("Global stats queried: total_games=%s, max_score=%s", total_games, max_score)
     return jsonify({
         "total_games_submitted": total_games,
         "highest_score": max_score,

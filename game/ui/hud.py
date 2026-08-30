@@ -38,6 +38,10 @@ _HP_COLOR_LOW    = (220, 60, 0)      # red < 30%
 
 class HUD:
     def __init__(self):
+        from game.systems import save_system
+        settings = save_system.load()
+        self.colorblind_mode = settings.get("colorblind_mode", "off")
+        self.reduced_flashes = bool(settings.get("reduced_flashes", False))
         self._displayed_hp = 100.0
         self._ghost_hp = 100.0       # slower-decaying ghost trail
         self._pulse_timer = 0.0
@@ -205,14 +209,21 @@ class HUD:
         frac_ghost = clamp(self._ghost_hp / player.max_hp)
 
         # Color crossfade: green > 60%, amber 30-60%, red < 30%
+        palette = {
+            "off": (_HP_COLOR_HIGH, _HP_COLOR_MID, _HP_COLOR_LOW),
+            "protan": ((0, 114, 178), (230, 159, 0), (86, 180, 233)),
+            "deutan": ((0, 114, 178), (230, 159, 0), (213, 94, 0)),
+            "tritan": ((0, 158, 115), (230, 159, 0), (213, 94, 0)),
+        }.get(self.colorblind_mode, (_HP_COLOR_HIGH, _HP_COLOR_MID, _HP_COLOR_LOW))
+        high_color, mid_color, low_color = palette
         if frac_actual > 0.6:
-            fill_color = _HP_COLOR_HIGH
+            fill_color = high_color
         elif frac_actual > 0.3:
             t = clamp((frac_actual - 0.3) / 0.3)
-            fill_color = lerp_color(_HP_COLOR_MID, _HP_COLOR_HIGH, ease_out_cubic(t))
+            fill_color = lerp_color(mid_color, high_color, ease_out_cubic(t))
         else:
             t = clamp(frac_actual / 0.3)
-            fill_color = lerp_color(_HP_COLOR_LOW, _HP_COLOR_MID, ease_out_cubic(t))
+            fill_color = lerp_color(low_color, mid_color, ease_out_cubic(t))
 
         # Background
         arcade.draw_lrbt_rectangle_filled(_BAR_X, _BAR_X + _BAR_W, _BAR_Y, _BAR_Y + _BAR_H, COLOR_HP_BG)
@@ -244,7 +255,7 @@ class HUD:
 
         # HP hit flash — red screen-edge vignette on damage
         if self._hp_hit_flash > 0:
-            flash_a = int(60 * ease_out_cubic(self._hp_hit_flash))
+            flash_a = int(60 * ease_out_cubic(self._hp_hit_flash) * (0.35 if self.reduced_flashes else 1.0))
             arcade.draw_lrbt_rectangle_filled(
                 _BAR_X, _BAR_X + _BAR_W,
                 _BAR_Y, _BAR_Y + _BAR_H, (255, 30, 30, flash_a))
@@ -268,7 +279,7 @@ class HUD:
 
         # Flash effect on big score changes
         if self._score_flash > 0:
-            flash_scale = 1.0 + 0.15 * ease_out_cubic(self._score_flash)
+            flash_scale = 1.0 + (0.06 if self.reduced_flashes else 0.15) * ease_out_cubic(self._score_flash)
             self._label_score.font_size = int(18 * flash_scale)
             glow_a = int(80 * self._score_flash)
             arcade.draw_lrbt_rectangle_filled(
@@ -320,12 +331,28 @@ class HUD:
         if wave_manager.wave_number == 0:
             return
 
+        from constants import get_realm_for_wave
+        realm = get_realm_for_wave(wave_manager.wave_number)
+        effective_wave = ((wave_manager.wave_number - 1) % 20) + 1
+        realm_index = (
+            1 if effective_wave <= 3 else
+            2 if effective_wave <= 6 else
+            3 if effective_wave <= 9 else
+            4 if effective_wave <= 12 else
+            5 if effective_wave <= 15 else
+            6 if effective_wave <= 18 else 7
+        )
+        breadcrumb = (
+            f"MAHAYUDDHA  •  WAVE {wave_manager.wave_number}"
+            if getattr(wave_manager, "is_endless", False)
+            else f"REALM {realm_index}/7  •  {realm['name']}  •  WAVE {wave_manager.wave_number}"
+        )
         if wave_manager.is_boss_wave:
-            w_text = "BOSS WAVE — EMPEROR RAVANA"
+            w_text = f"{breadcrumb}  —  EMPEROR RAVANA"
         elif wave_manager.is_mini_boss_wave:
-            w_text = f"Wave {wave_manager.wave_number} — MINI-BOSS"
+            w_text = f"{breadcrumb}  —  MINI-BOSS"
         else:
-            w_text = f"Wave {wave_manager.wave_number}"
+            w_text = breadcrumb
 
         self._label_wave.text = w_text
         self._label_wave.draw()

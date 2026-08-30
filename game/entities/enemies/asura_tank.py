@@ -10,6 +10,7 @@ from constants import (
     COLOR_ASURA_TANK, COLOR_WHITE,
 )
 from game.entities.enemies.base_enemy import BaseEnemy
+from game.systems.asset_manager import AssetManager
 
 
 class AsuraTank(BaseEnemy):
@@ -21,6 +22,7 @@ class AsuraTank(BaseEnemy):
                          hp=ASURA_TANK_HP, speed=ASURA_TANK_SPEED,
                          score_value=ASURA_TANK_SCORE, radius=ASURA_TANK_RADIUS)
         self.contact_damage = ASURA_TANK_CONTACT_DAMAGE
+        self.texture = AssetManager.texture("asura_tank.png")
 
     def update(self, delta_time: float, player_x: float, player_y: float) -> list:
         if not self.alive:
@@ -33,6 +35,10 @@ class AsuraTank(BaseEnemy):
     def draw(self) -> None:
         self._draw_elite_aura()
         color = COLOR_WHITE if self._hit_flash > 0 else COLOR_ASURA_TANK
+        if self._draw_sprite(width=self.radius * 2.4, height=self.radius * 2.4,
+                             color=COLOR_WHITE if self._hit_flash > 0 else (255, 255, 255, 255)):
+            self._draw_hp_bar(bar_w=self.radius * 2.5)
+            return
         # Large body
         arcade.draw_circle_filled(self.x, self.y, self.radius, color)
         

@@ -82,6 +82,13 @@ class SettingsView(arcade.View):
                 target.sound_manager.reload_volume()
             if hasattr(target, "shake_setting"):
                 target.shake_setting = self.screen_shake
+            if hasattr(target, "reduced_flashes"):
+                target.reduced_flashes = self.reduced_flashes
+            if hasattr(target, "colorblind_mode"):
+                target.colorblind_mode = self.colorblind_mode
+            if hasattr(target, "hud"):
+                target.hud.colorblind_mode = self.colorblind_mode
+                target.hud.reduced_flashes = self.reduced_flashes
 
         # Apply fullscreen to active window
         if self.window:
@@ -214,3 +221,25 @@ class SettingsView(arcade.View):
 
         elif self._selected_row == 6:  # Fullscreen
             self.fullscreen = not self.fullscreen
+
+    def on_joyhat_motion(self, joystick, hat_x, hat_y) -> None:
+        if hat_y > 0:
+            self._selected_row = (self._selected_row - 1) % len(self._row_labels)
+        elif hat_y < 0:
+            self._selected_row = (self._selected_row + 1) % len(self._row_labels)
+        if hat_x < 0:
+            self._adjust_option(-1)
+        elif hat_x > 0:
+            self._adjust_option(1)
+
+    def on_joybutton_press(self, joystick, button) -> None:
+        # A / Cross changes the selected option; B / Circle saves and exits.
+        if button == 0:
+            self._adjust_option(1)
+        elif button in (1, 4):
+            self._save_and_apply()
+            if self.return_view:
+                transition_to(self.window, self.return_view)
+            else:
+                from game.views.menu_view import MenuView
+                transition_to(self.window, MenuView())
