@@ -9,7 +9,7 @@ import arcade
 from constants import (
     WIDTH, HEIGHT,
     PLAYER_MAX_HP, PLAYER_RADIUS,
-    PLAYER_INVINCIBILITY_TIME, SHIELD_MAX_HITS,
+    PLAYER_INVINCIBILITY_TIME, SHIELD_MAX_HITS, HEALTH_RESTORE,
     COLOR_SHIELD, COLOR_WHITE,
 )
 
@@ -85,6 +85,9 @@ class Player:
         if sdata["id"] == "garuda":
             self.dash_charges_max = 2
             self.dash_charges = 2
+        else:
+            self.dash_charges_max = 1
+            self.dash_charges = 1
 
     # ── Per-frame update with delta_time physics ─────────────────────────
 
@@ -292,7 +295,7 @@ class Player:
         from game.entities.powerup import PowerUpType, PowerUpEffect
 
         if ptype == PowerUpType.HEALTH:
-            self.heal(35)
+            self.heal(HEALTH_RESTORE)
             return
         if ptype == PowerUpType.BOMB:
             self.bomb_count += 1

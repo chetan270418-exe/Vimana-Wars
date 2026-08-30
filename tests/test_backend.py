@@ -3,10 +3,7 @@ tests/test_backend.py
 Unit tests for the Flask Leaderboard REST API.
 """
 import pytest
-import tempfile
-import os
-from pathlib import Path
-from backend.app import app, init_db, get_db
+from backend.app import app, init_db
 
 
 @pytest.fixture

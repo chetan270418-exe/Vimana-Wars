@@ -5,7 +5,7 @@ Displays detailed stats, vector preview, and unique ship class descriptions.
 """
 import math
 import arcade
-from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_SCORE, COLOR_WAVE, COLOR_WHITE
+from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_SCORE
 from game.entities.ship_classes import SHIP_CLASSES
 from game.ui.transitions import transition_to, TransitionOverlay
 

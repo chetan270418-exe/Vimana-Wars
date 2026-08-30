@@ -16,6 +16,7 @@ class LeaderboardClient:
 
     def __init__(self, api_url: str = LEADERBOARD_API_URL):
         self.api_url = api_url.rstrip("/")
+        self._lock = threading.Lock()
         self.is_loading = False
         self.last_error: str | None = None
         self.top_scores: list[dict] = []
@@ -25,10 +26,13 @@ class LeaderboardClient:
         """
         Fetch top leaderboard records asynchronously.
         """
-        self.is_loading = True
-        self.last_error = None
+        with self._lock:
+            self.is_loading = True
+            self.last_error = None
 
         def _worker():
+            scores = []
+            err = None
             try:
                 params = {"limit": limit}
                 if difficulty:
@@ -41,17 +45,20 @@ class LeaderboardClient:
                 )
                 if resp.status_code == 200:
                     data = resp.json()
-                    self.top_scores = data.get("leaderboard", [])
-                    self.last_error = None
+                    scores = list(data.get("leaderboard", []))
+                    err = None
                 else:
-                    self.last_error = f"Server returned {resp.status_code}"
+                    err = f"Server returned {resp.status_code}"
             except requests.exceptions.RequestException:
-                self.last_error = "Leaderboard offline (Could not connect to server)"
-                self.top_scores = []
+                err = "Leaderboard offline (Could not connect to server)"
+                scores = []
             finally:
-                self.is_loading = False
+                with self._lock:
+                    self.top_scores = list(scores)
+                    self.last_error = err
+                    self.is_loading = False
                 if on_complete:
-                    on_complete(self.top_scores, self.last_error)
+                    on_complete(scores, err)
 
         t = threading.Thread(target=_worker, daemon=True)
         t.start()
@@ -61,11 +68,14 @@ class LeaderboardClient:
         """
         Submit a score record asynchronously.
         """
-        self.is_loading = True
-        self.last_error = None
-        self.submission_success = False
+        with self._lock:
+            self.is_loading = True
+            self.last_error = None
+            self.submission_success = False
 
         def _worker():
+            success = False
+            err = None
             try:
                 payload = {
                     "player_name": player_name,
@@ -79,18 +89,21 @@ class LeaderboardClient:
                     timeout=NETWORK_TIMEOUT
                 )
                 if resp.status_code == 201:
-                    self.submission_success = True
-                    self.last_error = None
+                    success = True
+                    err = None
                 else:
-                    self.submission_success = False
-                    self.last_error = f"Submission error {resp.status_code}"
+                    success = False
+                    err = f"Submission error {resp.status_code}"
             except requests.exceptions.RequestException:
-                self.submission_success = False
-                self.last_error = "Server offline — score saved locally"
+                success = False
+                err = "Server offline — score saved locally"
             finally:
-                self.is_loading = False
+                with self._lock:
+                    self.submission_success = success
+                    self.last_error = err
+                    self.is_loading = False
                 if on_complete:
-                    on_complete(self.submission_success, self.last_error)
+                    on_complete(success, err)
 
         t = threading.Thread(target=_worker, daemon=True)
         t.start()

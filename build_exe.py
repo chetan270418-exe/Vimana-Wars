@@ -19,13 +19,13 @@ def build():
 
     # Check if pyinstaller is installed
     try:
-        import PyInstaller
+        import PyInstaller  # noqa: F401
     except ImportError:
         print("\nInstalling PyInstaller in virtualenv...")
         subprocess.check_call([sys.executable, "-m", "pip", "install", "pyinstaller"])
 
     dist_dir = Path("dist")
-    build_dir = Path("build")
+    sep = os.pathsep
 
     # Command arguments for PyInstaller
     # Bundles assets, sounds, fonts, and dependencies into a clean release folder
@@ -37,10 +37,10 @@ def build():
         "--onedir",             # directory distribution (fast startup, easy modding)
         "--windowed",           # hide black console window
         "--name=VimanaWars",
-        "--add-data=assets;assets",
-        "--add-data=constants.py;.",
-        "--add-data=CREDITS.md;.",
-        "--add-data=README.md;.",
+        f"--add-data=assets{sep}assets",
+        f"--add-data=constants.py{sep}.",
+        f"--add-data=CREDITS.md{sep}.",
+        f"--add-data=README.md{sep}.",
         "main.py",
     ]
 

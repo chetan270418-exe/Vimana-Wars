@@ -5,7 +5,7 @@ Dynamic realm-specific cosmic hazards and environmental anomalies.
 import math
 import random
 import arcade
-from constants import WIDTH, HEIGHT, get_realm_for_wave
+from constants import WIDTH, HEIGHT
 
 
 class EnvironmentalHazardManager:

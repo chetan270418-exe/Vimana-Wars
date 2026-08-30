@@ -5,7 +5,7 @@ Allows players to configure Audio Volume, Screen Shake, Particles, and Display M
 Saves settings automatically to ~/.vimana_wars/save.json.
 """
 import arcade
-from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_SCORE, COLOR_WAVE, COLOR_WHITE
+from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_SCORE, COLOR_WHITE
 from game.systems import save_system
 from game.ui.transitions import transition_to, TransitionOverlay
 

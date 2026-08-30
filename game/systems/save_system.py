@@ -7,7 +7,7 @@ import json
 import os
 from pathlib import Path
 
-# Save file lives next to the game executable / script
+# Save file lives in user home directory under ~/.vimana_wars/
 _SAVE_DIR  = Path(os.path.expanduser("~")) / ".vimana_wars"
 _SAVE_FILE = _SAVE_DIR / "save.json"
 

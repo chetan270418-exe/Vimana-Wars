@@ -3,7 +3,6 @@ game/systems/achievement_system.py
 In-game achievements and trophy tracker with animated popup notifications.
 Persists unlocked trophies in save.json.
 """
-import math
 import arcade
 from constants import WIDTH, HEIGHT, COLOR_SCORE, COLOR_WHITE
 from game.systems import save_system

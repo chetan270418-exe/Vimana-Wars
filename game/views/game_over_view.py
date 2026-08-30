@@ -6,8 +6,7 @@ Uses arcade.Text objects (no draw_text calls).
 import math
 import random
 import arcade
-from constants import WIDTH, HEIGHT, COLOR_SCORE, COLOR_WAVE, COLOR_WHITE
-from game.systems import save_system
+from constants import WIDTH, HEIGHT, COLOR_SCORE, COLOR_WHITE
 from game.ui.easing import ease_out_cubic, ease_in_out_cubic, clamp
 from game.ui.tween import TweenManager, Tween
 from game.ui.transitions import transition_to, TransitionOverlay
@@ -15,10 +14,12 @@ from game.ui.transitions import transition_to, TransitionOverlay
 
 class GameOverView(arcade.View):
     def __init__(self, score: int, wave: int, kills: int,
-                 highest_combo: int, high_score: int = 0, difficulty: str = "normal", stats: dict = None):
+                 highest_combo: int, high_score: int = 0, difficulty: str = "normal",
+                 ship_class: str = "pushpaka", stats: dict = None):
         super().__init__()
         self._pulse = 0.0
         self.difficulty = difficulty
+        self.ship_class = ship_class
         self.stats = stats or {}
         is_new_record = score >= high_score and score > 0
 
@@ -213,7 +214,7 @@ class GameOverView(arcade.View):
     def on_key_press(self, key, modifiers) -> None:
         if key == arcade.key.R:
             from game.views.game_view import GameView
-            transition_to(self.window, GameView(difficulty=self.difficulty))
+            transition_to(self.window, GameView(difficulty=self.difficulty, ship_class=self.ship_class))
         elif key == arcade.key.L:
             from game.views.leaderboard_view import LeaderboardView
             transition_to(self.window, LeaderboardView(return_view=self))

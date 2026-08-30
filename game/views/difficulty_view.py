@@ -5,7 +5,7 @@ Reads/writes via save_system so the choice persists between sessions.
 """
 import math
 import arcade
-from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_SCORE, COLOR_WAVE, COLOR_WHITE
+from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_WAVE, COLOR_WHITE
 from game.systems import save_system
 from game.ui.transitions import transition_to, TransitionOverlay
 

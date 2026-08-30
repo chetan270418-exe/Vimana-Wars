@@ -3,9 +3,8 @@ game/views/name_entry_view.py
 Name Entry Screen displayed after game over or victory.
 Allows player to type their warrior name and submit to the online leaderboard.
 """
-import math
 import arcade
-from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_SCORE, COLOR_WAVE, COLOR_WHITE
+from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_SCORE, COLOR_WAVE
 from game.systems import save_system
 from game.systems.leaderboard_client import leaderboard_client
 from game.ui.transitions import transition_to, TransitionOverlay
@@ -13,13 +12,15 @@ from game.ui.transitions import transition_to, TransitionOverlay
 
 class NameEntryView(arcade.View):
     def __init__(self, score: int, wave: int, kills: int, highest_combo: int,
-                 difficulty: str = "normal", is_victory: bool = False, stats: dict = None):
+                 difficulty: str = "normal", ship_class: str = "pushpaka",
+                 is_victory: bool = False, stats: dict = None):
         super().__init__()
         self.score = score
         self.wave = wave
         self.kills = kills
         self.highest_combo = highest_combo
         self.difficulty = difficulty
+        self.ship_class = ship_class
         self.is_victory = is_victory
         self.stats = stats or {}
 
@@ -148,6 +149,8 @@ class NameEntryView(arcade.View):
                 kills=self.kills,
                 highest_combo=self.highest_combo,
                 difficulty=self.difficulty,
+                ship_class=self.ship_class,
+                wave=self.wave,
                 stats=self.stats,
             ))
         else:
@@ -164,5 +167,6 @@ class NameEntryView(arcade.View):
                 highest_combo=self.highest_combo,
                 high_score=updated["high_score"],
                 difficulty=self.difficulty,
+                ship_class=self.ship_class,
                 stats=self.stats,
             ))

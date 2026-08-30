@@ -2,7 +2,6 @@
 tests/test_entities.py
 Unit tests for all game entities.
 """
-import pytest
 from constants import (
     WIDTH, HEIGHT,
     PLAYER_MAX_HP,
@@ -168,3 +167,27 @@ class TestEnemies:
         boss.take_damage(int(RAVANA_HP * 0.4))
         boss._update_phase()
         assert boss.phase == 2
+
+    def test_boss_ravana_summons(self):
+        boss = BossRavana()
+        # Trigger fleet summon in phase 3
+        boss._entered = True
+        boss.hp = int(RAVANA_HP * 0.2)
+        boss._update_phase()
+        assert boss.phase == 3
+        boss._summon_timer = 0.0
+        boss.update(0.1, 450, 300)
+        # Summons should be produced and cleanly read
+        summons = boss.pending_summons
+        assert len(summons) >= 2
+        # Second read should be empty
+        assert len(boss.pending_summons) == 0
+
+    def test_ship_class_dash_charges_reset(self):
+        p = Player()
+        p.apply_ship_class(SHIP_CLASSES["garuda"])
+        assert p.dash_charges_max == 2
+        # Switch to pushpaka
+        p.apply_ship_class(SHIP_CLASSES["pushpaka"])
+        assert p.dash_charges_max == 1
+        assert p.dash_charges == 1

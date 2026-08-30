@@ -3,9 +3,9 @@ game/views/codex_view.py
 The Realm Archives & Mythological Lore Codex.
 Provides in-depth lore, vector illustrations, and tactical guides for Vimanas, Astras, Asuras, and Realms.
 """
-import math
 import arcade
-from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_SCORE, COLOR_WAVE, COLOR_WHITE
+from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_SCORE
+from game.ui.transitions import transition_to, TransitionOverlay
 
 
 CODEX_ENTRIES = [
@@ -85,6 +85,7 @@ class CodexView(arcade.View):
         arcade.set_background_color(COLOR_BG)
 
     def on_update(self, delta_time: float) -> None:
+        TransitionOverlay.update(delta_time)
         self._pulse += delta_time
 
     def on_draw(self) -> None:
@@ -141,6 +142,7 @@ class CodexView(arcade.View):
             arcade.draw_text(line, detail_x + 45, tip_y - 32 - t_idx * 18, (190, 200, 220), font_size=9)
 
         self._hint.draw()
+        TransitionOverlay.draw()
 
     def _wrap_text(self, text: str, max_chars: int) -> list[str]:
         words = text.split()
@@ -166,7 +168,7 @@ class CodexView(arcade.View):
             self._selected = (self._selected + 1) % len(CODEX_ENTRIES)
         elif key == arcade.key.ESCAPE:
             if self.return_view:
-                self.window.show_view(self.return_view)
+                transition_to(self.window, self.return_view)
             else:
                 from game.views.menu_view import MenuView
-                self.window.show_view(MenuView())
+                transition_to(self.window, MenuView())

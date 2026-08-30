@@ -4,7 +4,7 @@ Controls wave progression, 3-2-1 countdowns, wave objectives, and diverse enemy 
 """
 import random
 from constants import (
-    WAVE_ANNOUNCE_DURATION, WAVE_CLEAR_DELAY,
+    WAVE_CLEAR_DELAY,
     BOSS_WAVE_NUMBER, POWERUP_SPAWN_EVERY_N_WAVES,
     MAX_POWERUPS_ACTIVE, get_realm_for_wave,
 )

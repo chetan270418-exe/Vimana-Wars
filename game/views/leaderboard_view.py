@@ -3,10 +3,10 @@ game/views/leaderboard_view.py
 In-game Online Leaderboard screen.
 Fetches top scores from the backend API asynchronously.
 """
-import math
 import arcade
 from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_SCORE, COLOR_WAVE, COLOR_WHITE
 from game.systems.leaderboard_client import leaderboard_client
+from game.ui.transitions import transition_to, TransitionOverlay
 
 
 _FILTERS = ["all", "easy", "normal", "hard"]
@@ -116,6 +116,7 @@ class LeaderboardView(arcade.View):
         arcade.set_background_color(COLOR_BG)
 
     def on_update(self, delta_time: float) -> None:
+        TransitionOverlay.update(delta_time)
         self._pulse += delta_time
         pending = getattr(self, "_pending_data", None)
         if pending is not None:
@@ -151,6 +152,7 @@ class LeaderboardView(arcade.View):
                     cell.draw()
 
         self._tab_hint.draw()
+        TransitionOverlay.draw()
 
     def on_key_press(self, key, modifiers) -> None:
         if key in (arcade.key.TAB, arcade.key.RIGHT, arcade.key.D):
@@ -163,7 +165,7 @@ class LeaderboardView(arcade.View):
             self._refresh()
         elif key == arcade.key.ESCAPE:
             if self.return_view:
-                self.window.show_view(self.return_view)
+                transition_to(self.window, self.return_view)
             else:
                 from game.views.menu_view import MenuView
-                self.window.show_view(MenuView())
+                transition_to(self.window, MenuView())

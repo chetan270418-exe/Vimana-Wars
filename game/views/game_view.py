@@ -435,8 +435,10 @@ class GameView(arcade.View):
         for enemy in self.enemies:
             fired = enemy.update(delta_time, self.player.x, self.player.y)
             new_enemy_bullets.extend(fired)
-            if hasattr(enemy, "pending_summons") and enemy.pending_summons:
-                self.enemies.extend(enemy.pending_summons)
+            if hasattr(enemy, "pending_summons"):
+                summons = enemy.pending_summons
+                if summons:
+                    self.enemies.extend(summons)
 
             # Healer pulse logic
             if hasattr(enemy, "perform_heal_pulse"):
@@ -636,20 +638,42 @@ class GameView(arcade.View):
         # Particles & Collectables
         self.particles.draw(ox, oy)
         for pu in self.powerups:
-            pu.x += ox; pu.y += oy; pu.draw(); pu.x -= ox; pu.y -= oy
+            pu.x += ox; pu.y += oy
+            try:
+                pu.draw()
+            finally:
+                pu.x -= ox; pu.y -= oy
         for chk in self.chakrams:
-            chk.x += ox; chk.y += oy; chk.draw(); chk.x -= ox; chk.y -= oy
+            chk.x += ox; chk.y += oy
+            try:
+                chk.draw()
+            finally:
+                chk.x -= ox; chk.y -= oy
         for enemy in self.enemies:
-            enemy.x += ox; enemy.y += oy; enemy.draw(); enemy.x -= ox; enemy.y -= oy
+            enemy.x += ox; enemy.y += oy
+            try:
+                enemy.draw()
+            finally:
+                enemy.x -= ox; enemy.y -= oy
         for b in self.enemy_bullets:
-            b.x += ox; b.y += oy; b.draw(); b.x -= ox; b.y -= oy
+            b.x += ox; b.y += oy
+            try:
+                b.draw()
+            finally:
+                b.x -= ox; b.y -= oy
         for b in self.player_bullets:
-            b.x += ox; b.y += oy; b.draw(); b.x -= ox; b.y -= oy
+            b.x += ox; b.y += oy
+            try:
+                b.draw()
+            finally:
+                b.x -= ox; b.y -= oy
 
         # Player Vimana
         self.player.x += ox; self.player.y += oy
-        self.player.draw()
-        self.player.x -= ox; self.player.y -= oy
+        try:
+            self.player.draw()
+        finally:
+            self.player.x -= ox; self.player.y -= oy
 
         # Floating Texts & HUD
         self.floating_texts.draw(ox, oy)
@@ -764,6 +788,7 @@ class GameView(arcade.View):
             kills=self.player.enemies_killed,
             highest_combo=self.score_system.highest_combo,
             difficulty=self._difficulty,
+            ship_class=self._ship_class_id,
             is_victory=True,
             stats=self.combat_stats,
         ), duration=0.5, style="wipe")
@@ -793,6 +818,7 @@ class GameView(arcade.View):
             kills=self.player.enemies_killed,
             highest_combo=self.score_system.highest_combo,
             difficulty=self._difficulty,
+            ship_class=self._ship_class_id,
             is_victory=False,
             stats=self.combat_stats,
         ))

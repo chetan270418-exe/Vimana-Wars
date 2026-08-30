@@ -3,8 +3,8 @@ import random
 import arcade
 from constants import WIDTH, HEIGHT, COLOR_SCORE, COLOR_WAVE, COLOR_WHITE
 from game.systems import save_system
-from game.ui.easing import ease_out_cubic, ease_out_elastic, ease_in_out_cubic, clamp, lerp
-from game.ui.tween import TweenManager, Tween
+from game.ui.easing import ease_out_cubic, ease_out_elastic, ease_in_out_cubic, clamp
+from game.ui.tween import TweenManager
 from game.ui.transitions import transition_to, TransitionOverlay
 try:
     from game.systems.sound_manager import SoundManager
@@ -40,12 +40,15 @@ class ConfettiParticle:
             arcade.draw_rectangle_filled(self.x, self.y, 8, 8, c, self.angle)
 
 class VictoryView(arcade.View):
-    def __init__(self, score, kills, highest_combo, difficulty='normal', stats=None):
+    def __init__(self, score, kills, highest_combo, difficulty='normal',
+                 ship_class='pushpaka', wave=10, stats=None):
         super().__init__()
         self.score = score
         self.kills = kills
         self.highest_combo = highest_combo
         self.difficulty = difficulty
+        self.ship_class = ship_class
+        self.wave = wave
         self.stats = stats or {}
         
         self.time_elapsed = 0.0
@@ -101,7 +104,11 @@ class VictoryView(arcade.View):
             )
             
         try:
-            save_system.save_score(self.score, self.difficulty)
+            save_system.update_after_game(
+                score=self.score,
+                wave=self.wave,
+                kills=self.kills,
+            )
         except Exception:
             pass
         

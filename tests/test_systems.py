@@ -2,15 +2,12 @@
 tests/test_systems.py
 Unit tests for all core gameplay systems.
 """
-import pytest
 from game.entities.player import Player
-from game.entities.bullet import PlayerBullet, EnemyBullet
+from game.entities.bullet import PlayerBullet
 from game.entities.powerup import PowerUp, PowerUpType
 from game.entities.enemies.asura_fast import AsuraFast
-from game.entities.enemies.asura_tank import AsuraTank
-from game.entities.enemies.asura_kamikaze import AsuraKamikaze
 from game.systems.score_system import ScoreSystem
-from game.systems.boon_system import BoonManager, BOONS_DATABASE
+from game.systems.boon_system import BoonManager
 from game.systems.wave_manager import WaveManager
 from game.systems.floating_text import FloatingTextManager
 from game.systems.particles import ParticleManager

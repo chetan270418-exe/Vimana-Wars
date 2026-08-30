@@ -66,7 +66,7 @@ BOONS_DATABASE = [
         "id": "surya_beam",
         "name": "Surya's Radiant Pierce",
         "deva": "SURYA (THE SUN GOD)",
-        "desc": "Every 7th shot fires an amplified golden Solar slug that pierces through all enemies.",
+        "desc": "Fires an amplified piercing Solar slug on recurring shots (7th shot at Lv.1, scaling down with level).",
         "color": (255, 240, 140),
         "icon": "☀️",
     },

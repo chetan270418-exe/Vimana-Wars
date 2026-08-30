@@ -5,7 +5,6 @@ Runs all checks in one place so game_view stays clean.
 """
 import math
 from constants import PLAYER_CONTACT_DAMAGE
-from game.entities.powerup import PowerUp
 
 
 def _circles_overlap(ax, ay, ar, bx, by, br) -> bool:

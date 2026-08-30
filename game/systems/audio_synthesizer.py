@@ -136,7 +136,6 @@ def generate_all_sounds() -> None:
     dur = 1.0
     total_samples = int(sample_rate * dur)
     melody = [(523.25, 0.2), (659.25, 0.2), (783.99, 0.2), (1046.50, 0.4)]
-    sample_accum = 0
     for freq, note_dur in melody:
         note_samples = int(sample_rate * note_dur)
         for i in range(note_samples):
