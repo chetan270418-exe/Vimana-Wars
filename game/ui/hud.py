@@ -12,6 +12,7 @@ from constants import (
     COLOR_SCORE, COLOR_WAVE, COLOR_WHITE,
     COLOR_POWERUP_SHIELD, COLOR_POWERUP_SPREAD,
     COLOR_POWERUP_SPEED, COLOR_POWERUP_HEALTH, COLOR_POWERUP_BOMB,
+    COLOR_POWERUP_OVERDRIVE,
 )
 from game.ui.easing import ease_out_cubic, ease_in_out_cubic, lerp, lerp_color, clamp
 
@@ -21,11 +22,15 @@ _POWERUP_COLORS = {
     "SPEED":  COLOR_POWERUP_SPEED,
     "HEALTH": COLOR_POWERUP_HEALTH,
     "BOMB":   COLOR_POWERUP_BOMB,
+    "OVERDRIVE": COLOR_POWERUP_OVERDRIVE,
 }
 _POWERUP_NAMES = {
     "SHIELD": "Kavach",
     "SPREAD": "Agneyastra",
     "SPEED":  "Vayavyastra",
+    "HEALTH": "Amrita",
+    "BOMB": "Brahmastra",
+    "OVERDRIVE": "Astra Overdrive",
 }
 
 _BAR_X, _BAR_Y, _BAR_W, _BAR_H = 16, HEIGHT - 32, 220, 20

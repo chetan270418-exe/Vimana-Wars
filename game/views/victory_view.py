@@ -45,7 +45,7 @@ class ConfettiParticle:
             alpha_t = ease_out_cubic(1.0 - t)
             alpha = int(255 * alpha_t)
             c = self.color[:3] + (alpha,)
-            arcade.draw_rectangle_filled(self.x, self.y, 8, 8, c, self.angle)
+            arcade.draw_rect_filled(arcade.XYWH(self.x, self.y, 8, 8), c, self.angle)
 
 class VictoryView(arcade.View):
     def __init__(self, score, kills, highest_combo, difficulty='normal',

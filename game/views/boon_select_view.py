@@ -11,6 +11,10 @@ from game.ui.easing import ease_out_back, ease_out_cubic, lerp, clamp
 from game.ui.tween import TweenManager, Tween
 from game.ui.transitions import transition_to, TransitionOverlay
 from game.systems.sound_manager import SoundManager
+# Low-level draw primitives that don't have any of the convenience-layer
+# surprises (alpha parsing, rect-validation, etc.) that can silently make
+# cards invisible on some arcade versions / GPU drivers.
+from arcade import draw_rect_filled, draw_rect_outline, LRBT
 
 
 class CardState:
@@ -21,6 +25,29 @@ class CardState:
         self.alpha = 255.0
         self.fly_text_y = 0.0
         self.fly_text_alpha = 0.0
+        # Cached Text objects — content/position/alpha updated per frame.
+        # Using Text (not draw_text) avoids the slow-draw silent-failure path
+        # that was making the cards invisible in the user's screenshot.
+        self._text_deva = arcade.Text("", 0, 0, (255, 255, 255, 255),
+                                      font_size=9, bold=True,
+                                      anchor_x="center", anchor_y="center")
+        self._text_name = arcade.Text("", 0, 0, (255, 255, 255, 255),
+                                      font_size=13, bold=True,
+                                      anchor_x="center", anchor_y="center")
+        self._text_num  = arcade.Text("", 0, 0, (255, 255, 255, 255),
+                                      font_size=18, bold=True,
+                                      anchor_x="center", anchor_y="center")
+        # 4 description lines is enough for our 24-char wrapped boons
+        self._text_desc = [arcade.Text("", 0, 0, (210, 215, 230, 255),
+                                        font_size=10, bold=True,
+                                        anchor_x="center", anchor_y="center")
+                           for _ in range(4)]
+        self._text_claim = arcade.Text("", 0, 0, (255, 220, 50, 255),
+                                       font_size=9, bold=True,
+                                       anchor_x="center", anchor_y="center")
+        self._text_fly = arcade.Text("", 0, 0, (255, 215, 0, 255),
+                                     font_size=16, bold=True,
+                                     anchor_x="center", anchor_y="center")
 
 
 class BoonSelectView(arcade.View):
@@ -76,13 +103,7 @@ class BoonSelectView(arcade.View):
         arcade.set_background_color(COLOR_BG)
         
         if hasattr(self.game_view, "player"):
-            self.game_view.player.keys_pressed.clear()
-            self.game_view.player.mouse_held = False
-            self.game_view.player.vx = 0.0
-            self.game_view.player.vy = 0.0
-            self.game_view.player.is_dashing = False
-            self.game_view.player.joy_dx = 0.0
-            self.game_view.player.joy_dy = 0.0
+            self.game_view.player.reset_input_state()
         
         for i, card in enumerate(self._cards):
             card.flip_progress = 0.0
@@ -129,18 +150,12 @@ class BoonSelectView(arcade.View):
             if self._pick_timer <= 0 and not self._transition_started:
                 self._transition_started = True
                 if hasattr(self.game_view, "player"):
-                    self.game_view.player.keys_pressed.clear()
-                    self.game_view.player.mouse_held = False
-                    self.game_view.player.vx = 0.0
-                    self.game_view.player.vy = 0.0
-                    self.game_view.player.is_dashing = False
-                    self.game_view.player.joy_dx = 0.0
-                    self.game_view.player.joy_dy = 0.0
+                    self.game_view.player.reset_input_state()
                 self.window.show_view(self.game_view)
 
     def on_draw(self) -> None:
         self.clear()
-        
+
         # Draw background particles
         chosen = self.choices[self._selected_card]
         p_color = chosen["color"]
@@ -161,16 +176,16 @@ class BoonSelectView(arcade.View):
         for i, boon in enumerate(self.choices):
             card = self._cards[i]
             is_sel = (i == self._selected_card)
-            
+
             # Draw Face Down Back
             if card.flip_progress <= 0.0:
                 cx = start_x + i * spacing
-                bg_color = (20, 25, 45)
-                arcade.draw_lrbt_rectangle_filled(
+                # Direct low-level call: avoids the convenience-layer alpha
+                # parsing that has caused "invisible cards" regressions before.
+                draw_rect_filled(LRBT(
                     cx - card_w // 2, cx + card_w // 2,
                     cy - card_h // 2, cy + card_h // 2,
-                    bg_color
-                )
+                ), (20, 25, 45, 255))
                 # Rotating glow rings
                 arcade.draw_arc_outline(
                     cx, cy, 80, 80, (100, 120, 200, 150),
@@ -185,35 +200,36 @@ class BoonSelectView(arcade.View):
             width_scale = card.flip_progress
             cx = start_x + i * spacing
             cy_lifted = cy + card.lift
-            
+
             w = card_w * width_scale * card.scale
             h = card_h * card.scale
-            
+
             alpha = int(clamp(card.alpha, 0.0, 255.0))
-            
-            # Card Background
-            bg_color = (25, 30, 55, alpha) if not is_sel else (35, 45, 80, alpha)
-            arcade.draw_lrbt_rectangle_filled(
+
+            # Card Background — always use 4-tuple color for consistent alpha
+            if is_sel:
+                bg_color = (35, 45, 80, alpha)
+            else:
+                bg_color = (25, 30, 55, alpha)
+            draw_rect_filled(LRBT(
                 cx - w // 2, cx + w // 2,
-                cy_lifted - h // 2, cy_lifted + h // 2,
-                bg_color
-            )
+                cy_lifted - int(h / 2), cy_lifted + int(h / 2),
+            ), bg_color)
 
             # Glowing Border
             if is_sel:
                 t = (math.sin(self._pulse * 4) + 1.0) / 2.0
                 pulse_val = int(200 + 55 * ease_out_cubic(t))
                 border_col = (boon["color"][0], boon["color"][1], boon["color"][2], min(alpha, pulse_val))
-                border_width = int(3 * card.scale)
+                border_width = max(1, int(3 * card.scale))
             else:
                 border_col = (70, 80, 110, alpha)
-                border_width = int(1 * card.scale)
-                
-            arcade.draw_lrbt_rectangle_outline(
+                border_width = max(1, int(1 * card.scale))
+
+            draw_rect_outline(LRBT(
                 cx - w // 2, cx + w // 2,
-                cy_lifted - h // 2, cy_lifted + h // 2,
-                border_col, border_width
-            )
+                cy_lifted - int(h / 2), cy_lifted + int(h / 2),
+            ), border_col, border_width)
 
             text_alpha = int(alpha * clamp(width_scale, 0.0, 1.0))
             if text_alpha <= 0:

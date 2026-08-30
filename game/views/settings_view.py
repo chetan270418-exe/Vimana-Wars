@@ -91,9 +91,26 @@ class SettingsView(arcade.View):
                 target.hud.reduced_flashes = self.reduced_flashes
 
         # Apply fullscreen to active window
-        if self.window:
-            if self.window.fullscreen != self.fullscreen:
-                self.window.set_fullscreen(self.fullscreen)
+        self._apply_fullscreen()
+
+    def _apply_fullscreen(self) -> None:
+        """Apply the display mode immediately and keep logical coordinates."""
+        if not self.window:
+            return
+        desired_fullscreen = bool(self.fullscreen)
+        try:
+            if self.window.fullscreen != desired_fullscreen:
+                self.window.set_fullscreen(desired_fullscreen)
+            # VimanaWindow reapplies this automatically; the fallback keeps
+            # the setting correct if another Arcade Window implementation is
+            # used by a test harness or packaged build.
+            apply_viewport = getattr(self.window, "_apply_logical_viewport", None)
+            if apply_viewport:
+                apply_viewport()
+        except Exception:
+            # Do not leave the UI claiming fullscreen if the OS rejects the
+            # mode switch (for example, a monitor with no usable mode).
+            self.fullscreen = bool(getattr(self.window, "fullscreen", False))
 
     def on_show_view(self) -> None:
         arcade.set_background_color(COLOR_BG)
@@ -221,6 +238,7 @@ class SettingsView(arcade.View):
 
         elif self._selected_row == 6:  # Fullscreen
             self.fullscreen = not self.fullscreen
+            self._apply_fullscreen()
 
     def on_joyhat_motion(self, joystick, hat_x, hat_y) -> None:
         if hat_y > 0:

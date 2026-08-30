@@ -111,6 +111,18 @@ ACHIEVEMENTS_LIST = [
         "desc": "Achieve a final score exceeding 25,000 points.",
         "icon": "🏆",
     },
+    {
+        "id": "cube_collector",
+        "name": "Astral Arsenal",
+        "desc": "Collect 10 ability cubes in a single run.",
+        "icon": "🔷",
+    },
+    {
+        "id": "overdrive_online",
+        "name": "Overdrive Online",
+        "desc": "Collect an Astra Overdrive cube and unleash rapid fire.",
+        "icon": "💗",
+    },
 ]
 
 

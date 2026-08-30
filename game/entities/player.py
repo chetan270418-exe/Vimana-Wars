@@ -71,6 +71,7 @@ class Player:
         self.shield_hits = 0
         self.spread_active = False
         self.speed_boosted = False
+        self.overdrive_active = False
         self.bomb_count = 0
 
         # Stats
@@ -78,6 +79,28 @@ class Player:
         self.total_score = 0
         self.sprite_name = "pushpaka.png"
         self.texture = AssetManager.texture(self.sprite_name)
+
+    def reset_input_state(self) -> None:
+        """Release all transient controls when changing overlays/views.
+
+        Arcade can change the active view while a key, mouse button, or
+        joystick axis is still physically held.  In that case the matching
+        release event may be delivered to the new view, leaving the player
+        moving or firing forever.  Treat every view transition as a fresh
+        input boundary.
+        """
+        self.keys_pressed.clear()
+        self.mouse_held = False
+        self.joy_dx = 0.0
+        self.joy_dy = 0.0
+        self.joy_aim_angle = None
+        self.vx = 0.0
+        self.vy = 0.0
+        self.is_dashing = False
+        self._dash_duration = 0.0
+        self._dash_vx = 0.0
+        self._dash_vy = 0.0
+        self._shoot_timer = 0.0
 
     def apply_ship_class(self, sdata: dict) -> None:
         self.max_hp = sdata["hp"]
@@ -260,7 +283,7 @@ class Player:
         if not self.mouse_held or self._shoot_timer > 0 or not self.alive or self.is_dashing:
             return []
 
-        self._shoot_timer = self.fire_rate_stat
+        self._shoot_timer = self.fire_rate_stat * (0.55 if self.overdrive_active else 1.0)
         self._recoil_dist = 4.0
         self.muzzle_flash_timer = 0.06
 
@@ -316,6 +339,8 @@ class Player:
             self.spread_active = True
         elif ptype == PowerUpType.SPEED:
             self.speed_boosted = True
+        elif ptype == PowerUpType.OVERDRIVE:
+            self.overdrive_active = True
 
     def _expire_powerup(self) -> None:
         from game.entities.powerup import PowerUpType
@@ -327,6 +352,8 @@ class Player:
                 self.spread_active = False
             elif t == PowerUpType.SPEED:
                 self.speed_boosted = False
+            elif t == PowerUpType.OVERDRIVE:
+                self.overdrive_active = False
         self.active_powerup = None
 
     def use_bomb(self) -> bool:
@@ -370,6 +397,13 @@ class Player:
         if self.shield_hits > 0:
             arcade.draw_circle_outline(self.x, self.y, self.radius + 12, COLOR_SHIELD, 2)
             arcade.draw_circle_filled(self.x, self.y, self.radius + 12, (60, 160, 255, 35))
+
+        # Overdrive reads as a hot-pink energy ring while active, making the
+        # temporary fire-rate boost obvious without covering the ship.
+        if self.overdrive_active:
+            pulse = 1.0 + 0.12 * math.sin(time.time() * 12.0)
+            arcade.draw_circle_outline(self.x, self.y, (self.radius + 15) * pulse,
+                                       (255, 70, 220, 210), 2)
 
     def _draw_ship_body(self, sx: float, sy: float, angle_deg: float, main_color: tuple) -> None:
         if AssetManager.draw(self.texture, sx, sy, self.radius * 3.0,

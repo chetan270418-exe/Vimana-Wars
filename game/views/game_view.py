@@ -78,6 +78,7 @@ class GameView(arcade.View):
             "near_misses": 0,
             "bombs_used": 0,
             "boons_claimed": 0,
+            "powerups_collected": 0,
             "synergies_activated": [],
             "bosses_defeated": [],
         }
@@ -170,13 +171,7 @@ class GameView(arcade.View):
         self.sound_manager.start_music()
         
         # Reset keys and mouse state to prevent getting stuck moving or firing after view switch
-        self.player.keys_pressed.clear()
-        self.player.mouse_held = False
-        self.player.joy_dx = 0.0
-        self.player.joy_dy = 0.0
-        self.player.vx = 0.0
-        self.player.vy = 0.0
-        self.player.is_dashing = False
+        self.player.reset_input_state()
         try:
             if hasattr(self.window, "_mouse_x") and self.window._mouse_x is not None:
                 self.player.mouse_x = self.window._mouse_x
@@ -187,8 +182,7 @@ class GameView(arcade.View):
     def on_key_press(self, key, modifiers) -> None:
         if key == arcade.key.ESCAPE:
             self.paused = not self.paused
-            self.player.keys_pressed.clear()
-            self.player.mouse_held = False
+            self.player.reset_input_state()
             return
 
         if self.paused:
@@ -676,6 +670,19 @@ class GameView(arcade.View):
 
         if summary["powerup_picked"]:
             self.sound_manager.play_powerup()
+            for index, ptype in enumerate(summary["powerup_picked"]):
+                self.combat_stats["powerups_collected"] += 1
+                name = getattr(ptype, "name", "ABILITY")
+                aura = summary.get("powerup_auras", [])
+                color = aura[index][2] if index < len(aura) else (255, 220, 80)
+                self.floating_texts.spawn_notification(
+                    self.player.x, self.player.y + 34,
+                    f"{name} BOOST!", color,
+                )
+                if self.combat_stats["powerups_collected"] >= 10:
+                    self.achievement_manager.check_unlock("cube_collector")
+                if name == "OVERDRIVE":
+                    self.achievement_manager.check_unlock("overdrive_online")
             if self.boon_manager.has_synergy("oceanic_surge"):
                 self.player.heal(15)
                 self.floating_texts.spawn_notification(self.player.x, self.player.y + 25, "+15 HP OCEANIC SURGE!", (80, 240, 255))

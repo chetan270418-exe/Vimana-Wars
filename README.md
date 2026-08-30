@@ -6,10 +6,11 @@
 
 ## 🎮 Key Features
 
-- **3 Distinct Ship Archetypes**:
+- **9 Distinct Ship Archetypes** (three starters plus six campaign unlocks):
   - 🪽 **Pushpaka**: Balanced celestial cruiser with all-round combat stats.
   - 🛡️ **Tripura**: Heavily armored dreadnought with increased hull HP and high-impact plasma cannons.
   - 🦅 **Garuda**: Hyper-agile vanguard vessel with twin dash charges, high fire rate, and nimble handling.
+  - ⚡ **Vajra Spear**, 🐍 **Naga Coil**, 🔥 **Agneyastra**, 🌙 **Soma Ark**, 💰 **Kubera Galleon**, and ☀️ **Surya Flare** unlock as you reach later campaign waves. Each uses its own Kenney CC0 ship sprite and combat profile.
 
 - **8 Roguelite Deva Boons & Blessing Upgrades**:
   - 🔥 **Agni's Solar Fury**: Burning damage-over-time that causes defeated foes to detonate in fiery explosions.
@@ -21,7 +22,7 @@
   - 💀 **Yama's Fatal Decree**: +60% critical execution damage against weakened enemies.
   - ☀️ **Surya's Radiant Pierce**: Every 7th shot fires a golden piercing solar slug.
 
-- **6 Asura Enemy Vessels & 2 Boss Battles**:
+- **6 Asura Enemy Vessels & 4 Boss Battles across 20 campaign waves**:
   - **Asura Chaser (Fast)**: Swarming vanguard scouts.
   - **Asura Brute (Tank)**: Armored heavy cruisers with visual hull cracking under damage.
   - **Asura Shooter (Ranged)**: Tactical spread gunships.
@@ -30,6 +31,16 @@
   - **Asura Sniper**: Long-range railgun snipers with telegraphed laser sights.
   - 🛡️ **Titan Kumbhakarna (Wave 5 Mini-Boss)**: Shockwave slams and ground pounds.
   - 👑 **Emperor Ravana (Wave 10 Boss)**: Multi-phase emperor fight with rotating spiral voids and fleet summons.
+  - 🐂 **Warlord Mahishasura (Wave 15 Mini-Boss)**: A charging late-campaign warlord with escalating pressure.
+  - ⚡ **Storm Serpent Vritra (Wave 20 Final Boss)**: The campaign's final multi-phase citadel guardian.
+
+- **Astral Ability Cubes**:
+  - Collect rotating 3D-style cubes during combat for Kavach shields, Agneyastra spread fire, Vayavyastra speed, Amrita healing, Brahmastra bombs, and Astra Overdrive rapid fire.
+  - Active effects are shown in the HUD, with pickup notifications and achievements for dedicated collectors.
+
+- **Campaign Progression & Achievements**:
+  - Seven connected realm nodes unlock through campaign progress, with nine warships gated by wave milestones.
+  - Trophy cabinet tracks combat, bosses, boon mastery, ability-cube collection, ship mastery, and full-campaign clears.
 
 - **Polished Combat Juice & Visuals**:
   - 🌌 Parallax cosmic background with drifting mythological realms.
@@ -41,6 +52,7 @@
   - 🎵 CC0 combat soundtrack (*HydroGene via OpenGameArt.org*).
   - 🔊 Built-in procedural audio synthesizer for fallback sound generation.
   - 🎚️ Independent SFX and Music volume sliders in settings.
+  - 🚨 Boss warning, roar, wave-clear, dodge, synergy, pickup, and UI feedback cues.
 
 - **Global Online Leaderboard**:
   - REST API built with Flask + SQLite (`backend/app.py`).
@@ -89,7 +101,7 @@ python backend/app.py
 
 ## 🧪 Running Automated Tests
 
-Run the full 33-test suite with `pytest`:
+Run the full automated test suite with `pytest`:
 ```bash
 python -m pytest
 ```

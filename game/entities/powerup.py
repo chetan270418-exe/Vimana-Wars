@@ -11,7 +11,8 @@ from constants import (
     POWERUP_RADIUS,
     SHIELD_DURATION, SPREAD_DURATION, SPEED_DURATION,
     COLOR_POWERUP_SHIELD, COLOR_POWERUP_SPREAD, COLOR_POWERUP_SPEED,
-    COLOR_POWERUP_HEALTH, COLOR_POWERUP_BOMB, COLOR_WHITE,
+    COLOR_POWERUP_HEALTH, COLOR_POWERUP_BOMB, COLOR_POWERUP_OVERDRIVE,
+    COLOR_WHITE,
 )
 
 
@@ -21,6 +22,7 @@ class PowerUpType(Enum):
     SPEED  = auto()   # Vayavyastra — +60% speed for 6s
     HEALTH = auto()   # Amrita — instant +30 HP
     BOMB   = auto()   # Brahmastra — clear all enemies on screen
+    OVERDRIVE = auto()  # Astra Overdrive — rapid fire for 8s
 
 
 # Duration in seconds for each timed type (instant types use 0)
@@ -30,6 +32,7 @@ _DURATIONS = {
     PowerUpType.SPEED:  SPEED_DURATION,
     PowerUpType.HEALTH: 0.0,
     PowerUpType.BOMB:   0.0,
+    PowerUpType.OVERDRIVE: 8.0,
 }
 
 _COLORS = {
@@ -38,6 +41,7 @@ _COLORS = {
     PowerUpType.SPEED:  COLOR_POWERUP_SPEED,
     PowerUpType.HEALTH: COLOR_POWERUP_HEALTH,
     PowerUpType.BOMB:   COLOR_POWERUP_BOMB,
+    PowerUpType.OVERDRIVE: COLOR_POWERUP_OVERDRIVE,
 }
 
 _LABELS = {
@@ -46,6 +50,7 @@ _LABELS = {
     PowerUpType.SPEED:  "VAY",   # Vayavyastra
     PowerUpType.HEALTH: "AMR",   # Amrita
     PowerUpType.BOMB:   "BRM",   # Brahmastra
+    PowerUpType.OVERDRIVE: "OVR",  # Astra Overdrive
 }
 
 
@@ -128,9 +133,43 @@ class PowerUp:
             dy = self.y + math.sin(ang) * (self.radius + 8)
             arcade.draw_circle_filled(dx, dy, 2.5, (255, 255, 255, 200))
 
-        # 4. Core Orb & Rune Label
-        arcade.draw_circle_filled(self.x, self.y, self.radius, self._color)
-        arcade.draw_circle_outline(self.x, self.y, self.radius, COLOR_WHITE, 2)
+        # 4. Rotating 3D-looking astral cube. The faces make pickups readable
+        # even in a busy bullet field and give every ability a collectible,
+        # game-like silhouette instead of another plain orb.
+        half = self.radius * 0.72
+        depth = 7.0
+        front_center = (self.x, self.y)
+        back_center = (self.x + depth * 0.75, self.y + depth * 0.55)
+        angle = math.radians(rot)
+
+        def diamond(center, size):
+            cx, cy = center
+            return [
+                (cx + math.cos(angle + math.pi / 2) * size,
+                 cy + math.sin(angle + math.pi / 2) * size),
+                (cx + math.cos(angle) * size,
+                 cy + math.sin(angle) * size),
+                (cx + math.cos(angle - math.pi / 2) * size,
+                 cy + math.sin(angle - math.pi / 2) * size),
+                (cx + math.cos(angle + math.pi) * size,
+                 cy + math.sin(angle + math.pi) * size),
+            ]
+
+        front = diamond(front_center, half)
+        back = diamond(back_center, half * 0.88)
+        face_colors = (
+            (min(255, r + 35), min(255, g + 35), min(255, b + 35), 235),
+            (max(0, r - 25), max(0, g - 25), max(0, b - 25), 235),
+            (max(0, r - 45), max(0, g - 45), max(0, b - 45), 235),
+            (min(255, r + 15), min(255, g + 15), min(255, b + 15), 235),
+        )
+        for i in range(4):
+            arcade.draw_polygon_filled([front[i], front[(i + 1) % 4],
+                                        back[(i + 1) % 4], back[i]], face_colors[i])
+        arcade.draw_polygon_filled(front, (*self._color, 245))
+        for i in range(4):
+            arcade.draw_line(front[i][0], front[i][1], back[i][0], back[i][1], COLOR_WHITE, 1)
+            arcade.draw_line(front[i][0], front[i][1], front[(i + 1) % 4][0], front[(i + 1) % 4][1], COLOR_WHITE, 1)
 
         arcade.draw_text(
             self._label,
