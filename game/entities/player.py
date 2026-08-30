@@ -119,16 +119,16 @@ class Player:
 
     # ── Per-frame update with delta_time physics ─────────────────────────
 
-    def update(self, delta_time: float) -> None:
+    def update(self, delta_time: float, keyboard_state=None) -> None:
         if not self.alive:
             return
 
-        self._update_movement(delta_time)
+        self._update_movement(delta_time, keyboard_state=keyboard_state)
         self._update_aim()
         self._update_timers(delta_time)
         self._update_afterimages(delta_time)
 
-    def _update_movement(self, delta_time: float) -> None:
+    def _update_movement(self, delta_time: float, keyboard_state=None) -> None:
         # Dash state physics
         if self.is_dashing:
             self.x += self._dash_vx * delta_time
@@ -149,10 +149,21 @@ class Player:
         # Target input direction
         inp_x, inp_y = 0.0, 0.0
         k = self.keys_pressed
-        if arcade.key.W in k or arcade.key.UP    in k: inp_y += 1
-        if arcade.key.S in k or arcade.key.DOWN  in k: inp_y -= 1
-        if arcade.key.A in k or arcade.key.LEFT  in k: inp_x -= 1
-        if arcade.key.D in k or arcade.key.RIGHT in k: inp_x += 1
+        
+        def _is_down(key):
+            if key in k:
+                return True
+            if keyboard_state:
+                try:
+                    return bool(keyboard_state[key])
+                except Exception:
+                    pass
+            return False
+
+        if _is_down(arcade.key.W) or _is_down(arcade.key.UP):    inp_y += 1
+        if _is_down(arcade.key.S) or _is_down(arcade.key.DOWN):  inp_y -= 1
+        if _is_down(arcade.key.A) or _is_down(arcade.key.LEFT):  inp_x -= 1
+        if _is_down(arcade.key.D) or _is_down(arcade.key.RIGHT): inp_x += 1
 
         if abs(self.joy_dx) > 0.15: inp_x += self.joy_dx
         if abs(self.joy_dy) > 0.15: inp_y += self.joy_dy

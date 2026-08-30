@@ -439,8 +439,17 @@ class GameView(arcade.View):
 
         was_dashing = getattr(self, "_was_dashing", False)
 
+        # Hardware mouse safety check to eliminate stuck firing
+        try:
+            if hasattr(self.window, "mouse") and self.window.mouse:
+                if not bool(self.window.mouse[arcade.MOUSE_BUTTON_LEFT]):
+                    self.player.mouse_held = False
+        except Exception:
+            pass
+
         # Player & Passives
-        self.player.update(delta_time)
+        kb = getattr(self.window, "keyboard", None)
+        self.player.update(delta_time, keyboard_state=kb)
         self.boon_manager.update_passives(delta_time, self.player)
         self.hud.update(delta_time, self.player)
 
@@ -593,6 +602,7 @@ class GameView(arcade.View):
                 from game.views.boon_select_view import BoonSelectView
                 choices = self.boon_manager.get_random_choices(3)
                 if choices:
+                    self.player.reset_input_state()
                     self.window.show_view(BoonSelectView(self, choices))
                     return
 

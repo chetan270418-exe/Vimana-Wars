@@ -142,6 +142,7 @@ class NameEntryView(arcade.View):
             level_reached=self.wave,
             difficulty=self.difficulty,
             ship_class=self.ship_class,
+            stats={**self.stats, "kills": self.kills},
             on_complete=_on_done
         )
 
@@ -170,6 +171,8 @@ class NameEntryView(arcade.View):
                 ship_class=self.ship_class,
                 campaign_cleared=self.is_victory,
             )
+            from game.systems.leaderboard_client import leaderboard_client
+            leaderboard_client.push_profile()
             transition_to(self.window, GameOverView(
                 score=self.score,
                 wave=self.wave,

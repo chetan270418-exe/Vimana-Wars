@@ -57,6 +57,9 @@
 - **Global Online Leaderboard**:
   - REST API built with Flask + SQLite (`backend/app.py`).
   - Asynchronous score submission and top leaderboard viewer.
+  - Optional email login/registration from the in-game **ACCOUNT** screen.
+  - Stable `VMN-XXXXXXXX` Game IDs attach authenticated scores to one player;
+    offline guest play remains available.
 
 ---
 
@@ -96,6 +99,16 @@ In a separate terminal window:
 ```bash
 python backend/app.py
 ```
+
+The game shows **GUEST MODE** until the backend is running and an account is
+linked from **Main Menu → ACCOUNT**. After registration, the local session is
+remembered between launches and authenticated leaderboard scores use the
+displayed Game ID.
+
+For production hosting, deploy `backend.app:app` with Gunicorn and provide a
+managed PostgreSQL `DATABASE_URL`. The included `render.yaml` is a starting
+point for HTTPS-hosted deployment; configure the game’s `LEADERBOARD_API_URL`
+to the resulting HTTPS API URL before releasing a build.
 
 ---
 

@@ -86,13 +86,15 @@ class MenuView(arcade.View):
             "VIMANA VITALS", 24, 535, GOLD_BRIGHT, font_size=10, bold=True,
             anchor_x="left", anchor_y="center",
         )
+        account_label = saved.get("game_id")
+        sync_text = f"ACCOUNT LINKED\n{account_label}" if account_label else "GUEST MODE\nOFFLINE"
         self._sync = arcade.Text(
-            "ASTRAL SYNC\nACTIVE", 820, 557, CYAN_BRIGHT, font_size=8,
+            sync_text, 820, 557, CYAN_BRIGHT if account_label else MUTED, font_size=8,
             bold=True, anchor_x="right", anchor_y="center",
         )
 
         button_x = 108
-        button_y = 390
+        button_y = 405
         button_gap = 39
         button_data = [
             ("PLAY", "play", COLOR_SCORE),
@@ -101,6 +103,7 @@ class MenuView(arcade.View):
             ("LIFETIME STATS", "stats", (255, 200, 100)),
             ("ACHIEVEMENTS", "achievements", (255, 170, 80)),
             ("CODEX", "codex", (100, 240, 190)),
+            ("ACCOUNT", "account", (116, 245, 255)),
             ("SETTINGS", "settings", (190, 200, 220)),
             ("QUIT", "quit", (255, 90, 100)),
         ]
@@ -112,6 +115,14 @@ class MenuView(arcade.View):
     def on_show_view(self) -> None:
         arcade.set_background_color(COLOR_BG)
         SoundManager.stop_music()
+        saved = save_system.load()
+        game_id = saved.get("game_id")
+        self._sync.text = f"ACCOUNT LINKED\n{game_id}" if game_id else "GUEST MODE\nOFFLINE"
+        self._sync.color = CYAN_BRIGHT if game_id else MUTED
+        self._high_score.text = (
+            f"LOCAL BEST  {saved.get('high_score', 0):,}   •   LAST MODE  "
+            f"{saved.get('difficulty', 'normal').upper()}"
+        )
 
     def on_update(self, delta_time: float) -> None:
         TransitionOverlay.update(delta_time)
@@ -196,6 +207,9 @@ class MenuView(arcade.View):
         elif action == "codex":
             from game.views.codex_view import CodexView
             transition_to(self.window, CodexView(return_view=self))
+        elif action == "account":
+            from game.views.account_view import AccountView
+            transition_to(self.window, AccountView(return_view=self))
         elif action == "stats":
             from game.views.stats_view import StatsView
             transition_to(self.window, StatsView(return_view=self))
@@ -249,6 +263,8 @@ class MenuView(arcade.View):
             self._activate("achievements")
         elif key == arcade.key.O:
             self._activate("settings")
+        elif key == arcade.key.P:
+            self._activate("account")
         elif key == arcade.key.ESCAPE:
             arcade.exit()
 

@@ -17,6 +17,10 @@ _DEFAULTS = {
     "last_wave":     0,
     "difficulty":    "normal",   # "easy" | "normal" | "hard" | "endless"
     "last_ship":     "pushpaka",
+    # Online identity is optional; guest play remains available offline.
+    "auth_token":    "",
+    "game_id":       "",
+    "account_email": "",
     "last_realm":    1,
     "realm_unlock_seen": [],
     "total_kills":   0,
@@ -38,6 +42,14 @@ _DEFAULTS = {
     "endless_high_wave":  0,
     "endless_high_score": 0,
 }
+
+_SYNC_KEYS = (
+    "player_name", "high_score", "last_wave", "difficulty", "last_ship",
+    "last_realm", "realm_unlock_seen", "total_kills", "games_played",
+    "total_damage", "best_combo", "total_boons", "bosses_defeated",
+    "playtime_seconds", "ships_mastered", "achievements", "endless_high_wave",
+    "endless_high_score",
+)
 
 
 def _ensure_dir() -> None:
@@ -67,6 +79,12 @@ def save(data: dict) -> None:
             json.dump(data, f, indent=2)
     except OSError:
         pass   # graceful degradation — never crash over a save failure
+
+
+def profile_for_sync(data: dict = None) -> dict:
+    """Return only safe gameplay state for authenticated cloud synchronization."""
+    source = data if data is not None else load()
+    return {key: source.get(key, _DEFAULTS.get(key)) for key in _SYNC_KEYS}
 
 
 def update_after_game(score: int, wave: int, kills: int,

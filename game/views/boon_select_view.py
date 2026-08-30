@@ -11,9 +11,7 @@ from game.ui.easing import ease_out_back, ease_out_cubic, lerp, clamp
 from game.ui.tween import TweenManager, Tween
 from game.ui.transitions import transition_to, TransitionOverlay
 from game.systems.sound_manager import SoundManager
-# Low-level draw primitives that don't have any of the convenience-layer
-# surprises (alpha parsing, rect-validation, etc.) that can silently make
-# cards invisible on some arcade versions / GPU drivers.
+from game.ui.vedic_theme import draw_chamfered_panel, draw_corner_etching
 from arcade import draw_rect_filled, draw_rect_outline, LRBT
 
 
@@ -206,30 +204,27 @@ class BoonSelectView(arcade.View):
 
             alpha = int(clamp(card.alpha, 0.0, 255.0))
 
-            # Card Background — always use 4-tuple color for consistent alpha
-            if is_sel:
-                bg_color = (35, 45, 80, alpha)
-            else:
-                bg_color = (25, 30, 55, alpha)
-            draw_rect_filled(LRBT(
-                cx - w // 2, cx + w // 2,
-                cy_lifted - int(h / 2), cy_lifted + int(h / 2),
-            ), bg_color)
+            # Card Background & Glowing Chamfered Border (Vedic-Punk theme)
+            l = cx - int(w / 2)
+            r = cx + int(w / 2)
+            b = cy_lifted - int(h / 2)
+            t = cy_lifted + int(h / 2)
 
-            # Glowing Border
             if is_sel:
-                t = (math.sin(self._pulse * 4) + 1.0) / 2.0
-                pulse_val = int(200 + 55 * ease_out_cubic(t))
+                pulse_t = (math.sin(self._pulse * 4) + 1.0) / 2.0
+                pulse_val = int(200 + 55 * ease_out_cubic(pulse_t))
                 border_col = (boon["color"][0], boon["color"][1], boon["color"][2], min(alpha, pulse_val))
-                border_width = max(1, int(3 * card.scale))
+                border_w = max(2, int(3 * card.scale))
+                fill_col = (35, 45, 80)
             else:
                 border_col = (70, 80, 110, alpha)
-                border_width = max(1, int(1 * card.scale))
+                border_w = max(1, int(1 * card.scale))
+                fill_col = (20, 26, 40)
 
-            draw_rect_outline(LRBT(
-                cx - w // 2, cx + w // 2,
-                cy_lifted - int(h / 2), cy_lifted + int(h / 2),
-            ), border_col, border_width)
+            draw_chamfered_panel(l, r, b, t, accent=border_col, fill=fill_col,
+                                 alpha=alpha, border_width=border_w, selected=is_sel, cut=12)
+            draw_corner_etching(l + 4, r - 4, b + 4, t - 4, color=boon["color"],
+                                length=14, alpha=int(min(140, alpha * 0.75)))
 
             text_alpha = int(alpha * clamp(width_scale, 0.0, 1.0))
             if text_alpha <= 0:

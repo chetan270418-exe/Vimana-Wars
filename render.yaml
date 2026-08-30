@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: vimana-wars-api
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --bind 0.0.0.0:$PORT backend.app:app
+    healthCheckPath: /
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: REQUIRE_EMAIL_VERIFICATION
+        value: "true"
+      - key: SHOW_DEV_AUTH_TOKENS
+        value: "false"

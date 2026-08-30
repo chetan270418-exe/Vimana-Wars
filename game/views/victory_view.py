@@ -135,6 +135,8 @@ class VictoryView(arcade.View):
                 ship_class=self.ship_class,
                 campaign_cleared=True,
             )
+            from game.systems.leaderboard_client import leaderboard_client
+            leaderboard_client.push_profile()
         except Exception:
             pass
         
