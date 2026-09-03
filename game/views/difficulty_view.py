@@ -9,6 +9,7 @@ from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_WAVE, COLOR_WHITE
 from game.systems import save_system
 from game.systems.sound_manager import SoundManager
 from game.ui.transitions import transition_to, TransitionOverlay
+from game.ui.vedic_theme import draw_menu_backdrop, draw_focus_panel
 
 _OPTIONS = ["easy", "normal", "hard", "endless"]
 _DESCRIPTIONS = {
@@ -83,8 +84,7 @@ class DifficultyView(arcade.View):
         self._pulse += delta_time
 
     def on_draw(self) -> None:
-        self.clear()
-
+        draw_menu_backdrop("SELECT GAMEPLAY MODE", "CHOOSE A SORTIE PROFILE", COLOR_WAVE, pulse=self._pulse)
         self._title.draw()
 
         for i, (opt, txt, desc) in enumerate(
@@ -98,12 +98,7 @@ class DifficultyView(arcade.View):
 
                 # Draw selection box
                 cy = int(HEIGHT * 0.68) - i * 62
-                arcade.draw_lrbt_rectangle_outline(
-                    WIDTH // 2 - 210, WIDTH // 2 + 210,
-                    cy - 26, cy + 26,
-                    (*_COLORS[opt], 220 if i == self._selected else 120),
-                    2 if i == self._selected else 1,
-                )
+                draw_focus_panel(WIDTH // 2 - 210, WIDTH // 2 + 210, cy - 26, cy + 26, _COLORS[opt], selected=i == self._selected)
                 if i == self._selected:
                     # Cursor
                     self._cursor.x = WIDTH // 2 - 220

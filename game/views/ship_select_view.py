@@ -13,7 +13,8 @@ from game.systems.asset_manager import AssetManager
 from game.ui.transitions import transition_to, TransitionOverlay
 from game.ui.vedic_theme import (
     GOLD, GOLD_BRIGHT, CYAN_BRIGHT, PARCHMENT, MUTED,
-    draw_chamfered_panel,
+    CYAN, draw_chamfered_panel, draw_scanlines, draw_telemetry_ticks,
+    pulse_alpha, draw_segmented_bar,
 )
 
 
@@ -32,6 +33,7 @@ class ShipSelectView(arcade.View):
         last_ship = saved.get("last_ship", "pushpaka")
         self._last_ship = last_ship
         self._last_wave = max(0, int(saved.get("last_wave", 0)))
+        self._reduced_flashes = bool(saved.get("reduced_flashes", False))
         self._selected = _SHIPS.index(last_ship) if last_ship in _SHIPS and self._is_unlocked(last_ship) else 0
         self._hovered = -1
         self._pulse = 0.0
@@ -50,7 +52,7 @@ class ShipSelectView(arcade.View):
             anchor_x="center", anchor_y="center",
         )
         self._hint = arcade.Text(
-            "← → or A / D : Select   •   ENTER / SPACE : Deploy   •   ESC : Back",
+            "← → or A / D : Select   •   ENTER / SPACE : DEPLOY VIMANA   •   ESC : Back",
             WIDTH // 2, 35,
             MUTED, font_size=11, bold=True,
             anchor_x="center"
@@ -65,6 +67,16 @@ class ShipSelectView(arcade.View):
 
     def on_draw(self) -> None:
         self.clear()
+        arcade.draw_lrbt_rectangle_filled(0, WIDTH, 0, HEIGHT, (7, 10, 19))
+        draw_scanlines(0, WIDTH, 52, HEIGHT - 42, CYAN, spacing=24, alpha=7)
+        draw_telemetry_ticks(32, WIDTH - 32, HEIGHT - 112, GOLD, count=21, height=4, alpha=55)
+        draw_telemetry_ticks(32, WIDTH - 32, 70, CYAN, count=21, height=4, alpha=55)
+        arcade.draw_line(24, HEIGHT - 46, WIDTH - 24, HEIGHT - 46, (*GOLD, 85), 1)
+        arcade.draw_text("CELESTIAL ARMORY", 24, HEIGHT - 31, GOLD, font_size=8, bold=True)
+        arcade.draw_text(
+            f"DEPLOYMENT WAVE {self.start_wave:02d}  //  {self.difficulty.upper()}",
+            WIDTH - 24, HEIGHT - 31, MUTED, font_size=8, bold=True, anchor_x="right",
+        )
 
         self._title.draw()
         self._subtitle.draw()
@@ -95,6 +107,8 @@ class ShipSelectView(arcade.View):
             bg_col = ((34, 40, 72) if is_hovered and not is_sel else ((38, 48, 88) if is_sel else (28, 32, 60))) if unlocked else (18, 20, 32)
             border_col = sdata["accent"] if unlocked and (is_sel or is_hovered) else (70, 80, 110)
             border_w = 3 if is_sel else (2 if is_hovered else 1)
+            if is_sel and unlocked:
+                border_col = (*sdata["accent"][:3], pulse_alpha(self._pulse, 170, 255, 4.0, self._reduced_flashes))
             draw_chamfered_panel(
                 cx - card_w // 2, cx + card_w // 2,
                 cy - card_h // 2, cy + card_h // 2,
@@ -122,10 +136,14 @@ class ShipSelectView(arcade.View):
             # Vector Ship Preview
             preview_y = cy + 75
             if unlocked:
+                if is_sel:
+                    halo = 44 + 4 * math.sin(self._pulse * 3.0)
+                    arcade.draw_circle_outline(cx, preview_y, halo, (*sdata["accent"], 100), 2)
                 self._draw_ship_preview(cx, preview_y, ship_id, sdata["color"], sdata["accent"])
             else:
-                arcade.draw_text("🔒", cx, preview_y, (120, 125, 150), font_size=28,
-                                 anchor_x="center", anchor_y="center")
+                arcade.draw_lrbt_rectangle_outline(cx - 10, cx + 10, preview_y - 9, preview_y + 7, (110, 120, 145), 2)
+                arcade.draw_arc_outline(cx, preview_y + 7, 14, 14, (110, 120, 145), 0, 180, 2)
+                arcade.draw_circle_filled(cx, preview_y - 1, 2, (160, 170, 190))
 
             # Stat Bars
             self._draw_stat_bar("ARMOR / HP", sdata["hp"] / 160.0, cx, cy - 5, (220, 60, 60))
@@ -145,7 +163,7 @@ class ShipSelectView(arcade.View):
             if is_sel and unlocked:
                 pulse_val = int(200 + 55 * math.sin(self._pulse * 4))
                 arcade.draw_text(
-                    "▶ READY FOR LAUNCH ◀",
+                    "▶ DEPLOY VIMANA  [ENTER] ◀",
                     cx, cy - 170,
                     (255, 220, 50, pulse_val), font_size=10, bold=True, anchor_x="center"
                 )
@@ -226,10 +244,8 @@ class ShipSelectView(arcade.View):
 
     def _draw_stat_bar(self, label: str, frac: float, cx: float, cy: float, col: tuple) -> None:
         arcade.draw_text(label, cx - 100, cy, (160, 170, 190), font_size=8, bold=True)
-        bar_w = 90
-        arcade.draw_lrbt_rectangle_filled(cx + 10, cx + 10 + bar_w, cy - 1, cy + 7, (20, 20, 35))
-        arcade.draw_lrbt_rectangle_filled(cx + 10, cx + 10 + bar_w * min(1.0, frac), cy - 1, cy + 7, col)
-        arcade.draw_lrbt_rectangle_outline(cx + 10, cx + 10 + bar_w, cy - 1, cy + 7, (80, 90, 110), 1)
+        draw_segmented_bar(cx + 10, cx + 10 + 90, cy - 1, cy + 7,
+                            min(1.0, frac), col, segments=6, gap=2)
 
     def _draw_ship_preview(self, cx: float, cy: float, ship_id: str, col: tuple, acc: tuple) -> None:
         r = 24
@@ -238,7 +254,7 @@ class ShipSelectView(arcade.View):
         angle_rad = math.radians(90 + tilt)
 
         if AssetManager.draw(AssetManager.texture(SHIP_CLASSES[ship_id].get("sprite", "pushpaka.png")),
-                             cx, cy, 72, 72, angle=-tilt):
+                             cx, cy, 96, 96, angle=-tilt):
             return
 
         tip_x = cx + math.cos(angle_rad) * r * 1.8

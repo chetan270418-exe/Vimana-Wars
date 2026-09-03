@@ -15,7 +15,11 @@ from constants import (
     COLOR_POWERUP_OVERDRIVE,
 )
 from game.ui.easing import ease_out_cubic, ease_in_out_cubic, lerp, lerp_color, clamp
-from game.ui.vedic_theme import CYAN, GOLD, draw_chamfered_panel, draw_corner_etching
+from game.ui.vedic_theme import (
+    CYAN, GOLD, CYAN_BRIGHT, MUTED, RED_BRIGHT,
+    draw_chamfered_panel, draw_corner_etching, draw_scanlines,
+    draw_telemetry_ticks,
+)
 
 _POWERUP_COLORS = {
     "SHIELD": COLOR_POWERUP_SHIELD,
@@ -211,13 +215,21 @@ class HUD:
             self._label_tutorial.draw()
 
     def _draw_cockpit_frame(self) -> None:
-        """Persistent low-contrast frame matching the Stitch cockpit mockup."""
         draw_corner_etching(10, WIDTH - 10, 10, HEIGHT - 10, CYAN, length=28, alpha=62)
-        arcade.draw_line(245, HEIGHT - 70, WIDTH - 245, HEIGHT - 70,
-                         (*GOLD, 40), 1)
+        draw_scanlines(218, WIDTH - 218, HEIGHT - 88, HEIGHT - 70, CYAN, spacing=6, alpha=10)
+        draw_telemetry_ticks(245, WIDTH - 245, HEIGHT - 70, GOLD, count=17, height=3, alpha=54)
+        draw_telemetry_ticks(230, WIDTH - 230, 70, CYAN, count=19, height=3, alpha=42)
         arcade.draw_line(215, 70, 215, HEIGHT - 88, (*CYAN, 28), 1)
+        arcade.draw_text("PRANA TELEMETRY", 226, HEIGHT - 84, CYAN_BRIGHT, font_size=7, bold=True)
+        arcade.draw_text("ASTRA CONTROL // LIVE", WIDTH - 226, HEIGHT - 84, MUTED, font_size=7, bold=True, anchor_x="right")
 
     def _draw_hp_bar(self, player) -> None:
+        draw_chamfered_panel(12, _BAR_X + _BAR_W + 8, _BAR_Y - 5, _BAR_Y + _BAR_H + 7,
+                             (220, 80, 80) if player.hp / player.max_hp < 0.3 else CYAN,
+                             fill=(10, 16, 28), alpha=220, cut=7)
+        arcade.draw_text("PRANA / HULL INTEGRITY", _BAR_X + 6, _BAR_Y + _BAR_H + 9,
+                         MUTED, font_size=7, bold=True)
+        draw_telemetry_ticks(_BAR_X, _BAR_X + _BAR_W, _BAR_Y - 3, CYAN, count=9, height=2, alpha=55)
         frac_actual = clamp(player.hp / player.max_hp)
         frac_display = clamp(self._displayed_hp / player.max_hp)
         frac_ghost = clamp(self._ghost_hp / player.max_hp)
@@ -295,7 +307,7 @@ class HUD:
         if self._score_flash > 0:
             flash_scale = 1.0 + (0.06 if self.reduced_flashes else 0.15) * ease_out_cubic(self._score_flash)
             self._label_score.font_size = int(18 * flash_scale)
-            glow_a = int(80 * self._score_flash)
+            glow_a = int((24 if self.reduced_flashes else 80) * self._score_flash)
             arcade.draw_lrbt_rectangle_filled(
                 WIDTH - 200, WIDTH - 8,
                 HEIGHT - 32, HEIGHT - 8,
@@ -426,8 +438,11 @@ class HUD:
                 arcade.draw_text(sdata["name"][:9].upper(), sx + 35, syn_y - 4, sdata["color"], font_size=7, bold=True, anchor_x="center")
 
     def _draw_ability_meters(self, player) -> None:
-        draw_chamfered_panel(12, 174, 8, 62, CYAN, fill=(10, 16, 28),
-                             alpha=185, cut=8)
+        draw_chamfered_panel(12, 190, 8, 66, CYAN, fill=(10, 16, 28),
+                             alpha=220, cut=8)
+        arcade.draw_line(200, 12, WIDTH - 184, 12, (*CYAN, 42), 1)
+        arcade.draw_text("ASTRA CONTROL", 202, 51, CYAN_BRIGHT, font_size=7, bold=True)
+        arcade.draw_text("READY STATES", 202, 40, MUTED, font_size=7, bold=True)
         # Dash [SPACE]
         cx1, cy1, r1 = 38, 32, 16
         dash_ratio = player.dash_ratio
@@ -472,6 +487,13 @@ class HUD:
     def _draw_offscreen_radar(self, player, enemies: list, powerups: list) -> None:
         """Draws glowing directional threat arrows along screen edges for off-screen enemies and power-ups."""
         margin = 22
+        living = sum(1 for enemy in enemies if enemy.alive)
+        offscreen = sum(1 for enemy in enemies if enemy.alive and not (0 <= enemy.x <= WIDTH and 0 <= enemy.y <= HEIGHT))
+        radar_col = RED_BRIGHT if offscreen else CYAN_BRIGHT
+        arcade.draw_text("RADAR", WIDTH - 112, 54, MUTED, font_size=7, bold=True)
+        arcade.draw_text(f"THREATS {living:02d}", WIDTH - 112, 40, radar_col, font_size=8, bold=True)
+        if offscreen:
+            arcade.draw_text(f"OFF-SCREEN {offscreen:02d}", WIDTH - 112, 27, RED_BRIGHT, font_size=7, bold=True)
 
         # 1. Off-screen enemies (red chevrons / pointer triangles)
         for e in enemies:
@@ -506,7 +528,7 @@ class HUD:
         if frac < 0.28 and player.alive:
             # Smooth eased pulse instead of raw sin()
             pulse_t = ease_in_out_cubic(clamp((math.sin(self._pulse_timer * 5.0) + 1.0) * 0.5))
-            alpha = int(lerp(30, 90, pulse_t))
+            alpha = int(lerp(12, 36, pulse_t)) if self.reduced_flashes else int(lerp(30, 90, pulse_t))
             # Red screen border vignette — thicker at lower HP
             border_w = int(lerp(4, 12, 1.0 - frac / 0.28))
             arcade.draw_lrbt_rectangle_outline(
@@ -520,7 +542,7 @@ class HUD:
 
         # Damage hit flash (from _hp_hit_flash)
         if self._hp_hit_flash > 0:
-            edge_a = int(50 * ease_out_cubic(self._hp_hit_flash))
+            edge_a = int(15 * ease_out_cubic(self._hp_hit_flash)) if self.reduced_flashes else int(50 * ease_out_cubic(self._hp_hit_flash))
             arcade.draw_lrbt_rectangle_outline(
                 2, WIDTH - 2, 2, HEIGHT - 2,
                 (255, 60, 40, edge_a), 6)

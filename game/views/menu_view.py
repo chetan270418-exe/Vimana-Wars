@@ -14,7 +14,7 @@ from game.ui.transitions import transition_to, TransitionOverlay
 from game.ui.vedic_theme import (
     OBSIDIAN, SURFACE_LOW, GOLD, GOLD_BRIGHT, CYAN, CYAN_BRIGHT,
     PARCHMENT, MUTED, draw_chamfered_panel, draw_corner_etching,
-    draw_segmented_bar,
+    draw_segmented_bar, draw_scanlines, draw_telemetry_ticks, pulse_alpha,
 )
 
 
@@ -30,10 +30,11 @@ class MenuView(arcade.View):
     def __init__(self):
         super().__init__()
         self._pulse = 0.0
-        self._hovered = -1
+        self._hovered = 0
         self.sound_manager = SoundManager()
 
         saved = save_system.load()
+        self._reduced_flashes = bool(saved.get("reduced_flashes", False))
         high_score = saved.get("high_score", 0)
         last_diff = saved.get("difficulty", "normal").upper()
         last_ship = saved.get("last_ship", "pushpaka")
@@ -55,7 +56,7 @@ class MenuView(arcade.View):
             anchor_x="left", anchor_y="center",
         )
         self._high_score = arcade.Text(
-            f"LOCAL BEST  {high_score:,}   •   LAST MODE  {last_diff}",
+            f"LOCAL BEST  {high_score:,}   •   LAST MODE  {last_diff}   •   LAST WAVE  {last_wave}",
             255, 455, (160, 220, 160), font_size=10, bold=True,
             anchor_x="left", anchor_y="center",
         )
@@ -75,7 +76,7 @@ class MenuView(arcade.View):
             anchor_x="center", anchor_y="center",
         )
         self._version = arcade.Text(
-            "VIMANA WARS // ASTRAL SYNC ONLINE", WIDTH - 12, 570,
+            "VIMANA WARS // OFFLINE CORE READY", WIDTH - 12, 570,
             (120, 130, 150), font_size=8, bold=True, anchor_x="right",
         )
         self._section = arcade.Text(
@@ -95,9 +96,10 @@ class MenuView(arcade.View):
 
         button_x = 108
         button_y = 405
-        button_gap = 39
+        button_gap = 34
         button_data = [
-            ("PLAY", "play", COLOR_SCORE),
+            ("START MISSION", "play", COLOR_SCORE),
+            ("MULTIPLAYER", "multiplayer", (100, 240, 190)),
             ("CAMPAIGN MAP", "map", (120, 210, 255)),
             ("LEADERBOARDS", "leaderboard", (170, 130, 255)),
             ("LIFETIME STATS", "stats", (255, 200, 100)),
@@ -117,11 +119,12 @@ class MenuView(arcade.View):
         SoundManager.stop_music()
         saved = save_system.load()
         game_id = saved.get("game_id")
+        self._reduced_flashes = bool(saved.get("reduced_flashes", False))
         self._sync.text = f"ACCOUNT LINKED\n{game_id}" if game_id else "GUEST MODE\nOFFLINE"
         self._sync.color = CYAN_BRIGHT if game_id else MUTED
         self._high_score.text = (
             f"LOCAL BEST  {saved.get('high_score', 0):,}   •   LAST MODE  "
-            f"{saved.get('difficulty', 'normal').upper()}"
+            f"{saved.get('difficulty', 'normal').upper()}   •   LAST WAVE  {saved.get('last_wave', 0)}"
         )
 
     def on_update(self, delta_time: float) -> None:
@@ -145,18 +148,23 @@ class MenuView(arcade.View):
             brightness = int(base + 18 * math.sin(self._pulse * 0.8 + sx * 0.01))
             arcade.draw_circle_filled(x, y, radius, (brightness, brightness, min(255, brightness + 15)))
 
-        # Hero illustration from the supplied Stitch mockup, with a dark glass
-        # scrim so menu text remains readable on every monitor.
+        draw_scanlines(221, WIDTH, 0, 548, CYAN, spacing=22, alpha=7)
         hero = AssetManager.texture("hero_vimana_wars.png")
-        AssetManager.draw(hero, 570, 315, 620, 414, color=(255, 255, 255, 100))
-        draw_chamfered_panel(235, 880, 145, 475, CYAN, fill=(9, 14, 25), alpha=145, cut=14)
+        hero_drift = 0.0 if self._reduced_flashes else math.sin(self._pulse * 0.55) * 3.0
+        AssetManager.draw(hero, 575, 312 + hero_drift, 630, 420, color=(255, 255, 255, 105))
+        draw_chamfered_panel(235, 880, 145, 475, CYAN, fill=(9, 14, 25), alpha=150, cut=14)
         draw_corner_etching(235, 880, 145, 475, GOLD, length=18, alpha=120)
+        draw_telemetry_ticks(260, 855, 165, CYAN, count=17, height=4, alpha=65)
 
-        # Subtle rotating celestial rings behind the hero.
-        ring_angle = self._pulse * 12.0
-        for radius, alpha in ((125, 24), (155, 14)):
+        ring_angle = 0.0 if self._reduced_flashes else self._pulse * 12.0
+        ring_alpha = pulse_alpha(self._pulse, 18, 38, 1.8, self._reduced_flashes)
+        for radius, alpha in ((125, ring_alpha), (155, max(10, ring_alpha // 2))):
             arcade.draw_arc_outline(570, 315, radius * 2, radius * 0.55,
                                     (100, 180, 255, alpha), ring_angle, ring_angle + 250, 2)
+        arcade.draw_circle_outline(570, 315, 54, (*GOLD, 34), 1)
+        arcade.draw_line(250, 414, 405, 414, (*CYAN, 80), 1)
+        arcade.draw_text("ACTIVE THEATER", 255, 395, CYAN_BRIGHT, font_size=8, bold=True)
+        arcade.draw_text("SWARGA APPROACH // LOCAL SORTIE", 255, 378, PARCHMENT, font_size=10, bold=True)
 
         self._title.draw()
         self._subtitle.draw()
@@ -168,8 +176,8 @@ class MenuView(arcade.View):
         # Vitals rail.
         self._vitals.draw()
         arcade.draw_text("PRANA", 24, 505, CYAN_BRIGHT, font_size=8, bold=True)
-        arcade.draw_text("108/108", 194, 505, PARCHMENT, font_size=8, bold=True, anchor_x="right")
-        draw_segmented_bar(24, 194, 493, 499, 1.0, CYAN, segments=8, gap=3)
+        arcade.draw_text(f"{last_ship_data['hp']}/{last_ship_data['hp']}", 194, 505, PARCHMENT, font_size=8, bold=True, anchor_x="right")
+        draw_segmented_bar(24, 194, 493, 499, min(1.0, last_ship_data['hp'] / 190), CYAN, segments=8, gap=3)
         arcade.draw_text("MANTRA", 24, 466, GOLD, font_size=8, bold=True)
         arcade.draw_text(f"{min(100, self._unlocked_realms * 14)}%", 194, 466, PARCHMENT, font_size=8, bold=True, anchor_x="right")
         draw_segmented_bar(24, 194, 454, 460, min(1.0, self._unlocked_realms / 7), GOLD, segments=8, gap=3)
@@ -201,6 +209,9 @@ class MenuView(arcade.View):
         elif action == "map":
             from game.views.realm_map_view import RealmMapView
             transition_to(self.window, RealmMapView())
+        elif action == "multiplayer":
+            from game.views.multiplayer_view import MultiplayerView
+            transition_to(self.window, MultiplayerView(return_view=self))
         elif action == "leaderboard":
             from game.views.leaderboard_view import LeaderboardView
             transition_to(self.window, LeaderboardView(return_view=self))
@@ -253,6 +264,8 @@ class MenuView(arcade.View):
             self._activate(self._buttons[index][1])
         elif key == arcade.key.M:
             self._activate("map")
+        elif key == arcade.key.N:
+            self._activate("multiplayer")
         elif key == arcade.key.L:
             self._activate("leaderboard")
         elif key == arcade.key.C:

@@ -10,6 +10,9 @@ from backend.app import app, init_db
 def client(tmp_path, monkeypatch):
     db_file = tmp_path / "test_leaderboard.db"
     monkeypatch.setattr("backend.app.DB_PATH", db_file)
+    from backend import app as backend_app
+    backend_app._rate_state.clear()
+    backend_app._lobbies.clear()
     app.config["TESTING"] = True
 
     with app.test_client() as client:
@@ -199,3 +202,36 @@ def test_score_sanity_validation(client):
         "score": 100, "level_reached": 1, "kills": -2,
     })
     assert impossible_stats.status_code == 422
+
+
+def test_multiplayer_lobby_lifecycle(client):
+    first = client.post("/auth/register", json={
+        "email": "host@example.com", "password": "celestial123", "player_name": "Host"
+    }).get_json()
+    second = client.post("/auth/register", json={
+        "email": "guest@example.com", "password": "celestial123", "player_name": "Wingman"
+    }).get_json()
+    host_headers = {"Authorization": f"Bearer {first['token']}"}
+    guest_headers = {"Authorization": f"Bearer {second['token']}"}
+
+    created = client.post("/multiplayer/lobbies", headers=host_headers, json={
+        "mode": "campaign", "max_players": 2, "ship_class": "garuda"
+    })
+    assert created.status_code == 201
+    lobby = created.get_json()["lobby"]
+    code = lobby["code"]
+    assert len(lobby["players"]) == 1
+
+    joined = client.post(f"/multiplayer/lobbies/{code}/join", headers=guest_headers, json={
+        "ship_class": "vajra"
+    })
+    assert joined.status_code == 200
+    assert len(joined.get_json()["lobby"]["players"]) == 2
+
+    assert client.post(f"/multiplayer/lobbies/{code}/ready", headers=host_headers,
+                       json={"ready": True}).status_code == 200
+    assert client.post(f"/multiplayer/lobbies/{code}/ready", headers=guest_headers,
+                       json={"ready": True}).status_code == 200
+    started = client.post(f"/multiplayer/lobbies/{code}/start", headers=host_headers)
+    assert started.status_code == 200
+    assert started.get_json()["lobby"]["status"] == "running"

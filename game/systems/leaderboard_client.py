@@ -161,6 +161,62 @@ class LeaderboardClient:
             "/auth/reset-password", {"token": token, "password": password}, on_complete
         )
 
+    def _multiplayer_request(self, method: str, endpoint: str,
+                             payload: dict | None = None, on_complete=None) -> None:
+        """Run lobby requests without blocking the Arcade render loop."""
+        headers = self._auth_headers()
+
+        def _worker():
+            success, error, body = False, None, {}
+            try:
+                resp = requests.request(
+                    method, f"{self.api_url}{endpoint}", json=payload,
+                    headers=headers, timeout=NETWORK_TIMEOUT,
+                )
+                body = resp.json() if resp.content else {}
+                if resp.status_code in (200, 201):
+                    success = True
+                else:
+                    error = body.get("error", f"Multiplayer request failed ({resp.status_code})")
+            except (requests.exceptions.RequestException, ValueError):
+                error = "Multiplayer server offline — campaign remains available"
+            if on_complete:
+                on_complete(success, error, body)
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def list_lobbies(self, on_complete=None) -> None:
+        self._multiplayer_request("GET", "/multiplayer/lobbies", on_complete=on_complete)
+
+    def create_lobby(self, mode="campaign", max_players=2,
+                     ship_class="pushpaka", on_complete=None) -> None:
+        self._multiplayer_request(
+            "POST", "/multiplayer/lobbies",
+            {"mode": mode, "max_players": max_players, "ship_class": ship_class},
+            on_complete,
+        )
+
+    def get_lobby(self, code: str, on_complete=None) -> None:
+        self._multiplayer_request("GET", f"/multiplayer/lobbies/{code}", on_complete=on_complete)
+
+    def join_lobby(self, code: str, ship_class="pushpaka", on_complete=None) -> None:
+        self._multiplayer_request(
+            "POST", f"/multiplayer/lobbies/{code}/join",
+            {"ship_class": ship_class}, on_complete,
+        )
+
+    def set_lobby_ready(self, code: str, ready=True, on_complete=None) -> None:
+        self._multiplayer_request(
+            "POST", f"/multiplayer/lobbies/{code}/ready",
+            {"ready": ready}, on_complete,
+        )
+
+    def start_lobby(self, code: str, on_complete=None) -> None:
+        self._multiplayer_request("POST", f"/multiplayer/lobbies/{code}/start", on_complete=on_complete)
+
+    def leave_lobby(self, code: str, on_complete=None) -> None:
+        self._multiplayer_request("POST", f"/multiplayer/lobbies/{code}/leave", on_complete=on_complete)
+
     def logout(self, on_complete=None) -> None:
         """Clear the local session even if the server is unreachable."""
         from game.systems import save_system

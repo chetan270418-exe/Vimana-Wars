@@ -4,6 +4,7 @@ from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_SCORE, COLOR_WHITE
 from game.systems import save_system
 from game.systems.achievement_system import ACHIEVEMENTS_LIST
 from game.ui.transitions import TransitionOverlay, transition_to
+from game.ui.vedic_theme import draw_menu_backdrop, draw_focus_panel
 
 
 class AchievementsView(arcade.View):
@@ -35,7 +36,7 @@ class AchievementsView(arcade.View):
         TransitionOverlay.update(delta_time)
 
     def on_draw(self):
-        self.clear()
+        draw_menu_backdrop("ACHIEVEMENT HALL", "CAMPAIGN RECORDS // SELECT A TROPHY FOR DETAILS", COLOR_SCORE)
         unlocked_count = len(self._unlocked.intersection({a["id"] for a in ACHIEVEMENTS_LIST}))
         self._title.text = f"ACHIEVEMENT HALL  •  {unlocked_count}/{len(ACHIEVEMENTS_LIST)} UNLOCKED"
         self._title.draw()
@@ -53,10 +54,8 @@ class AchievementsView(arcade.View):
             accent = COLOR_SCORE if is_unlocked else (85, 95, 125)
             if is_selected:
                 accent = (120, 220, 255)
-            arcade.draw_lrbt_rectangle_filled(cx - 180, cx + 180, cy - 32, cy + 32,
-                                              (24, 32, 58, 240) if is_unlocked else (16, 19, 32, 220))
-            arcade.draw_lrbt_rectangle_outline(cx - 180, cx + 180, cy - 32, cy + 32,
-                                               (*accent, 230), 2 if is_selected else 1)
+            draw_focus_panel(cx - 180, cx + 180, cy - 32, cy + 32, accent, selected=is_selected)
+
             icon = achievement["icon"] if is_unlocked else "🔒"
             arcade.draw_text(icon, cx - 158, cy, COLOR_WHITE if is_unlocked else (110, 115, 140),
                              font_size=18, anchor_x="center", anchor_y="center")

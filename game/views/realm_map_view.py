@@ -8,6 +8,7 @@ from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_SCORE, COLOR_WHITE, REALMS
 from game.systems import save_system
 from game.systems.sound_manager import SoundManager
 from game.ui.transitions import transition_to, TransitionOverlay
+from game.ui.vedic_theme import draw_menu_backdrop, draw_focus_panel
 
 
 REALM_ORDER = (1, 2, 3, 4, 5, 6, 7)
@@ -82,7 +83,7 @@ class RealmMapView(arcade.View):
         self._unlock_banner_timer = max(0.0, self._unlock_banner_timer - delta_time)
 
     def on_draw(self) -> None:
-        self.clear()
+        draw_menu_backdrop("CAMPAIGN REALM MAP", "CONNECTED ROUTE // SELECT AN UNLOCKED CHAPTER", COLOR_SCORE, pulse=self._pulse)
         for x, y, radius in self._stars:
             sx = (x + self._pulse * 3.0) % WIDTH
             brightness = int(100 + 35 * math.sin(self._pulse + x * 0.03))
@@ -111,6 +112,8 @@ class RealmMapView(arcade.View):
                 glow = int(25 + 20 * (math.sin(self._pulse * 3.0) + 1))
                 arcade.draw_circle_filled(x, y, radius + 12, (*realm["accent_color"], glow))
                 arcade.draw_circle_filled(x, y, radius, (20, 30, 60))
+                if active:
+                    arcade.draw_circle_outline(x, y, radius + 18, (*realm["accent_color"], 150), 2)
                 arcade.draw_circle_outline(x, y, radius, realm["accent_color"], 3 if active else 2)
                 arcade.draw_text(str(realm_id), x, y, realm["accent_color"],
                                  font_size=20, bold=True, anchor_x="center", anchor_y="center")
@@ -137,8 +140,7 @@ class RealmMapView(arcade.View):
 
         realm = REALMS[self._selected]
         unlocked_count = len(self._unlocked)
-        arcade.draw_lrbt_rectangle_filled(155, WIDTH - 155, 115, 205, (12, 18, 42, 230))
-        arcade.draw_lrbt_rectangle_outline(155, WIDTH - 155, 115, 205, (*realm["accent_color"], 180), 2)
+        draw_focus_panel(155, WIDTH - 155, 115, 205, realm["accent_color"], selected=True)
         arcade.draw_text(
             f"{realm['name']}  •  {realm['subtitle']}", WIDTH // 2, 182,
             realm["accent_color"], font_size=14, bold=True, anchor_x="center",

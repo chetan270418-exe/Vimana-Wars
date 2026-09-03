@@ -1,5 +1,7 @@
 """Small Arcade-native visual primitives for the Vedic-punk interface."""
+import math
 import arcade
+from constants import WIDTH, HEIGHT
 
 
 OBSIDIAN = (11, 13, 18)
@@ -13,6 +15,18 @@ RED = (191, 0, 54)
 RED_BRIGHT = (255, 107, 114)
 PARCHMENT = (208, 198, 171)
 MUTED = (143, 152, 168)
+GLASS_LOW = (*SURFACE_LOW, 217)
+GLASS_HIGH = (*SURFACE_HIGH, 235)
+HAIRLINE_GOLD = (*GOLD, 72)
+HAIRLINE_CYAN = (*CYAN, 58)
+
+
+def pulse_alpha(elapsed: float, low: int = 90, high: int = 190,
+                speed: float = 3.0, reduced: bool = False) -> int:
+    if reduced:
+        return low
+    phase = (math.sin(elapsed * speed) + 1.0) * 0.5
+    return int(low + (high - low) * phase)
 
 
 def _chamfer_points(left, right, bottom, top, cut=10):
@@ -74,3 +88,48 @@ def draw_segmented_bar(left, right, bottom, top, fraction, color=CYAN,
                 x1, x1 + segment_width * partial, bottom, top,
                 (*color[:3], 240),
             )
+
+
+def draw_scanlines(left: float, right: float, bottom: float, top: float,
+                   color=CYAN, spacing: int = 18, alpha: int = 12) -> None:
+    y = bottom + spacing
+    while y < top:
+        arcade.draw_line(left, y, right, y, (*color[:3], alpha), 1)
+        y += spacing
+
+
+def draw_telemetry_ticks(left: float, right: float, y: float, color=CYAN,
+                         count: int = 12, height: float = 5,
+                         alpha: int = 80) -> None:
+    if count < 2:
+        return
+    step = (right - left) / (count - 1)
+    arcade.draw_line(left, y, right, y, (*color[:3], alpha // 2), 1)
+    for index in range(count):
+        tick_height = height * (1.5 if index in (0, count - 1) else 1.0)
+        x = left + index * step
+        arcade.draw_line(x, y - tick_height, x, y + tick_height,
+                         (*color[:3], alpha), 1)
+
+
+def draw_menu_backdrop(title: str, subtitle: str = "", accent=GOLD,
+                       *, pulse: float = 0.0, reduced: bool = False) -> None:
+    arcade.draw_lrbt_rectangle_filled(0, WIDTH, 0, HEIGHT, OBSIDIAN)
+    draw_scanlines(24, WIDTH - 24, 58, HEIGHT - 58, CYAN, spacing=24, alpha=6)
+    draw_corner_etching(24, WIDTH - 24, 24, HEIGHT - 24, accent, length=22, alpha=105)
+    arcade.draw_line(24, HEIGHT - 74, WIDTH - 24, HEIGHT - 74, (*accent, 105), 1)
+    arcade.draw_text(title, 42, HEIGHT - 52, accent, font_size=22, bold=True)
+    if subtitle:
+        arcade.draw_text(subtitle, 42, HEIGHT - 68, MUTED, font_size=8, bold=True)
+    if not reduced:
+        alpha = pulse_alpha(pulse, 12, 30, 1.7)
+        arcade.draw_circle_outline(WIDTH - 100, HEIGHT - 50, 28, (*accent, alpha), 1)
+        arcade.draw_line(WIDTH - 132, HEIGHT - 50, WIDTH - 68, HEIGHT - 50, (*accent, alpha), 1)
+
+
+def draw_focus_panel(left: float, right: float, bottom: float, top: float,
+                     accent=CYAN, *, selected: bool = False) -> None:
+    draw_chamfered_panel(left, right, bottom, top, accent,
+                         fill=SURFACE_HIGH if selected else SURFACE_LOW,
+                         alpha=238, border_width=2 if selected else 1,
+                         selected=selected, cut=10)

@@ -4,6 +4,12 @@ This is the implementation guide for the visual overhaul supplied in
 `stitch_vimana_wars_visual_overhaul.zip`. It translates the Stitch web mockup
 into the existing Python Arcade game rather than copying HTML/Tailwind.
 
+The implemented UI pass lives in `game/ui/vedic_theme.py`, `game/ui/hud.py`,
+`game/ui/boss_bar.py`, `game/ui/menu_button.py`, `game/views/menu_view.py`,
+`game/views/ship_select_view.py`, and `game/views/stats_view.py`. The generated
+PV and design references are tracked in the workspace root and catalogued in
+`assets/design/README.md`.
+
 ## Visual direction
 
 Vimana Wars is a celestial war console: deep obsidian surfaces, sacred
@@ -45,6 +51,10 @@ The UI should feel like a holographic cockpit projected over a cosmic void.
   frame, telemetry lines, segmented status bars, and a bottom Astra strip.
 - **Settings and pause:** reuse the same glass/chamfered controls and preserve
   keyboard, mouse, and controller navigation.
+- **Multiplayer / Sangha Network:** split the screen into an "Open Wings"
+  lobby list and a right-side command panel. Use cyan for connected/ready
+  players, gold for the selected lobby code, red for unavailable actions, and
+  keep the player Game ID visible so invitations are unambiguous.
 
 ## Motion and feedback
 
@@ -64,3 +74,6 @@ The UI should feel like a holographic cockpit projected over a cosmic void.
   fallbacks must both work offline.
 - Keep gameplay input isolated from overlay views; every gameplay return path
   calls `Player.reset_input_state()`.
+- Treat the HTTP multiplayer layer as lobby/matchmaking only. Live movement,
+  combat, and authoritative state must use a real-time transport in a later
+  game-server layer.

@@ -214,6 +214,8 @@ def index():
             "GET /account/profile": "Get cloud-synced progression and achievements",
             "PUT /account/profile": "Sync cloud-saved progression and achievements",
             "GET /account/stats": "Get personal online gameplay statistics",
+            "GET /multiplayer/lobbies": "Browse active multiplayer lobbies",
+            "POST /multiplayer/lobbies": "Create a multiplayer lobby",
             "GET /scores/stats": "Global gameplay metrics",
         }
     })
@@ -268,6 +270,33 @@ def _profile_from_payload(value) -> dict:
     # Prevent a malformed client from creating unbounded profile data.
     encoded = json.dumps(profile, separators=(",", ":"))
     return profile if len(encoded) <= 100_000 else {}
+
+
+# Multiplayer lobby state is intentionally ephemeral. It is suitable for a
+# first lobby/matchmaking layer; live combat state belongs in a WebSocket or
+# dedicated game server and should not be stored in this request database.
+_lobbies = {}
+_lobbies_lock = threading.Lock()
+
+
+def _new_lobby_code() -> str:
+    with _lobbies_lock:
+        while True:
+            code = secrets.token_hex(3).upper()
+            if code not in _lobbies:
+                return code
+
+
+def _lobby_payload(lobby: dict) -> dict:
+    return {
+        "code": lobby["code"],
+        "mode": lobby["mode"],
+        "max_players": lobby["max_players"],
+        "status": lobby["status"],
+        "host_game_id": lobby["host_game_id"],
+        "players": list(lobby["players"].values()),
+        "created_at": lobby["created_at"],
+    }
 
 
 def _password_hash(password: str) -> str:
@@ -527,6 +556,141 @@ def _require_user():
     if user is None:
         return None, (jsonify({"error": "Authentication required"}), 401)
     return user, None
+
+
+def _lobby_player(user, ship_class="pushpaka", ready=False, host=False):
+    return {
+        "game_id": user["game_id"],
+        "player_name": user["player_name"],
+        "ship_class": ship_class if ship_class in _SHIP_IDS else "pushpaka",
+        "ready": bool(ready),
+        "host": bool(host),
+    }
+
+
+def _cleanup_lobbies() -> None:
+    cutoff = time.time() - 30 * 60
+    expired = [code for code, lobby in _lobbies.items() if lobby["created_at"] < cutoff]
+    for code in expired:
+        _lobbies.pop(code, None)
+
+
+@app.route("/multiplayer/lobbies", methods=["GET", "POST"])
+def multiplayer_lobbies():
+    if request.method == "GET":
+        with _lobbies_lock:
+            _cleanup_lobbies()
+            return jsonify({"lobbies": [_lobby_payload(lobby) for lobby in _lobbies.values()]})
+
+    user, error = _require_user()
+    if error:
+        return error
+    data = request.get_json(silent=True) or {}
+    mode = str(data.get("mode", "campaign")).lower()
+    if mode not in ("campaign", "endless"):
+        mode = "campaign"
+    try:
+        max_players = min(4, max(2, int(data.get("max_players", 2))))
+    except (TypeError, ValueError):
+        max_players = 2
+    ship_class = str(data.get("ship_class", "pushpaka")).lower()
+    code = _new_lobby_code()
+    host = _lobby_player(user, ship_class, ready=False, host=True)
+    lobby = {
+        "code": code, "mode": mode, "max_players": max_players,
+        "status": "waiting", "host_game_id": user["game_id"],
+        "players": {user["game_id"]: host}, "created_at": time.time(),
+    }
+    with _lobbies_lock:
+        _lobbies[code] = lobby
+    return jsonify({"lobby": _lobby_payload(lobby)}), 201
+
+
+@app.route("/multiplayer/lobbies/<code>", methods=["GET"])
+def get_multiplayer_lobby(code):
+    user, error = _require_user()
+    if error:
+        return error
+    with _lobbies_lock:
+        lobby = _lobbies.get(code.upper())
+        if lobby is None:
+            return jsonify({"error": "Lobby not found or expired"}), 404
+        if user["game_id"] not in lobby["players"]:
+            return jsonify({"error": "Join this lobby to view its private status"}), 403
+        return jsonify({"lobby": _lobby_payload(lobby)})
+
+
+@app.route("/multiplayer/lobbies/<code>/join", methods=["POST"])
+def join_multiplayer_lobby(code):
+    user, error = _require_user()
+    if error:
+        return error
+    data = request.get_json(silent=True) or {}
+    ship_class = str(data.get("ship_class", "pushpaka")).lower()
+    with _lobbies_lock:
+        lobby = _lobbies.get(code.upper())
+        if lobby is None:
+            return jsonify({"error": "Lobby not found or expired"}), 404
+        if lobby["status"] != "waiting":
+            return jsonify({"error": "Lobby has already started"}), 409
+        if user["game_id"] not in lobby["players"] and len(lobby["players"]) >= lobby["max_players"]:
+            return jsonify({"error": "Lobby is full"}), 409
+        lobby["players"][user["game_id"]] = _lobby_player(user, ship_class)
+        return jsonify({"lobby": _lobby_payload(lobby)})
+
+
+@app.route("/multiplayer/lobbies/<code>/ready", methods=["POST"])
+def ready_multiplayer_lobby(code):
+    user, error = _require_user()
+    if error:
+        return error
+    data = request.get_json(silent=True) or {}
+    with _lobbies_lock:
+        lobby = _lobbies.get(code.upper())
+        if lobby is None or user["game_id"] not in lobby["players"]:
+            return jsonify({"error": "You are not in this lobby"}), 404
+        player = lobby["players"][user["game_id"]]
+        player["ready"] = bool(data.get("ready", not player["ready"]))
+        return jsonify({"lobby": _lobby_payload(lobby)})
+
+
+@app.route("/multiplayer/lobbies/<code>/start", methods=["POST"])
+def start_multiplayer_lobby(code):
+    user, error = _require_user()
+    if error:
+        return error
+    with _lobbies_lock:
+        lobby = _lobbies.get(code.upper())
+        if lobby is None:
+            return jsonify({"error": "Lobby not found or expired"}), 404
+        if lobby["host_game_id"] != user["game_id"]:
+            return jsonify({"error": "Only the lobby host can start the match"}), 403
+        if len(lobby["players"]) < 2:
+            return jsonify({"error": "At least two players are required"}), 409
+        if not all(player["ready"] for player in lobby["players"].values()):
+            return jsonify({"error": "Every player must be ready"}), 409
+        lobby["status"] = "running"
+        return jsonify({"lobby": _lobby_payload(lobby)})
+
+
+@app.route("/multiplayer/lobbies/<code>/leave", methods=["POST"])
+def leave_multiplayer_lobby(code):
+    user, error = _require_user()
+    if error:
+        return error
+    with _lobbies_lock:
+        lobby = _lobbies.get(code.upper())
+        if lobby is None:
+            return jsonify({"success": True})
+        lobby["players"].pop(user["game_id"], None)
+        if not lobby["players"]:
+            _lobbies.pop(code.upper(), None)
+        elif lobby["host_game_id"] == user["game_id"]:
+            new_host_id = next(iter(lobby["players"]))
+            lobby["host_game_id"] = new_host_id
+            for game_id, player in lobby["players"].items():
+                player["host"] = game_id == new_host_id
+        return jsonify({"success": True, "lobby": _lobby_payload(lobby) if lobby["players"] else None})
 
 
 @app.route("/account/profile", methods=["GET"])

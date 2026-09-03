@@ -7,9 +7,11 @@ import math
 import random
 import arcade
 from constants import WIDTH, HEIGHT, COLOR_SCORE, COLOR_WHITE
+from game.systems import save_system
 from game.ui.easing import ease_out_cubic, ease_in_out_cubic, clamp
 from game.ui.tween import TweenManager, Tween
 from game.ui.transitions import transition_to, TransitionOverlay
+from game.ui.vedic_theme import draw_menu_backdrop, draw_focus_panel
 
 
 class GameOverView(arcade.View):
@@ -188,7 +190,9 @@ class GameOverView(arcade.View):
                 self._embers.remove(e)
 
     def on_draw(self) -> None:
-        self.clear()
+        reduced = bool(save_system.load().get("reduced_flashes", False))
+        draw_menu_backdrop("SORTIE ENDED", "MISSION RESULT // RETRY OR RETURN TO COMMAND", (220, 60, 60), pulse=self._pulse, reduced=reduced)
+        draw_focus_panel(WIDTH // 2 - 230, WIDTH // 2 + 230, HEIGHT * 0.08, HEIGHT * 0.68, (220, 60, 60), selected=True)
         
         # Draw embers
         for e in self._embers:

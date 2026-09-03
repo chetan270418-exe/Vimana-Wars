@@ -3,8 +3,10 @@ game/ui/boss_bar.py
 BossBar class — full-width bar at the bottom of the screen while a Boss / Mini-Boss is alive.
 Uses arcade.Text objects (no draw_text calls).
 """
+import math
 import arcade
 from constants import WIDTH, COLOR_WHITE
+from game.ui.vedic_theme import RED, RED_BRIGHT, GOLD, MUTED, draw_chamfered_panel, draw_telemetry_ticks
 
 
 class BossBar:
@@ -29,7 +31,11 @@ class BossBar:
 
         boss_name = getattr(boss, "name", "BOSS").upper()
 
-        # Background
+        draw_chamfered_panel(bar_x - 6, bar_x + bar_w + 6, bar_y - 7,
+                             bar_y + bar_h + 9, RED, fill=(22, 8, 18),
+                             alpha=225, border_width=1, cut=6)
+        draw_telemetry_ticks(bar_x, bar_x + bar_w, bar_y + bar_h + 5,
+                             GOLD, count=19, height=3, alpha=65)
         arcade.draw_lrbt_rectangle_filled(bar_x, bar_x + bar_w, bar_y, bar_y + bar_h, (30, 10, 10))
 
         # Fill — color shifts by phase or boss type
@@ -48,35 +54,44 @@ class BossBar:
             arcade.draw_lrbt_rectangle_filled(
                 bar_x, bar_x + bar_w * frac, bar_y, bar_y + bar_h, fill_color)
 
-        # Threshold markers for Boss phases (Phase 2 at 66%, Phase 3 at 33%)
-        for threshold, p_tag in ((0.66, "P2"), (0.33, "P3")):
+        thresholds = ((0.66, "P2"), (0.33, "P3"))
+        for threshold, p_tag in thresholds:
             mx = bar_x + bar_w * threshold
-            arcade.draw_line(mx, bar_y - 2, mx, bar_y + bar_h + 2, (255, 220, 80), 2)
-            arcade.draw_triangle_filled(mx, bar_y + bar_h + 6, mx - 4, bar_y + bar_h, mx + 4, bar_y + bar_h, (255, 220, 80))
+            marker_col = GOLD if frac > threshold else (*MUTED, 180)
+            arcade.draw_line(mx, bar_y - 2, mx, bar_y + bar_h + 2, marker_col, 2)
+            arcade.draw_triangle_filled(mx, bar_y + bar_h + 6, mx - 4, bar_y + bar_h, mx + 4, bar_y + bar_h, marker_col)
+            arcade.draw_text(p_tag, mx, bar_y + bar_h + 10, marker_col, font_size=7, bold=True, anchor_x="center")
 
         # Enraged outline pulsing when boss is below 33% HP
         border_col = COLOR_WHITE
         if frac < 0.33:
             import time
-            pulse = int(180 + 75 * (time.time() * 6 % 1.0))
-            border_col = (255, 50, 50, pulse)
+            pulse = int(180 + 75 * ((math.sin(time.time() * 6.0) + 1.0) * 0.5))
+            border_col = (*RED_BRIGHT, pulse)
 
         # Border
         arcade.draw_lrbt_rectangle_outline(
             bar_x, bar_x + bar_w, bar_y, bar_y + bar_h, border_col, 2)
 
         # Label formatting
+        phase = max(1, int(getattr(boss, "phase", 1)))
+        phase_text = f"PHASE {phase}"
         if boss_name == "RAVANA":
-            phase_labels = ["Phase I (Spread)", "Phase II (Spiral Void)", "Phase III (Fleet Summons)"]
-            p_idx = getattr(boss, "phase", 1) - 1
-            self._label_name.text = f"👑 EMPEROR RAVANA  —  {phase_labels[p_idx]}"
+            phase_text = ("PHASE I / SPREAD", "PHASE II / SPIRAL VOID", "PHASE III / FLEET SUMMONS")[min(2, phase - 1)]
+            title = "EMPEROR RAVANA"
         elif boss_name == "MAHISHASURA":
-            self._label_name.text = f"🐂 WARLORD MAHISHASURA  —  PHASE {getattr(boss, 'phase', 1)}"
+            title = "WARLORD MAHISHASURA"
         elif boss_name == "VRITRA":
-            self._label_name.text = f"⚡ STORM SERPENT VRITRA  —  PHASE {getattr(boss, 'phase', 1)}"
+            title = "STORM SERPENT VRITRA"
         else:
-            self._label_name.text = f"🛡️ MINI-BOSS: {boss_name}"
-
+            title = f"MINI-BOSS: {boss_name}"
+        attack = getattr(boss, "current_attack_name", "")
+        self._label_name.text = f"{title}  —  {phase_text}"
         self._label_hp.text = f"{max(0, boss.hp):,} / {boss.max_hp:,}"
         self._label_name.draw()
         self._label_hp.draw()
+        if attack:
+            arcade.draw_text(attack, WIDTH - 18, 16, RED_BRIGHT if frac < 0.33 else GOLD,
+                             font_size=8, bold=True, anchor_x="right")
+        if phase > 1:
+            arcade.draw_text("PHASE BREAK", WIDTH // 2, 43, RED_BRIGHT, font_size=8, bold=True, anchor_x="center")

@@ -6,6 +6,7 @@ from game.systems import save_system
 from game.ui.easing import ease_out_cubic, ease_out_elastic, ease_in_out_cubic, clamp
 from game.ui.tween import TweenManager
 from game.ui.transitions import transition_to, TransitionOverlay
+from game.ui.vedic_theme import draw_menu_backdrop, draw_focus_panel
 try:
     from game.systems.sound_manager import SoundManager
 except ImportError:
@@ -176,8 +177,9 @@ class VictoryView(arcade.View):
         self.particles = [p for p in self.particles if p.life > 0]
         
     def on_draw(self):
-        self.clear()
-        
+        reduced = bool(save_system.load().get("reduced_flashes", False))
+        draw_menu_backdrop("MISSION COMPLETE", "CAMPAIGN RESULT // REWARDS AND RECORDS", COLOR_SCORE, pulse=self.time_elapsed, reduced=reduced)
+        draw_focus_panel(WIDTH // 2 - 240, WIDTH // 2 + 240, HEIGHT * 0.12, HEIGHT * 0.66, COLOR_SCORE, selected=True)
         # Draw particles
         for p in self.particles:
             p.draw()

@@ -53,15 +53,32 @@ class StatPanel:
         self._label_texts: list[arcade.Text] = []
         self._value_texts: list[arcade.Text] = []
         for _ in range(6):
-            self._label_texts.append(arcade.Text(
-                "", cx - w / 2 + 14, 0,
-                (140, 150, 180, 200), font_size=9, bold=True,
-            ))
-            self._value_texts.append(arcade.Text(
-                "", cx + w / 2 - 14, 0,
-                (220, 230, 250, 240), font_size=11, bold=True,
-                anchor_x="right",
-            ))
+            self._append_line_text_pair()
+
+    def _append_line_text_pair(self) -> None:
+        self._label_texts.append(arcade.Text(
+            "", self.cx - self.w / 2 + 14, 0,
+            (140, 150, 180, 200), font_size=9, bold=True,
+        ))
+        self._value_texts.append(arcade.Text(
+            "", self.cx + self.w / 2 - 14, 0,
+            (220, 230, 250, 240), font_size=11, bold=True,
+            anchor_x="right",
+        ))
+
+    def _ensure_line_capacity(self, count: int) -> None:
+        while len(self._label_texts) < count:
+            self._append_line_text_pair()
+
+    def _visible_lines(self) -> list[tuple]:
+        """Keep dense panels readable while retaining a useful overflow summary."""
+        max_visible = max(1, int((self.h - 30) // 16))
+        if len(self.lines) <= max_visible:
+            return self.lines
+        kept = max(1, max_visible - 1)
+        return list(self.lines[:kept]) + [
+            ("More", f"+{len(self.lines) - kept} tracked", (160, 200, 240))
+        ]
 
     def _sync_line_text(self, idx, label, value, vcol, alpha):
         """Update one cached Text pair with current label/value/alpha."""
@@ -132,8 +149,10 @@ class StatPanel:
         self._title_text.draw()
 
         # Stat lines — cached Text pairs, no per-frame arcade.draw_text.
+        visible_lines = self._visible_lines()
+        self._ensure_line_capacity(len(visible_lines))
         line_y = cy + h / 2 - 30
-        for idx, (label, value, vcol) in enumerate(self.lines):
+        for idx, (label, value, vcol) in enumerate(visible_lines):
             self._sync_line_text(idx, label, value, vcol, a)
             self._label_texts[idx].position = (cx - w / 2 + 14, line_y)
             self._value_texts[idx].position = (cx + w / 2 - 14, line_y)

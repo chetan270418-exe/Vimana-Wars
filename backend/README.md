@@ -40,6 +40,13 @@ HTTPS in front of Gunicorn.
 - `GET /account/profile` — Read cloud-synced progression and achievements
 - `PUT /account/profile` — Sync whitelisted local progression and achievements
 - `GET /account/stats` — Read server-calculated personal run statistics
+- `GET /multiplayer/lobbies` — Browse active lobbies
+- `POST /multiplayer/lobbies` — Create a campaign or endless lobby
+- `GET /multiplayer/lobbies/<code>` — Read a lobby you joined
+- `POST /multiplayer/lobbies/<code>/join` — Join a lobby with a ship class
+- `POST /multiplayer/lobbies/<code>/ready` — Toggle player ready state
+- `POST /multiplayer/lobbies/<code>/start` — Host starts when all players are ready
+- `POST /multiplayer/lobbies/<code>/leave` — Leave and transfer host if needed
 - `POST /scores` — Submit a score
   ```json
   {
@@ -65,6 +72,12 @@ score/wave/statistics sanity checks. For multiple production instances, move
 rate-limit state to Redis and add server-issued run attestations or replay
 validation; a client-only game can never make score submissions fully
 trustworthy by itself.
+
+The multiplayer routes currently provide an authenticated, ephemeral lobby
+layer. Lobby memory is intentionally lost if the API restarts. Live player
+movement, enemy simulation, hit detection, and combat reconciliation still
+belong in a real-time authoritative game server (WebSocket/UDP), not in these
+HTTP lobby requests.
 
 ## Deploying for Free
 

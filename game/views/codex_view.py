@@ -6,6 +6,7 @@ Provides in-depth lore, vector illustrations, and tactical guides for Vimanas, A
 import arcade
 from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_SCORE
 from game.ui.transitions import transition_to, TransitionOverlay
+from game.ui.vedic_theme import draw_menu_backdrop, draw_focus_panel
 
 
 CODEX_ENTRIES = [
@@ -105,8 +106,7 @@ class CodexView(arcade.View):
         self._pulse += delta_time
 
     def on_draw(self) -> None:
-        self.clear()
-
+        draw_menu_backdrop("THE REALM ARCHIVES & CODEX", "TACTICAL RECORDS // VIMANAS, ASTRAS, ASURAS", COLOR_SCORE, pulse=self._pulse)
         self._title.draw()
 
         # Left Sidebar (Entries List)
@@ -119,10 +119,9 @@ class CodexView(arcade.View):
             is_sel = (i == self._selected)
 
             if is_sel:
-                arcade.draw_lrbt_rectangle_filled(sidebar_x, sidebar_x + sidebar_w, y - 18, y + 26, (35, 45, 80))
-                arcade.draw_lrbt_rectangle_outline(sidebar_x, sidebar_x + sidebar_w, y - 18, y + 26, entry["color"], 2)
+                draw_focus_panel(sidebar_x, sidebar_x + sidebar_w, y - 18, y + 26, entry["color"], selected=True)
             else:
-                arcade.draw_lrbt_rectangle_filled(sidebar_x, sidebar_x + sidebar_w, y - 18, y + 26, (20, 24, 40))
+                draw_focus_panel(sidebar_x, sidebar_x + sidebar_w, y - 18, y + 26, entry["color"])
 
             arcade.draw_text(f"[{entry['category']}]", sidebar_x + 14, y + 10, (140, 150, 180), font_size=8, bold=True)
             arcade.draw_text(entry["title"], sidebar_x + 14, y - 8, entry["color"] if is_sel else (200, 205, 220), font_size=12, bold=True)

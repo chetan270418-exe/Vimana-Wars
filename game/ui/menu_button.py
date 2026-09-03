@@ -15,6 +15,10 @@ class MenuButton:
         self.height = height
         self.accent = accent
         self.hover_amount = 0.0
+        self._text = arcade.Text(
+            label, center_x, center_y, (210, 220, 240, 255),
+            font_size=12, bold=True, anchor_x="center", anchor_y="center",
+        )
 
     def contains(self, x: float, y: float) -> bool:
         return (
@@ -43,13 +47,7 @@ class MenuButton:
             (r, g, b), fill=fill, alpha=245,
             border_width=1, selected=self.hover_amount > 0.1, cut=7,
         )
-        arcade.draw_text(
-            self.label,
-            self.center_x,
-            self.center_y,
-            (r, g, b, 255) if self.hover_amount > 0.1 else (210, 220, 240, 255),
-            font_size=int(12 + 1 * self.hover_amount),
-            bold=True,
-            anchor_x="center",
-            anchor_y="center",
-        )
+        self._text.position = (self.center_x, self.center_y)
+        self._text.color = (r, g, b, 255) if self.hover_amount > 0.1 else (210, 220, 240, 255)
+        self._text.font_size = int(12 + self.hover_amount)
+        self._text.draw()

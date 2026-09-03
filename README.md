@@ -42,6 +42,11 @@
   - Seven connected realm nodes unlock through campaign progress, with nine warships gated by wave milestones.
   - Trophy cabinet tracks combat, bosses, boon mastery, ability-cube collection, ship mastery, and full-campaign clears.
 
+- **Visual Overhaul & PV Deliverables**:
+  - Vedic-Punk UI redesign applied to the Arcade game: animated telemetry, scanlines, chamfered panels, selection pulses, cockpit HUD framing, and accessibility-aware motion.
+  - Design references and the generated PV are tracked in the workspace root: `main-menu-ui.png`, `mission-control-hud.png`, `astra-arsenal.png`, `boss-overlay-system.png`, and `vimana_wars_pv_final.mp4`.
+  - Planning documents: `vimana-wars-pv-storyboard.md` and `vimana-wars-final-video-prompt.md`.
+
 - **Polished Combat Juice & Visuals**:
   - 🌌 Parallax cosmic background with drifting mythological realms.
   - ✨ Procedural particle sparks, engine flares, and explosion bursts.
@@ -60,6 +65,13 @@
   - Optional email login/registration from the in-game **ACCOUNT** screen.
   - Stable `VMN-XXXXXXXX` Game IDs attach authenticated scores to one player;
     offline guest play remains available.
+
+- **Multiplayer Lobby Network**:
+  - Main Menu → Multiplayer opens the authenticated Sangha lobby browser.
+  - Players can create or join campaign/endless wings, select a ship, ready
+    up, start as host, and leave safely with host transfer.
+  - The current implementation is the pre-match lobby layer; real-time
+    synchronized combat requires a dedicated authoritative game server.
 
 ---
 

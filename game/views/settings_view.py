@@ -8,6 +8,7 @@ import arcade
 from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_SCORE, COLOR_WHITE
 from game.systems import save_system
 from game.ui.transitions import transition_to, TransitionOverlay
+from game.ui.vedic_theme import draw_menu_backdrop, draw_focus_panel
 
 
 _VOLUME_STEPS = [0, 20, 40, 60, 80, 100]
@@ -119,8 +120,7 @@ class SettingsView(arcade.View):
         TransitionOverlay.update(delta_time)
 
     def on_draw(self) -> None:
-        self.clear()
-
+        draw_menu_backdrop("SETTINGS & ACCESSIBILITY", "LOCAL CONFIGURATION // CHANGES APPLY IMMEDIATELY", COLOR_SCORE, reduced=self.reduced_flashes)
         self._title.draw()
 
         start_y = HEIGHT - 115
@@ -132,16 +132,7 @@ class SettingsView(arcade.View):
 
             # Row background highlight
             if is_selected:
-                arcade.draw_lrbt_rectangle_filled(
-                    WIDTH // 2 - 260, WIDTH // 2 + 260,
-                    y - 12, y + 16,
-                    (30, 40, 75)
-                )
-                arcade.draw_lrbt_rectangle_outline(
-                    WIDTH // 2 - 260, WIDTH // 2 + 260,
-                    y - 12, y + 16,
-                    COLOR_SCORE, 2
-                )
+                draw_focus_panel(WIDTH // 2 - 260, WIDTH // 2 + 260, y - 12, y + 16, COLOR_SCORE, selected=True)
                 label_col = COLOR_SCORE
             else:
                 label_col = (180, 190, 210)

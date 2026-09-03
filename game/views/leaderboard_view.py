@@ -7,7 +7,7 @@ import arcade
 from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_SCORE, COLOR_WAVE, COLOR_WHITE
 from game.systems.leaderboard_client import leaderboard_client
 from game.ui.transitions import transition_to, TransitionOverlay
-from game.ui.vedic_theme import MUTED, CYAN_BRIGHT
+from game.ui.vedic_theme import MUTED, CYAN_BRIGHT, draw_menu_backdrop, draw_focus_panel
 
 
 _FILTERS = ["all", "easy", "normal", "hard", "endless"]
@@ -131,14 +131,13 @@ class LeaderboardView(arcade.View):
             self._apply_fetch_results(scores, error)
 
     def on_draw(self) -> None:
-        self.clear()
-
+        draw_menu_backdrop("GLOBAL LEADERBOARD", "ONLINE ARCHIVE // LOCAL PLAY REMAINS AVAILABLE OFFLINE", COLOR_SCORE, pulse=self._pulse)
         self._title.draw()
         self._current_filter_text.draw()
 
         # Header bar
         header_y = HEIGHT - 122
-        arcade.draw_lrbt_rectangle_filled(70, WIDTH - 70, header_y - 6, header_y + 18, (20, 20, 45))
+        draw_focus_panel(70, WIDTH - 70, header_y - 6, header_y + 18, COLOR_WAVE)
         arcade.draw_text("RANK", 90, header_y, (120, 140, 180), font_size=10, bold=True)
         arcade.draw_text("WARRIOR / GAME ID", 160, header_y, (120, 140, 180), font_size=10, bold=True)
         arcade.draw_text("SCORE", WIDTH - 260, header_y, (120, 140, 180), font_size=10, bold=True, anchor_x="right")
