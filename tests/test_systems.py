@@ -639,3 +639,18 @@ class TestGameViewPauseButtons:
             assert b.hotkey is not None
         # Hit-test one of them
         assert gv._pause_buttons[0].hit_test(WIDTH // 2, HEIGHT // 2 + 30) is True
+
+
+class TestLoadingView:
+    def test_loading_view_constructs_and_updates(self, monkeypatch):
+        import arcade
+        monkeypatch.setattr(arcade.View, "__init__", lambda self: None)
+        from game.views.loading_screen import LoadingView
+        lv = LoadingView()
+        assert lv._progress == 0.0
+        assert lv._ready_to_advance is False
+        # Update by 3.0 seconds
+        lv.on_update(3.0)
+        assert lv._progress >= 1.0
+        assert lv._ready_to_advance is True
+        assert "READY" in lv._status_text_str

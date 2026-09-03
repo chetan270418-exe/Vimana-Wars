@@ -71,7 +71,7 @@ class MenuView(arcade.View):
             anchor_x="center", anchor_y="center",
         )
         self._hint = arcade.Text(
-            "MOUSE / D-PAD: NAVIGATE   •   ENTER: CONFIRM   •   ESC: QUIT",
+            "MOUSE / D-PAD: NAVIGATE   •   ENTER: CONFIRM   •   V: TRAILER (PV)   •   ESC: QUIT",
             560, 28, MUTED, font_size=9,
             anchor_x="center", anchor_y="center",
         )
@@ -99,6 +99,7 @@ class MenuView(arcade.View):
         button_gap = 34
         button_data = [
             ("START MISSION", "play", COLOR_SCORE),
+            ("ASTRA ARSENAL", "arsenal", (255, 170, 80)),
             ("MULTIPLAYER", "multiplayer", (100, 240, 190)),
             ("CAMPAIGN MAP", "map", (120, 210, 255)),
             ("LEADERBOARDS", "leaderboard", (170, 130, 255)),
@@ -110,7 +111,8 @@ class MenuView(arcade.View):
             ("QUIT", "quit", (255, 90, 100)),
         ]
         self._buttons = [
-            (MenuButton(label, button_x, button_y - i * button_gap, 190, 32, color), action)
+            (MenuButton(label, button_x, button_y - i * button_gap,
+                        202 if i == 0 else 190, 40 if i == 0 else 30, color), action)
             for i, (label, action, color) in enumerate(button_data)
         ]
 
@@ -175,6 +177,7 @@ class MenuView(arcade.View):
 
         # Vitals rail.
         self._vitals.draw()
+        last_ship_data = SHIP_CLASSES.get(self._last_ship_id, SHIP_CLASSES["pushpaka"])
         arcade.draw_text("PRANA", 24, 505, CYAN_BRIGHT, font_size=8, bold=True)
         arcade.draw_text(f"{last_ship_data['hp']}/{last_ship_data['hp']}", 194, 505, PARCHMENT, font_size=8, bold=True, anchor_x="right")
         draw_segmented_bar(24, 194, 493, 499, min(1.0, last_ship_data['hp'] / 190), CYAN, segments=8, gap=3)
@@ -184,6 +187,18 @@ class MenuView(arcade.View):
 
         self._high_score.draw()
         self._progress.draw()
+        map_y = 412
+        map_x = 270
+        arcade.draw_text("REALM ROUTE", map_x, map_y + 12, MUTED, font_size=7, bold=True)
+        for realm_index in range(7):
+            node_x = map_x + realm_index * 24
+            if realm_index:
+                arcade.draw_line(node_x - 20, map_y, node_x - 4, map_y, (*CYAN, 100), 2)
+            unlocked_node = realm_index < self._unlocked_realms
+            node_color = GOLD if unlocked_node else (70, 78, 105)
+            arcade.draw_circle_filled(node_x, map_y, 5 if unlocked_node else 4, node_color)
+            if unlocked_node and realm_index == self._unlocked_realms - 1:
+                arcade.draw_circle_outline(node_x, map_y, 9, (*CYAN_BRIGHT, 150), 1)
 
         # Last ship mini-preview.
         ship_data = SHIP_CLASSES.get(self._last_ship_id, SHIP_CLASSES["pushpaka"])
@@ -193,6 +208,8 @@ class MenuView(arcade.View):
             arcade.draw_circle_filled(744, 154, 5, ship_data["accent"])
         self._ship_label.draw()
 
+        draw_chamfered_panel(18, 198, 379, 431, GOLD, fill=(30, 27, 34), alpha=205, border_width=2, selected=True, cut=9)
+        arcade.draw_text("PRIMARY SORTIE", 108, 421, GOLD_BRIGHT, font_size=7, bold=True, anchor_x="center")
         for button, _ in self._buttons:
             button.draw()
         self._hint.draw()
@@ -206,6 +223,9 @@ class MenuView(arcade.View):
         if action == "play":
             from game.views.difficulty_view import DifficultyView
             transition_to(self.window, DifficultyView())
+        elif action == "arsenal":
+            from game.views.ship_select_view import ShipSelectView
+            transition_to(self.window, ShipSelectView())
         elif action == "map":
             from game.views.realm_map_view import RealmMapView
             transition_to(self.window, RealmMapView())
@@ -232,6 +252,22 @@ class MenuView(arcade.View):
             transition_to(self.window, SettingsView(return_view=self))
         elif action == "quit":
             arcade.exit()
+
+    def _play_pv_video(self) -> None:
+        import os, sys, subprocess
+        from pathlib import Path
+        pv_path = Path("vimana_wars_pv_final.mp4").resolve()
+        if not pv_path.exists():
+            return
+        try:
+            if sys.platform == "win32":
+                os.startfile(str(pv_path))
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", str(pv_path)])
+            else:
+                subprocess.Popen(["xdg-open", str(pv_path)])
+        except Exception:
+            pass
 
     def on_mouse_motion(self, x, y, dx, dy) -> None:
         new_hovered = -1
@@ -262,6 +298,8 @@ class MenuView(arcade.View):
         elif key in (arcade.key.ENTER, arcade.key.RETURN):
             index = self._hovered if self._hovered >= 0 else 0
             self._activate(self._buttons[index][1])
+        elif key in (arcade.key.H, arcade.key.R):
+            self._activate("arsenal")
         elif key == arcade.key.M:
             self._activate("map")
         elif key == arcade.key.N:
@@ -278,6 +316,8 @@ class MenuView(arcade.View):
             self._activate("settings")
         elif key == arcade.key.P:
             self._activate("account")
+        elif key == arcade.key.V:
+            self._play_pv_video()
         elif key == arcade.key.ESCAPE:
             arcade.exit()
 

@@ -11,27 +11,67 @@ from game.ui.vedic_theme import draw_menu_backdrop, draw_focus_panel
 
 CODEX_ENTRIES = [
     {
+        "category": "CHRONICLES",
+        "title": "Act I — Swarga",
+        "subtitle": "The Heavenly Realm (Waves 1-3)",
+        "color": (255, 235, 100),
+        "lore": "The war begins in heaven itself. Asura scouts and corrupted guardians breach Swarga's outer wards. The player learns the ropes while watching a realm once thought untouchable begin to crack.",
+        "tip": "Maintain spatial awareness and prioritize fast chaser scouts before they flank your vessel."
+    },
+    {
+        "category": "CHRONICLES",
+        "title": "Act II — Kshira Sagara",
+        "subtitle": "The Cosmic Ocean of Milk (Waves 4-6)",
+        "color": (100, 220, 255),
+        "lore": "The corruption spreads to the primordial ocean from which the gods churned immortality. At wave 5, Kumbhakarna — Ravana's slumbering titan brother — rises from the depths to guard the deep expanse.",
+        "tip": "Defeating Kumbhakarna proves Ravana's inner circle can bleed. Dodge his sweeping flails."
+    },
+    {
+        "category": "CHRONICLES",
+        "title": "Act III — Dandaka Void",
+        "subtitle": "The Mystical Astral Forest (Waves 7-9)",
+        "color": (120, 255, 170),
+        "lore": "Cutting into enemy territory where reality grows thin. Hostile, disorienting astral fauna and feral Asura fleets strike in dense formations as you approach the point of no return.",
+        "tip": "Equip piercing Astras to punch clean flight corridors through dense swarm formations."
+    },
+    {
+        "category": "CHRONICLES",
+        "title": "Act IV — Lanka",
+        "subtitle": "The Molten Rift of Ravana (Wave 10)",
+        "color": (255, 60, 90),
+        "lore": "The molten fortress heart of Ravana. Every system, Astra, and evasive reflex learned across the campaign is tested simultaneously. Break his tenfold grip or Dharma is extinguished forever.",
+        "tip": "Save your Brahmastra bomb for Phase 3 when his summon swarms and spiral barrages peak."
+    },
+    {
         "category": "VIMANAS",
-        "title": "Pushpaka Vimana",
+        "title": "Pushpaka Mk-I",
         "subtitle": "The Flagship Celestial Chariot",
         "color": (255, 215, 60),
-        "lore": "Engineered by Vishwakarma, the divine architect. Capable of moving at the speed of thought and navigating both cosmic skies and interstellar dimensions with complete agility.",
-        "tip": "Balanced handling suitable for all combat scenarios. Ideal for beginners and veterans alike."
+        "lore": "Named for the legendary flying chariot of kings and gods. A balanced, dependable vessel favored by pilots who value steady endurance across a full campaign rather than fleeting burst.",
+        "tip": "Balanced handling suitable for all combat scenarios. Ideal for pilots mastering the astral plane."
     },
     {
         "category": "VIMANAS",
         "title": "Tripura Destroyer",
         "subtitle": "The Three-Fortress Juggernaut",
         "color": (255, 140, 60),
-        "lore": "Constructed from the indestructible remnants of the three celestial cities of Tripura. Boasts reinforced impenetrable plating and high-caliber railgun cannons.",
-        "tip": "High health and single-shot damage, but requires careful positioning due to lower cruising speed."
+        "lore": "Named for the myth of the three cities destroyed in a single divine strike. Heavy, armored, and built to withstand direct cosmic fire and return with devastating railgun volleys.",
+        "tip": "High hull durability and single-shot damage. Use predictive aiming to compensate for lower cruising speed."
+    },
+    {
+        "category": "VIMANAS",
+        "title": "Garuda Interceptor",
+        "subtitle": "The High-Speed Void Striker",
+        "color": (120, 240, 255),
+        "lore": "Named for Vishnu's celestial mount, the fastest creature in the cosmos. Trades heavy plating for supreme agility, rapid twin needle blasters, and dual-charge tactical dashes.",
+        "tip": "Never stand still. Use your rapid dash recharge to slip through bullet hell patterns unscathed."
     },
     {
         "category": "ASTRAS",
         "title": "Brahmastra",
         "subtitle": "The Ultimate Annihilation Astra",
         "color": (255, 60, 220),
-        "lore": "Created by Lord Brahma. A weapon of supreme finality whose activation unleashes a screen-clearing supernova flash that vaporizes every enemy vessel in the vicinity.",
+        "lore": "Created by Lord Brahma. A divine weapon of supreme finality whose activation unleashes a screen-clearing supernova flash that vaporizes every enemy projectile and hostile vessel.",
         "tip": "Press [F] when overwhelmed by swarms or to instantly wipe boss summons."
     },
     {
@@ -39,8 +79,16 @@ CODEX_ENTRIES = [
         "title": "Sudarshana Chakram",
         "subtitle": "The Discus of Divine Order",
         "color": (255, 220, 50),
-        "lore": "The spinning 108-serrated razor discus of Lord Vishnu. Slices through ranks of demon fleets, shatters incoming projectiles into sparks, and returns unerringly to the wielder.",
-        "tip": "Press [Q] to throw in front of dangerous projectile walls to clear a path."
+        "lore": "The spinning 108-serrated razor discus of Lord Vishnu. Slices through demon hulls, annihilates projectile walls, and returns unerringly to your Vimana's magnetic core.",
+        "tip": "Press [Q] to carve safe flight channels through oncoming bullet waves."
+    },
+    {
+        "category": "ASTRAS",
+        "title": "Deva Elemental Astras",
+        "subtitle": "Agni, Vayu, and Indra Blessings",
+        "color": (255, 170, 60),
+        "lore": "Fragments of celestial weapons lent to the lone pilot by the surviving Devas: Agni's blazing fury burns foes over time, Vayu's tempest grants evasive speed cyclones, and Indra's Vajra arcs lightning through armada ranks.",
+        "tip": "Combine complementary Deva Astras between waves to awaken catastrophic Divine Synergies."
     },
     {
         "category": "ASURAS",
@@ -55,7 +103,7 @@ CODEX_ENTRIES = [
         "title": "Ravana",
         "subtitle": "King of Lanka & Ten-Headed Emperor (Wave 10 Boss)",
         "color": (220, 0, 80),
-        "lore": "Master of all ten cosmic directions and ruler of the underworld. Commands the celestial Pushpaka fleet, deploying multi-stage spread lasers, bullet spirals, and demonic reinforcements.",
+        "lore": "Master of all ten cosmic directions and breaker of divine exile. Commands the corrupted celestial fleet, deploying multi-stage spread lasers, bullet spirals, and demonic reinforcements.",
         "tip": "Save your Brahmastra bomb for Phase 3 when his summon swarms and spiral attacks intensify."
     },
     {
@@ -71,7 +119,7 @@ CODEX_ENTRIES = [
         "title": "Vritra",
         "subtitle": "The Storm Serpent of the Final Citadel (Wave 20 Boss)",
         "color": (190, 80, 255),
-        "lore": "The last sky-blocking dragon, coiled around the Mahayuddha Citadel. Its storm bullets accelerate as each phase breaks.",
+        "lore": "The primordial drought serpent coiled around the Mahayuddha Citadel. Its celestial lightning barrages accelerate exponentially across each health phase.",
         "tip": "Read the attack line, circle the arena, and keep the Brahmastra for the final phase."
     },
 ]

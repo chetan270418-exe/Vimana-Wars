@@ -54,6 +54,18 @@ class BossBar:
             arcade.draw_lrbt_rectangle_filled(
                 bar_x, bar_x + bar_w * frac, bar_y, bar_y + bar_h, fill_color)
 
+        phase = max(1, int(getattr(boss, "phase", 1)))
+        phase_count = 3 if boss_name in ("RAVANA", "VRITRA") else 2
+        phase_count = max(phase_count, phase)
+        phase_width = bar_w / phase_count
+        for phase_index in range(phase_count):
+            phase_left = bar_x + phase_index * phase_width
+            phase_right = phase_left + phase_width - 3
+            phase_color = GOLD if phase_index < phase else (*MUTED, 120)
+            arcade.draw_lrbt_rectangle_outline(
+                phase_left, phase_right, bar_y - 5, bar_y + bar_h + 5,
+                phase_color, 1)
+
         thresholds = ((0.66, "P2"), (0.33, "P3"))
         for threshold, p_tag in thresholds:
             mx = bar_x + bar_w * threshold
@@ -90,6 +102,10 @@ class BossBar:
         self._label_hp.text = f"{max(0, boss.hp):,} / {boss.max_hp:,}"
         self._label_name.draw()
         self._label_hp.draw()
+        status = "BOSS ALERT" if phase == 1 else "PHASE BREAK" if frac > 0.30 else "FINAL PHASE"
+        status_color = RED_BRIGHT if phase > 1 else GOLD
+        arcade.draw_text(status, bar_x + 4, bar_y + bar_h + 22, status_color,
+                         font_size=8, bold=True)
         if attack:
             arcade.draw_text(attack, WIDTH - 18, 16, RED_BRIGHT if frac < 0.33 else GOLD,
                              font_size=8, bold=True, anchor_x="right")

@@ -18,7 +18,7 @@ from game.ui.easing import ease_out_cubic, ease_in_out_cubic, lerp, lerp_color, 
 from game.ui.vedic_theme import (
     CYAN, GOLD, CYAN_BRIGHT, MUTED, RED_BRIGHT,
     draw_chamfered_panel, draw_corner_etching, draw_scanlines,
-    draw_telemetry_ticks,
+    draw_telemetry_ticks, draw_segmented_bar,
 )
 
 _POWERUP_COLORS = {
@@ -262,9 +262,9 @@ class HUD:
 
         # Actual HP fill
         if frac_display > 0:
-            arcade.draw_lrbt_rectangle_filled(
-                _BAR_X, _BAR_X + _BAR_W * frac_display,
-                _BAR_Y, _BAR_Y + _BAR_H, fill_color)
+            draw_segmented_bar(_BAR_X, _BAR_X + _BAR_W, _BAR_Y,
+                               _BAR_Y + _BAR_H, frac_display, fill_color,
+                               segments=10, gap=3)
 
         # Low-HP pulsing bar border
         if frac_actual < 0.28 and player.alive:
@@ -442,7 +442,7 @@ class HUD:
                              alpha=220, cut=8)
         arcade.draw_line(200, 12, WIDTH - 184, 12, (*CYAN, 42), 1)
         arcade.draw_text("ASTRA CONTROL", 202, 51, CYAN_BRIGHT, font_size=7, bold=True)
-        arcade.draw_text("READY STATES", 202, 40, MUTED, font_size=7, bold=True)
+        arcade.draw_text("COOLDOWN / CHARGE TELEMETRY", 202, 40, MUTED, font_size=7, bold=True)
         # Dash [SPACE]
         cx1, cy1, r1 = 38, 32, 16
         dash_ratio = player.dash_ratio
@@ -457,8 +457,10 @@ class HUD:
                 arcade.draw_line(cx1, cy1, cx1 + math.cos(a) * r1, cy1 + math.sin(a) * r1, ready_col, 2)
 
         dash_label = f"DASH ({player.dash_charges})" if player.dash_charges_max > 1 else "DASH"
-        arcade.draw_text("SPACE", cx1, cy1 - 4, COLOR_WHITE, font_size=7, bold=True, anchor_x="center")
-        arcade.draw_text(dash_label, cx1, cy1 - 22, ready_col, font_size=7, bold=True, anchor_x="center")
+        dash_state = "READY" if player.dash_ready else f"{max(0.0, player.dash_cooldown_timer):.1f}s"
+        arcade.draw_text("◆", cx1, cy1 - 5, COLOR_WHITE, font_size=10, bold=True, anchor_x="center")
+        arcade.draw_text("SPACE", cx1, cy1 - 21, COLOR_WHITE, font_size=6, bold=True, anchor_x="center")
+        arcade.draw_text(f"{dash_label} {dash_state}", cx1, cy1 - 31, ready_col, font_size=6, bold=True, anchor_x="center")
 
         # Chakram [Q]
         cx2, cy2, r2 = 88, 32, 16
@@ -473,16 +475,19 @@ class HUD:
                 a = math.radians(90 - (360 * chk_ratio) * (i / 30))
                 arcade.draw_line(cx2, cy2, cx2 + math.cos(a) * r2, cy2 + math.sin(a) * r2, chk_col, 2)
 
-        arcade.draw_text("Q", cx2, cy2 - 4, COLOR_WHITE, font_size=8, bold=True, anchor_x="center")
-        arcade.draw_text("CHAKRAM", cx2, cy2 - 22, chk_col, font_size=7, bold=True, anchor_x="center")
+        chk_state = "READY" if player.chakram_ready else f"{max(0.0, player.chakram_cooldown_timer):.1f}s"
+        arcade.draw_text("◈", cx2, cy2 - 5, COLOR_WHITE, font_size=10, bold=True, anchor_x="center")
+        arcade.draw_text("Q", cx2, cy2 - 21, COLOR_WHITE, font_size=6, bold=True, anchor_x="center")
+        arcade.draw_text(f"CHAKRAM {chk_state}", cx2, cy2 - 31, chk_col, font_size=6, bold=True, anchor_x="center")
 
         # Bomb [F]
         if player.bomb_count > 0:
             cx3, cy3 = 145, 32
             arcade.draw_circle_filled(cx3, cy3, 16, (45, 15, 50))
             arcade.draw_circle_outline(cx3, cy3, 16, COLOR_POWERUP_BOMB, 2)
-            arcade.draw_text(f"F ×{player.bomb_count}", cx3, cy3 - 4, COLOR_WHITE, font_size=8, bold=True, anchor_x="center")
-            arcade.draw_text("BOMB", cx3, cy3 - 22, COLOR_POWERUP_BOMB, font_size=7, bold=True, anchor_x="center")
+            arcade.draw_text("✦", cx3, cy3 - 5, COLOR_WHITE, font_size=10, bold=True, anchor_x="center")
+            arcade.draw_text(f"F ×{player.bomb_count}", cx3, cy3 - 21, COLOR_WHITE, font_size=6, bold=True, anchor_x="center")
+            arcade.draw_text("BOMB READY", cx3, cy3 - 31, COLOR_POWERUP_BOMB, font_size=6, bold=True, anchor_x="center")
 
     def _draw_offscreen_radar(self, player, enemies: list, powerups: list) -> None:
         """Draws glowing directional threat arrows along screen edges for off-screen enemies and power-ups."""

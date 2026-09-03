@@ -197,33 +197,43 @@ class VictoryView(arcade.View):
         arcade.draw_text(
             "VICTORY!",
             WIDTH // 2,
-            title_y,
+            title_y + 10,
             arcade.color.GOLD,
-            font_size=54,
+            font_size=50,
             font_name="Kenney Future",
+            anchor_x="center",
+            anchor_y="center"
+        )
+        arcade.draw_text(
+            "KARMIC TRANSCENDENCE // DHARMA RESTORED",
+            WIDTH // 2,
+            title_y - 30,
+            (116, 245, 255),
+            font_size=10,
+            bold=True,
             anchor_x="center",
             anchor_y="center"
         )
         
         # Draw Stats
-        base_y = int(HEIGHT * 0.6)
-        spacing = 50
+        base_y = int(HEIGHT * 0.58)
+        spacing = 46
         
         # Score
         alpha0 = int(clamp(self._row_alphas[0], 0, 255))
-        arcade.draw_text(f"Final Score: {int(self._displayed_score):,}", WIDTH // 2, base_y, COLOR_SCORE[:3] + (alpha0,), font_size=24, font_name="Kenney Future", anchor_x="center", anchor_y="center")
+        arcade.draw_text(f"Dharmic Karma Reclaimed: {int(self._displayed_score):,}", WIDTH // 2, base_y, COLOR_SCORE[:3] + (alpha0,), font_size=22, font_name="Kenney Future", anchor_x="center", anchor_y="center")
         
         # Kills
         alpha1 = int(clamp(self._row_alphas[1], 0, 255))
-        arcade.draw_text(f"Enemies Destroyed: {self.kills}", WIDTH // 2, base_y - spacing, COLOR_WHITE[:3] + (alpha1,), font_size=20, font_name="Kenney Future", anchor_x="center", anchor_y="center")
+        arcade.draw_text(f"Asura Legion Purged: {self.kills}", WIDTH // 2, base_y - spacing, COLOR_WHITE[:3] + (alpha1,), font_size=18, font_name="Kenney Future", anchor_x="center", anchor_y="center")
         
         # Combo
         alpha2 = int(clamp(self._row_alphas[2], 0, 255))
-        arcade.draw_text(f"Highest Combo: {self.highest_combo}", WIDTH // 2, base_y - spacing * 2, COLOR_WAVE[:3] + (alpha2,), font_size=20, font_name="Kenney Future", anchor_x="center", anchor_y="center")
+        arcade.draw_text(f"Highest Battle Flow: {self.highest_combo}", WIDTH // 2, base_y - spacing * 2, COLOR_WAVE[:3] + (alpha2,), font_size=18, font_name="Kenney Future", anchor_x="center", anchor_y="center")
         
         # Difficulty
         alpha3 = int(clamp(self._row_alphas[3], 0, 255))
-        arcade.draw_text(f"Difficulty: {self.difficulty.capitalize()}", WIDTH // 2, base_y - spacing * 3, COLOR_WHITE[:3] + (alpha3,), font_size=20, font_name="Kenney Future", anchor_x="center", anchor_y="center")
+        arcade.draw_text(f"Difficulty: {self.difficulty.capitalize()}", WIDTH // 2, base_y - spacing * 3, COLOR_WHITE[:3] + (alpha3,), font_size=18, font_name="Kenney Future", anchor_x="center", anchor_y="center")
 
         # Compact combat breakdown
         alpha4 = int(clamp(self._row_alphas[4], 0, 255))
@@ -232,15 +242,15 @@ class VictoryView(arcade.View):
         arcade.draw_text(
             f"Total Damage: {total_damage:,}  •  Perfect Dodges: {perfect_dodges}",
             WIDTH // 2, base_y - spacing * 4,
-            (255, 170, 80, alpha4), font_size=15,
+            (255, 170, 80, alpha4), font_size=14,
             font_name="Kenney Future", anchor_x="center", anchor_y="center",
         )
         
         # Prompts
-        prompt_y = int(HEIGHT * 0.15)
-        arcade.draw_text("Press ENTER to Continue", WIDTH // 2, prompt_y + 30, COLOR_WHITE[:3] + (alpha4,), font_size=16, font_name="Kenney Future", anchor_x="center", anchor_y="center")
-        arcade.draw_text("Press L for Leaderboard", WIDTH // 2, prompt_y, COLOR_WHITE[:3] + (alpha4,), font_size=16, font_name="Kenney Future", anchor_x="center", anchor_y="center")
-        arcade.draw_text("Press ESC for Main Menu", WIDTH // 2, prompt_y - 30, COLOR_WHITE[:3] + (alpha4,), font_size=16, font_name="Kenney Future", anchor_x="center", anchor_y="center")
+        prompt_y = int(HEIGHT * 0.14)
+        arcade.draw_text("ENTER  NEXT REALM / SORTIE", WIDTH // 2, prompt_y + 30, COLOR_WHITE[:3] + (alpha4,), font_size=14, font_name="Kenney Future", anchor_x="center", anchor_y="center")
+        arcade.draw_text("L  AKASHIC RECORDS", WIDTH // 2, prompt_y, COLOR_WHITE[:3] + (alpha4,), font_size=14, font_name="Kenney Future", anchor_x="center", anchor_y="center")
+        arcade.draw_text("ESC  RETURN TO SOURCE", WIDTH // 2, prompt_y - 30, COLOR_WHITE[:3] + (alpha4,), font_size=14, font_name="Kenney Future", anchor_x="center", anchor_y="center")
         
         TransitionOverlay.draw()
 
@@ -249,8 +259,8 @@ class VictoryView(arcade.View):
             return
             
         if symbol == arcade.key.ENTER:
-            from game.views.difficulty_view import DifficultyView
-            transition_to(self.window, DifficultyView())
+            from game.views.realm_map_view import RealmMapView
+            transition_to(self.window, RealmMapView())
         elif symbol == arcade.key.L:
             from game.views.leaderboard_view import LeaderboardView
             transition_to(self.window, LeaderboardView())

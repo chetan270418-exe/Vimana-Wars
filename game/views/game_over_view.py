@@ -93,9 +93,9 @@ class GameOverView(arcade.View):
 
         # ── Prompt ───────────────────────────────────────────────────
         self._prompt = arcade.Text(
-            "R — Quick Restart   •   L — Leaderboard   •   S — Stats   •   ESC — Main Menu",
+            "R — REINCARNATE (RETRY)   •   A — ARSENAL   •   L — AKASHIC RECORDS   •   ESC — RETURN TO SOURCE",
             WIDTH // 2, int(HEIGHT * 0.06),
-            COLOR_WHITE, font_size=12, bold=True,
+            COLOR_WHITE, font_size=11, bold=True,
             anchor_x="center",
         )
 
@@ -191,7 +191,7 @@ class GameOverView(arcade.View):
 
     def on_draw(self) -> None:
         reduced = bool(save_system.load().get("reduced_flashes", False))
-        draw_menu_backdrop("SORTIE ENDED", "MISSION RESULT // RETRY OR RETURN TO COMMAND", (220, 60, 60), pulse=self._pulse, reduced=reduced)
+        draw_menu_backdrop("DHARMIC REBIRTH", "PHYSICAL VESSEL LOST // KARMA RECORDED IN AKASHIC CHRONICLES", (220, 60, 60), pulse=self._pulse, reduced=reduced)
         draw_focus_panel(WIDTH // 2 - 230, WIDTH // 2 + 230, HEIGHT * 0.08, HEIGHT * 0.68, (220, 60, 60), selected=True)
         
         # Draw embers
@@ -230,6 +230,9 @@ class GameOverView(arcade.View):
                     is_endless=self.is_endless,
                 ),
             )
+        elif key == arcade.key.A:
+            from game.views.ship_select_view import ShipSelectView
+            transition_to(self.window, ShipSelectView(difficulty=self.difficulty, start_wave=self.start_wave))
         elif key == arcade.key.L:
             from game.views.leaderboard_view import LeaderboardView
             transition_to(self.window, LeaderboardView(return_view=self))

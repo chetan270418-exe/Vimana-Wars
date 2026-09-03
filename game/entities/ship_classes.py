@@ -17,7 +17,7 @@ SHIP_CLASSES = {
         "accent": (255, 215, 60),
         "sprite": "pushpaka.png",
         "unlock_wave": 0,
-        "desc": "The legendary golden chariot of the gods. Perfect balance of speed, firepower, and defense.",
+        "desc": "The legendary flying chariot of kings and gods. A balanced, dependable vessel favored by pilots who value steady endurance across a full campaign.",
     },
     "tripura": {
         "id": "tripura",
@@ -32,7 +32,7 @@ SHIP_CLASSES = {
         "accent": (220, 60, 40),
         "sprite": "tripura.png",
         "unlock_wave": 0,
-        "desc": "Forged in cosmic celestial fires. Tremendous armor plating and heavy piercing railgun cannons.",
+        "desc": "Named for the myth of the three destroyed cities. Heavy, armored, and built to withstand direct cosmic fire and answer with devastating railgun volleys.",
     },
     "garuda": {
         "id": "garuda",
@@ -47,7 +47,7 @@ SHIP_CLASSES = {
         "accent": (50, 255, 180),
         "sprite": "garuda.png",
         "unlock_wave": 0,
-        "desc": "Swift as thought itself. Devastating rapid-fire needle blasters and rapid twin-burst dashes.",
+        "desc": "Named for Vishnu's eagle, the fastest creature in the heavens. Trades survivability for supreme agility, rapid needle blasters, and twin-burst dashes.",
     },
     "vajra": {
         "id": "vajra", "name": "Vajra Spear", "subtitle": "Lightning Lance",

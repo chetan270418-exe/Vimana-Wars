@@ -146,16 +146,18 @@ class ShipSelectView(arcade.View):
                 arcade.draw_circle_filled(cx, preview_y - 1, 2, (160, 170, 190))
 
             # Stat Bars
-            self._draw_stat_bar("ARMOR / HP", sdata["hp"] / 160.0, cx, cy - 5, (220, 60, 60))
-            self._draw_stat_bar("SPEED", sdata["speed"] / 7.0, cx, cy - 35, (60, 220, 100))
-            self._draw_stat_bar("FIREPOWER", sdata["bullet_damage"] / 50.0, cx, cy - 65, (255, 200, 50))
+            self._draw_stat_bar("HULL", sdata["hp"] / 190.0, cx, cy - 5, (220, 60, 60))
+            self._draw_stat_bar("FIREPOWER", sdata["bullet_damage"] / 65.0, cx, cy - 31, (255, 200, 50))
+            self._draw_stat_bar("SPEED", sdata["speed"] / 7.2, cx, cy - 57, (60, 220, 100))
+            self._draw_stat_bar("DASH", 1.0 - sdata["dash_cooldown"] / 3.4, cx, cy - 83, (80, 190, 255))
+            self._draw_stat_bar("ASTRA POWER", (sdata["bullet_damage"] / sdata["fire_rate"]) / 650.0, cx, cy - 109, sdata["accent"])
 
             # Description (Wrapped)
             desc_lines = self._wrap_text(sdata["desc"], 27)
             for l_idx, line in enumerate(desc_lines if unlocked else ["Complete more campaign waves", "to unlock this warship."]):
                 arcade.draw_text(
                     line,
-                    cx, cy - 110 - l_idx * 16,
+                    cx, cy - 139 - l_idx * 15,
                     (200, 205, 220), font_size=9, anchor_x="center"
                 )
 
@@ -164,7 +166,7 @@ class ShipSelectView(arcade.View):
                 pulse_val = int(200 + 55 * math.sin(self._pulse * 4))
                 arcade.draw_text(
                     "▶ DEPLOY VIMANA  [ENTER] ◀",
-                    cx, cy - 170,
+                    cx, cy - 186,
                     (255, 220, 50, pulse_val), font_size=10, bold=True, anchor_x="center"
                 )
 

@@ -121,6 +121,7 @@ def draw_menu_backdrop(title: str, subtitle: str = "", accent=GOLD,
     arcade.draw_text(title, 42, HEIGHT - 52, accent, font_size=22, bold=True)
     if subtitle:
         arcade.draw_text(subtitle, 42, HEIGHT - 68, MUTED, font_size=8, bold=True)
+    draw_back_navigation()
     if not reduced:
         alpha = pulse_alpha(pulse, 12, 30, 1.7)
         arcade.draw_circle_outline(WIDTH - 100, HEIGHT - 50, 28, (*accent, alpha), 1)
@@ -133,3 +134,15 @@ def draw_focus_panel(left: float, right: float, bottom: float, top: float,
                          fill=SURFACE_HIGH if selected else SURFACE_LOW,
                          alpha=238, border_width=2 if selected else 1,
                          selected=selected, cut=10)
+
+
+def draw_back_navigation(label: str = "ESC  BACK") -> None:
+    arcade.draw_text(label, WIDTH - 30, HEIGHT - 52, MUTED, font_size=8,
+                     bold=True, anchor_x="right", anchor_y="center")
+
+
+def draw_state_badge(x: float, y: float, label: str, color, *, width: float = 92) -> None:
+    draw_chamfered_panel(x - width / 2, x + width / 2, y - 10, y + 10,
+                         color, fill=(12, 18, 30), alpha=225, border_width=1, cut=5)
+    arcade.draw_text(label, x, y - 3, color, font_size=8, bold=True,
+                     anchor_x="center")

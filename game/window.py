@@ -65,6 +65,6 @@ def create_window() -> arcade.Window:
         resizable=False,
         center_window=not fullscreen,
     )
-    from game.views.menu_view import MenuView
-    window.show_view(MenuView())
+    from game.views.loading_screen import LoadingView
+    window.show_view(LoadingView())
     return window
