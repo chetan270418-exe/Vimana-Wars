@@ -126,6 +126,21 @@ ACHIEVEMENTS_LIST = [
 ]
 
 
+def get_all() -> list[dict]:
+    """Return all achievements with an 'unlocked' key reflecting save state.
+
+    Each element is a copy of the achievement dict from ACHIEVEMENTS_LIST
+    with an extra ``unlocked: bool`` key so callers don't need to
+    instantiate AchievementManager just to render the trophy page.
+    """
+    saved = save_system.load()
+    unlocked_ids: set[str] = set(saved.get("achievements", []))
+    return [
+        {**a, "unlocked": a["id"] in unlocked_ids}
+        for a in ACHIEVEMENTS_LIST
+    ]
+
+
 class AchievementManager:
     def __init__(self):
         saved = save_system.load()
