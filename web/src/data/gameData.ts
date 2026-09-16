@@ -69,6 +69,17 @@ export const SHIPS: Ship[] = [
     color: '#7EA8FF',
   },
   {
+    id: 'agneyastra',
+    name: 'Agneyastra',
+    shipClass: 'Solar Burst Frigate',
+    lore: 'Rapid-firing solar flak built to clear dense Asura swarms before they encircle the player, leaving trails of superheated cosmic plasma.',
+    stats: { speed: 82, firepower: 85, armor: 58, shield: 65, agility: 84 },
+    weapon: 'Solar Burst Flak',
+    ability: 'Prominence Surge',
+    img: `${ASSET}agneyastra.png`,
+    color: '#FF8232',
+  },
+  {
     id: 'soma',
     name: 'Soma',
     shipClass: 'Support Carrier',

@@ -164,6 +164,7 @@ class VictoryView(arcade.View):
             SoundManager.stop_music()
 
         arcade.set_background_color((5, 8, 20))
+        self._reduced_flashes = bool(save_system.load().get("reduced_flashes", False))
 
         # Reset animation state for repeat visits.
         self._title_y = HEIGHT + 100.0
@@ -260,7 +261,7 @@ class VictoryView(arcade.View):
         self.particles = [p for p in self.particles if p.life > 0]
         
     def on_draw(self):
-        reduced = bool(save_system.load().get("reduced_flashes", False))
+        reduced = getattr(self, "_reduced_flashes", False)
         draw_menu_backdrop("MISSION COMPLETE", "CAMPAIGN RESULT // REWARDS AND RECORDS", GOLD, pulse=self.time_elapsed, reduced=reduced)
         draw_focus_panel(WIDTH // 2 - 240, WIDTH // 2 + 240, HEIGHT * 0.12, HEIGHT * 0.66, GOLD, selected=True)
         # Draw particles

@@ -969,16 +969,29 @@ def get_top_scores():
 @app.route("/scores/stats", methods=["GET"])
 def get_stats():
     with get_db() as conn:
-        total_games = conn.execute("SELECT COUNT(*) FROM scores").fetchone()[0]
-        total_players = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-        max_score = conn.execute("SELECT MAX(score) FROM scores").fetchone()[0] or 0
-        avg_score = conn.execute("SELECT AVG(score) FROM scores").fetchone()[0] or 0
+        def _scalar(cur):
+            r = cur.fetchone()
+            if not r:
+                return 0
+            if isinstance(r, (tuple, list)):
+                return r[0]
+            if isinstance(r, dict):
+                return next(iter(r.values()))
+            try:
+                return r[0]
+            except Exception:
+                return 0
+
+        total_games = _scalar(conn.execute("SELECT COUNT(*) FROM scores")) or 0
+        total_players = _scalar(conn.execute("SELECT COUNT(*) FROM users")) or 0
+        max_score = _scalar(conn.execute("SELECT MAX(score) FROM scores")) or 0
+        avg_score = _scalar(conn.execute("SELECT AVG(score) FROM scores")) or 0
 
     logger.info("Global stats queried: total_games=%s, max_score=%s", total_games, max_score)
     return jsonify({
         "total_games_submitted": total_games,
         "highest_score": max_score,
-        "average_score": round(avg_score, 1),
+        "average_score": round(float(avg_score), 1),
         "registered_players": total_players,
     })
 

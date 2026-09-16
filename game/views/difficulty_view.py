@@ -29,13 +29,13 @@ _COLORS = {
 
 
 class DifficultyView(arcade.View):
-    def __init__(self, start_wave: int = 1, realm_id: int | None = None):
+    def __init__(self, start_wave: int = 1, realm_id: int | None = None, initial_difficulty: str | None = None):
         super().__init__()
         self.start_wave = max(1, int(start_wave))
         self.realm_id = realm_id
         saved = save_system.load()
-        last_diff = saved.get("difficulty", "normal")
-        self._selected = _OPTIONS.index(last_diff) if last_diff in _OPTIONS else 1
+        chosen = initial_difficulty or saved.get("difficulty", "normal")
+        self._selected = _OPTIONS.index(chosen) if chosen in _OPTIONS else 1
         self._hovered = -1
         self._pulse = 0.0
         self.sound_manager = SoundManager()

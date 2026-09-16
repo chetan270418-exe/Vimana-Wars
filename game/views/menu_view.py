@@ -92,6 +92,7 @@ class MenuView(arcade.View):
         self._last_wave = max(0, int(saved.get("last_wave", 0)))
         self._high_score = saved.get("high_score", 0)
         self._last_ship_id = saved.get("last_ship", "pushpaka")
+        self._game_id = saved.get("game_id", "")
         # Refresh the connection badge without blocking the render thread.
         leaderboard_client.check_health()
 
@@ -127,9 +128,7 @@ class MenuView(arcade.View):
                          240, 558, CYAN, font_size=8, bold=True, font_name=FONT_TELEMETRY)
 
         # Online Sync Badge
-        saved = save_system.load()
-        game_id = saved.get("game_id", "")
-        sync_label = f"VMN-{game_id[-6:]}" if game_id else "LOCAL GUEST"
+        sync_label = f"VMN-{self._game_id[-6:]}" if self._game_id else "LOCAL GUEST"
         is_online = leaderboard_client.is_online()
         sync_color = CYAN_BRIGHT if is_online else GREY
 
@@ -247,7 +246,7 @@ class MenuView(arcade.View):
             transition_to(self.window, RealmMapView())
         elif action == "endless":
             from game.views.difficulty_view import DifficultyView
-            transition_to(self.window, DifficultyView())
+            transition_to(self.window, DifficultyView(initial_difficulty="endless"))
         elif action == "multiplayer":
             from game.views.multiplayer_view import MultiplayerView
             transition_to(self.window, MultiplayerView(return_view=self))

@@ -9,13 +9,14 @@ export type WebProgression = {
 const KEY = 'vimana-web-progression';
 const SHIP_UNLOCK_WAVES: Record<string, number> = {
   pushpaka: 0,
+  tripura: 0,
   garuda: 0,
-  tripura: 4,
-  naga: 7,
-  vajra: 10,
+  vajra: 5,
+  naga: 8,
+  agneyastra: 10,
   soma: 13,
-  kubera: 16,
-  surya: 19,
+  kubera: 15,
+  surya: 20,
 };
 
 function parseWave(waves: string): number {
