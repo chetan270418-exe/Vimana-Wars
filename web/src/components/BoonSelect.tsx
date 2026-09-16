@@ -6,9 +6,13 @@ import StarField from './ui/StarField';
 
 const WAVE_BOONS = [BOONS[0], BOONS[2], BOONS[4]];
 
-type Props = { onNavigate: (s: string) => void };
+type Props = {
+  onNavigate: (s: string) => void;
+  currentWave?: number;
+  onClaimBoon?: (boonId: string) => void;
+};
 
-export default function BoonSelect({ onNavigate }: Props) {
+export default function BoonSelect({ onNavigate, currentWave = 1, onClaimBoon }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
 
   return (
@@ -23,7 +27,7 @@ export default function BoonSelect({ onNavigate }: Props) {
       {/* Header */}
       <div className="relative z-10 text-center mb-8" style={{ animation: 'fade-in 0.6s ease' }}>
         <div className="text-[10px] tracking-[0.4em] mb-2" style={{ fontFamily: '"JetBrains Mono", monospace', color: '#8F98A8' }}>
-          WAVE 7 COMPLETE · DANDAKA VOID
+          WAVE {currentWave} COMPLETE · DANDAKA VOID
         </div>
         <h1 className="text-3xl tracking-[0.22em] font-black mb-2" style={{ fontFamily: '"Cinzel", serif', color: '#FFF6DF' }}>
           CHOOSE YOUR DIVINE BOON
@@ -125,7 +129,10 @@ export default function BoonSelect({ onNavigate }: Props) {
         <VedicButton
           variant="primary"
           disabled={!selected}
-          onClick={() => onNavigate('game-hud')}
+          onClick={() => {
+            if (selected && onClaimBoon) onClaimBoon(selected);
+            onNavigate('game-hud');
+          }}
         >
           ACCEPT BOON · CONTINUE ▶
         </VedicButton>

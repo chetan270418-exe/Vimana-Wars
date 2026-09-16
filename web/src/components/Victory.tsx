@@ -12,7 +12,10 @@ const PARTICLES = Array.from({ length: 24 }, (_, i) => ({
   color: i % 3 === 0 ? '#E9C400' : i % 3 === 1 ? '#74F5FF' : '#FFF6DF',
 }));
 
-const STATS = [
+import { useMemo } from 'react';
+import type { RunResult } from '../types/game';
+
+const DEFAULT_STATS = [
   { label: 'REALM LIBERATED', value: 'Kshira Sagara', color: '#50F0DC' },
   { label: 'FINAL SCORE',     value: '7,441,200',     color: '#E9C400' },
   { label: 'WAVES PERFECT',   value: '3 / 3',         color: '#40E090' },
@@ -29,9 +32,29 @@ const REWARDS = [
   { label: 'NEXT REALM',      value: 'Dandaka Void UNLOCKED', color: '#D264FF' },
 ];
 
-type Props = { onNavigate: (s: string) => void };
+type Props = {
+  onNavigate: (s: string) => void;
+  result?: RunResult | null;
+};
 
-export default function Victory({ onNavigate }: Props) {
+export default function Victory({ onNavigate, result }: Props) {
+  const stats = useMemo(() => {
+    if (!result) return DEFAULT_STATS;
+    const mins = Math.floor(result.durationSeconds / 60);
+    const secs = result.durationSeconds % 60;
+    const timeStr = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+    return [
+      { label: 'REALM LIBERATED', value: 'Dandaka Void', color: '#50F0DC' },
+      { label: 'FINAL SCORE', value: result.score.toLocaleString(), color: '#E9C400' },
+      { label: 'WAVES CLEARED', value: `${result.waveReached} / 20`, color: '#40E090' },
+      { label: 'ENEMIES SLAIN', value: result.kills.toString(), color: '#74F5FF' },
+      { label: 'MAX COMBO', value: `x${result.highestCombo}`, color: '#FF9650' },
+      { label: 'BOONS CLAIMED', value: `${result.boons.length} Deva Gifts`, color: '#7EA8FF' },
+      { label: 'VIMANA', value: result.shipId.toUpperCase(), color: '#FFD060' },
+      { label: 'TIME', value: timeStr, color: '#8F98A8' },
+    ];
+  }, [result]);
   return (
     <div
       className="relative w-full h-full overflow-hidden flex flex-col items-center justify-center"
@@ -98,7 +121,7 @@ export default function Victory({ onNavigate }: Props) {
               MISSION DEBRIEF
             </div>
             <div className="grid grid-cols-2 gap-x-8 gap-y-2.5">
-              {STATS.map(row => (
+              {stats.map(row => (
                 <div key={row.label} className="flex justify-between items-center">
                   <span className="text-xs tracking-wider" style={{ fontFamily: '"Cinzel", serif', color: '#8F98A8' }}>
                     {row.label}

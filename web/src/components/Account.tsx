@@ -58,7 +58,14 @@ export default function Account({ onNavigate }: Props) {
     if (!getSession()) return;
     getCurrentUser()
       .then(result => setUser(result.user))
-      .catch(() => { clearSession(); setUser(null); });
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        // Clear session only on explicit 401 / unauthorized; preserve session during transient offline errors
+        if (msg.includes('401') || msg.toLowerCase().includes('unauthorized') || msg.toLowerCase().includes('session')) {
+          clearSession();
+          setUser(null);
+        }
+      });
   }, []);
 
   useEffect(() => {
@@ -76,10 +83,16 @@ export default function Account({ onNavigate }: Props) {
         setMessage(`Welcome back, ${result.user.player_name}.`);
       } else if (mode === 'register') {
         const result = await registerAccount(email.trim(), password, playerName.trim() || 'Warrior');
-        setUser(result.user);
-        setMessage(result.verification_required
-          ? 'Account created. Verify your email before production sign-in.'
-          : `Game ID created: ${result.user.game_id}`);
+        if (!result.verification_required && result.token) {
+          setUser(result.user);
+          setMessage(`Game ID created: ${result.user.game_id}`);
+        } else {
+          setUser(null);
+          setMessage(result.verification_required
+            ? 'Account created. Please verify your email before signing in.'
+            : `Account created for ${result.user.player_name}. You can now sign in.`);
+          setMode('login');
+        }
         if (result.verification_token) setToken(result.verification_token);
       } else {
         if (!token.trim()) {
@@ -97,8 +110,13 @@ export default function Account({ onNavigate }: Props) {
   };
 
   const signOut = async () => {
-    await logoutAccount();
-    setUser(null); setStats(null); setMessage('Signed out. Progress remains on this device.');
+    try {
+      await logoutAccount();
+    } finally {
+      setUser(null);
+      setStats(null);
+      setMessage('Signed out. Progress remains on this device.');
+    }
   };
 
   return (

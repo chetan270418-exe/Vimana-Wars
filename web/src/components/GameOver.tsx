@@ -13,7 +13,9 @@ const EMBERS = Array.from({ length: 28 }, (_, i) => ({
   color: i % 3 === 0 ? '#FF6B72' : i % 3 === 1 ? '#E9C400' : '#FF3020',
 }));
 
-const STATS = [
+import type { RunResult } from '../types/game';
+
+const DEFAULT_STATS = [
   { label: 'WAVE REACHED',   value: '8 / 20',     color: '#D0C6AB' },
   { label: 'FINAL SCORE',    value: '4,328,900',   color: '#E9C400' },
   { label: 'ENEMIES SLAIN',  value: '247',         color: '#74F5FF' },
@@ -24,10 +26,30 @@ const STATS = [
   { label: 'VIMANA USED',    value: 'Garuda',      color: '#FFD060' },
 ];
 
-type Props = { onNavigate: (s: string) => void };
+type Props = {
+  onNavigate: (s: string) => void;
+  result?: RunResult | null;
+};
 
-export default function GameOver({ onNavigate }: Props) {
+export default function GameOver({ onNavigate, result }: Props) {
   const embers = useMemo(() => EMBERS, []);
+  const stats = useMemo(() => {
+    if (!result) return DEFAULT_STATS;
+    const mins = Math.floor(result.durationSeconds / 60);
+    const secs = result.durationSeconds % 60;
+    const timeStr = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+    return [
+      { label: 'WAVE REACHED', value: `${result.waveReached} / 20`, color: '#D0C6AB' },
+      { label: 'FINAL SCORE', value: result.score.toLocaleString(), color: '#E9C400' },
+      { label: 'ENEMIES SLAIN', value: result.kills.toString(), color: '#74F5FF' },
+      { label: 'HIGHEST COMBO', value: `x${result.highestCombo}`, color: '#FF9650' },
+      { label: 'TOTAL DAMAGE', value: result.totalDamage.toLocaleString(), color: '#40E090' },
+      { label: 'ACTIVE BOONS', value: `${result.boons.length} Deva Gifts`, color: '#D264FF' },
+      { label: 'TIME ELAPSED', value: timeStr, color: '#8F98A8' },
+      { label: 'VIMANA USED', value: result.shipId.toUpperCase(), color: '#FFD060' },
+    ];
+  }, [result]);
 
   return (
     <div className="relative w-full h-full overflow-hidden flex flex-col items-center justify-center" style={{ background: '#050308', paddingBottom: 40 }}>
@@ -103,7 +125,7 @@ export default function GameOver({ onNavigate }: Props) {
               COMBAT REPORT
             </div>
             <div className="grid grid-cols-2 gap-x-8 gap-y-3">
-              {STATS.map(row => (
+              {stats.map(row => (
                 <div key={row.label} className="flex justify-between items-center">
                   <span className="text-xs tracking-wider" style={{ fontFamily: '"Cinzel", serif', color: '#8F98A8' }}>
                     {row.label}

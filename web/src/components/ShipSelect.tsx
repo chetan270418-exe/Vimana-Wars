@@ -5,8 +5,12 @@ import VedicButton from './ui/VedicButton';
 import StatBar from './ui/StatBar';
 import StarField from './ui/StarField';
 import { getProgression, isShipUnlocked, shipUnlockWave, unlockedShipCount } from '../lib/progression';
+import type { RunConfig } from '../types/game';
 
-type Props = { onNavigate: (s: string) => void };
+type Props = {
+  onNavigate: (s: string) => void;
+  onStartRun?: (config: RunConfig) => void;
+};
 
 const STAT_COLORS: Record<string, string> = {
   speed: '#74F5FF',
@@ -52,7 +56,7 @@ function ShipCard({ ship, selected, locked, onClick }: { ship: Ship; selected: b
   );
 }
 
-export default function ShipSelect({ onNavigate }: Props) {
+export default function ShipSelect({ onNavigate, onStartRun }: Props) {
   const progression = getProgression();
   const [selected, setSelected] = useState<Ship>(SHIPS.find(ship => isShipUnlocked(ship.id, progression.lastWave)) ?? SHIPS[0]);
 
@@ -191,7 +195,22 @@ export default function ShipSelect({ onNavigate }: Props) {
             <VedicButton variant="ghost" onClick={() => onNavigate('realm-map')}>
               VIEW REALM MAP
             </VedicButton>
-            <VedicButton variant="primary" onClick={() => onNavigate('boon-select')}>
+            <VedicButton
+              variant="primary"
+              onClick={() => {
+                if (onStartRun) {
+                  onStartRun({
+                    runId: `run_${Date.now()}`,
+                    shipId: selected.id,
+                    mode: 'campaign',
+                    difficulty: 'normal',
+                    startRealm: 'dandaka',
+                    startWave: 1,
+                  });
+                }
+                onNavigate('game-hud');
+              }}
+            >
               DEPLOY VIMANA ▶
             </VedicButton>
           </div>

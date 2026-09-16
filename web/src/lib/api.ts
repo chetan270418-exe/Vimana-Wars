@@ -83,10 +83,12 @@ export async function getTopScores(limit = 10, signal?: AbortSignal) {
 }
 
 export async function registerAccount(email: string, password: string, playerName: string) {
-  const payload = await apiFetch<{ token: string; user: User; verification_required?: boolean; verification_token?: string }>('/auth/register', {
+  const payload = await apiFetch<{ token?: string | null; user: User; verification_required?: boolean; verification_token?: string }>('/auth/register', {
     method: 'POST', body: JSON.stringify({ email, password, player_name: playerName }),
   });
-  saveSession({ token: payload.token, user: payload.user });
+  if (payload.token) {
+    saveSession({ token: payload.token, user: payload.user });
+  }
   return payload;
 }
 
@@ -99,7 +101,13 @@ export async function loginAccount(email: string, password: string) {
 }
 
 export async function logoutAccount() {
-  try { await apiFetch('/auth/logout', { method: 'POST' }); } finally { clearSession(); }
+  try {
+    await apiFetch('/auth/logout', { method: 'POST' });
+  } catch {
+    // Offline or server unreachable: still clear local session cleanly
+  } finally {
+    clearSession();
+  }
 }
 
 export async function getCurrentUser() {
@@ -130,6 +138,31 @@ export type CloudProfile = Record<string, unknown>;
 
 export async function getProfile() {
   return apiFetch<{ profile: CloudProfile; updated_at: string | null }>('/account/profile');
+}
+
+export async function updateProfile(profile: Partial<CloudProfile>) {
+  return apiFetch<{ success: boolean; profile: CloudProfile }>('/account/profile', {
+    method: 'PUT',
+    body: JSON.stringify({ profile }),
+  });
+}
+
+export type ScoreSubmission = {
+  player_name: string;
+  score: number;
+  level_reached: number;
+  difficulty: string;
+  ship_class: string;
+  kills?: number;
+  total_damage?: number;
+  duration_seconds?: number;
+};
+
+export async function submitScore(scoreData: ScoreSubmission) {
+  return apiFetch<{ success: boolean; id: number; score: number }>('/scores', {
+    method: 'POST',
+    body: JSON.stringify(scoreData),
+  });
 }
 
 export async function getAccountStats() {

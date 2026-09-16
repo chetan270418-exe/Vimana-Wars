@@ -1,4 +1,5 @@
 import { REALMS, SHIPS } from '../data/gameData';
+import { getSession } from './api';
 
 export type WebProgression = {
   lastWave: number;
@@ -6,7 +7,13 @@ export type WebProgression = {
   completedRealms: string[];
 };
 
-const KEY = 'vimana-web-progression';
+const LEGACY_KEY = 'vimana-web-progression';
+
+export function getProgressionKey(customGameId?: string): string {
+  const gameId = customGameId ?? getSession()?.user.game_id;
+  return gameId ? `vimana-progression:${gameId}` : 'vimana-progression:guest';
+}
+
 const SHIP_UNLOCK_WAVES: Record<string, number> = {
   pushpaka: 0,
   tripura: 0,
@@ -23,9 +30,14 @@ function parseWave(waves: string): number {
   return Number(waves.split(/[–-]/)[0]) || 1;
 }
 
-export function getProgression(): WebProgression {
+export function getProgression(customGameId?: string): WebProgression {
+  const key = getProgressionKey(customGameId);
   try {
-    const saved = JSON.parse(window.localStorage.getItem(KEY) || '{}') as Partial<WebProgression>;
+    let raw = window.localStorage.getItem(key);
+    if (!raw && key === 'vimana-progression:guest') {
+      raw = window.localStorage.getItem(LEGACY_KEY);
+    }
+    const saved = JSON.parse(raw || '{}') as Partial<WebProgression>;
     return {
       lastWave: Math.max(0, Number(saved.lastWave) || 0),
       lastShip: typeof saved.lastShip === 'string' ? saved.lastShip : 'pushpaka',
@@ -36,9 +48,10 @@ export function getProgression(): WebProgression {
   }
 }
 
-export function saveProgression(patch: Partial<WebProgression>): WebProgression {
-  const next = { ...getProgression(), ...patch };
-  window.localStorage.setItem(KEY, JSON.stringify(next));
+export function saveProgression(patch: Partial<WebProgression>, customGameId?: string): WebProgression {
+  const key = getProgressionKey(customGameId);
+  const next = { ...getProgression(customGameId), ...patch };
+  window.localStorage.setItem(key, JSON.stringify(next));
   return next;
 }
 
