@@ -6,11 +6,15 @@ import hashlib
 import psycopg
 from psycopg.rows import dict_row
 
-POOLER_URL = "postgresql://postgres.wlergqltjdyzpqiucovr:CHetanamit37@aws-0-ap-southeast-2.pooler.supabase.com:6543/postgres"
+POOLER_URL = os.environ.get("VIMANA_LIVE_DATABASE_URL", "").strip()
 
 print("==================================================")
 print("SUPABASE POSTGRESQL QUERY AUDIT & VERIFICATION")
 print("==================================================")
+
+if not POOLER_URL:
+    print("Set VIMANA_LIVE_DATABASE_URL to run the live database audit; nothing was executed.")
+    raise SystemExit(0)
 
 try:
     conn = psycopg.connect(POOLER_URL, row_factory=dict_row)

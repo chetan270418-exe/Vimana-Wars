@@ -89,6 +89,6 @@ def create_window() -> arcade.Window:
         resizable=True,
         center_window=not fullscreen,
     )
-    from game.views.loading_screen import LoadingView
-    window.show_view(LoadingView())
+    from game.views.intro_video_view import IntroVideoView
+    window.show_view(IntroVideoView())
     return window

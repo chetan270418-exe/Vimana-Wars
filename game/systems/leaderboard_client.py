@@ -19,8 +19,40 @@ class LeaderboardClient:
         self._lock = threading.Lock()
         self.is_loading = False
         self.last_error: str | None = None
+        # The menu reads this state every frame.  Keep it separate from
+        # ``last_error`` so a previous failed request cannot make a later
+        # successful health check look offline (and so the menu does not need
+        # to perform network I/O during drawing).
+        self._online = False
         self.top_scores: list[dict] = []
         self.submission_success = False
+
+    def is_online(self) -> bool:
+        """Return the last known API reachability without doing network I/O."""
+        with self._lock:
+            return self._online
+
+    def _set_online(self, online: bool) -> None:
+        with self._lock:
+            self._online = bool(online)
+
+    def check_health(self, on_complete=None) -> None:
+        """Check the API asynchronously for the menu's online/offline badge."""
+        def _worker():
+            online = False
+            error = None
+            try:
+                resp = requests.get(self.api_url, timeout=NETWORK_TIMEOUT)
+                online = resp.status_code == 200
+                if not online:
+                    error = f"API returned {resp.status_code}"
+            except requests.exceptions.RequestException:
+                error = "API offline"
+            self._set_online(online)
+            if on_complete:
+                on_complete(online, error)
+
+        threading.Thread(target=_worker, daemon=True).start()
 
     @staticmethod
     def _auth_headers() -> dict:
@@ -95,6 +127,7 @@ class LeaderboardClient:
                 body = resp.json() if resp.content else {}
                 if resp.status_code in (200, 201) and body.get("success"):
                     success = True
+                    self._set_online(True)
                     user = body.get("user") or {}
                     user["verification_required"] = bool(body.get("verification_required"))
                     if body.get("verification_token"):
@@ -105,8 +138,10 @@ class LeaderboardClient:
                         # independently so login remains fast when the profile is empty.
                         self.sync_profile()
                 else:
+                    self._set_online(True)
                     error = body.get("error", f"Account request failed ({resp.status_code})")
             except (requests.exceptions.RequestException, ValueError):
+                self._set_online(False)
                 error = "Account server offline — guest mode is still available"
             finally:
                 with self._lock:
@@ -139,11 +174,14 @@ class LeaderboardClient:
                 body = resp.json() if resp.content else {}
                 if resp.status_code == 200 and body.get("success"):
                     success = True
+                    self._set_online(True)
                     if body.get("token") and body.get("user"):
                         self._save_account(body["token"], body["user"])
                 else:
+                    self._set_online(True)
                     error = body.get("error", f"Account action failed ({resp.status_code})")
             except (requests.exceptions.RequestException, ValueError):
+                self._set_online(False)
                 error = "Account server offline"
             if on_complete:
                 on_complete(success, error, body)
@@ -176,9 +214,12 @@ class LeaderboardClient:
                 body = resp.json() if resp.content else {}
                 if resp.status_code in (200, 201):
                     success = True
+                    self._set_online(True)
                 else:
+                    self._set_online(True)
                     error = body.get("error", f"Multiplayer request failed ({resp.status_code})")
             except (requests.exceptions.RequestException, ValueError):
+                self._set_online(False)
                 error = "Multiplayer server offline — campaign remains available"
             if on_complete:
                 on_complete(success, error, body)
@@ -254,9 +295,12 @@ class LeaderboardClient:
                     profile = body.get("profile") or {}
                     self._merge_profile(profile)
                     success = True
+                    self._set_online(True)
                 else:
+                    self._set_online(True)
                     error = body.get("error", f"Profile sync failed ({resp.status_code})")
             except (requests.exceptions.RequestException, ValueError):
+                self._set_online(False)
                 error = "Cloud profile unavailable — local progress is safe"
             if on_complete:
                 on_complete(success, error, profile)
@@ -283,9 +327,12 @@ class LeaderboardClient:
                 body = resp.json() if resp.content else {}
                 if resp.status_code == 200:
                     success = True
+                    self._set_online(True)
                 else:
+                    self._set_online(True)
                     error = body.get("error", f"Profile sync failed ({resp.status_code})")
             except (requests.exceptions.RequestException, ValueError):
+                self._set_online(False)
                 error = "Cloud profile unavailable — local progress is safe"
             if on_complete:
                 on_complete(success, error)
@@ -307,9 +354,12 @@ class LeaderboardClient:
                 body = resp.json() if resp.content else {}
                 if resp.status_code == 200:
                     stats = body
+                    self._set_online(True)
                 else:
+                    self._set_online(True)
                     error = body.get("error", f"Stats request failed ({resp.status_code})")
             except (requests.exceptions.RequestException, ValueError):
+                self._set_online(False)
                 error = "Online stats unavailable"
             if on_complete:
                 on_complete(stats, error)
@@ -341,9 +391,12 @@ class LeaderboardClient:
                     data = resp.json()
                     scores = list(data.get("leaderboard", []))
                     err = None
+                    self._set_online(True)
                 else:
+                    self._set_online(True)
                     err = f"Server returned {resp.status_code}"
             except requests.exceptions.RequestException:
+                self._set_online(False)
                 err = "Leaderboard offline (Could not connect to server)"
                 scores = []
             finally:
@@ -393,13 +446,16 @@ class LeaderboardClient:
                 if resp.status_code == 201:
                     success = True
                     err = None
+                    self._set_online(True)
                 else:
                     success = False
+                    self._set_online(True)
                     try:
                         err = resp.json().get("error", f"Submission error {resp.status_code}")
                     except ValueError:
                         err = f"Submission error {resp.status_code}"
             except requests.exceptions.RequestException:
+                self._set_online(False)
                 success = False
                 err = "Server offline — score saved locally"
             finally:

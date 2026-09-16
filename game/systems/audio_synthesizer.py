@@ -11,7 +11,10 @@ import wave
 from pathlib import Path
 
 
-SOUND_DIR = Path("assets/sounds")
+# Resolve from the source file instead of the process working directory.  This
+# matters when the game is launched from a desktop shortcut, an IDE, or a
+# packaged executable whose current directory is not the repository root.
+SOUND_DIR = Path(__file__).resolve().parents[2] / "assets" / "sounds"
 
 
 def _write_wav(filename: str, samples: list[float], sample_rate: int = 22050) -> None:

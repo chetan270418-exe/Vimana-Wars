@@ -46,6 +46,8 @@
   - Vedic-Punk UI redesign applied to the Arcade game: animated telemetry, scanlines, chamfered panels, selection pulses, cockpit HUD framing, and accessibility-aware motion.
   - Design references and the generated PV are tracked in the workspace root: `main-menu-ui.png`, `mission-control-hud.png`, `astra-arsenal.png`, `boss-overlay-system.png`, and `vimana_wars_pv_final.mp4`.
   - Planning documents: `vimana-wars-pv-storyboard.md` and `vimana-wars-final-video-prompt.md`.
+  - Automatic launch sequence: the bundled PV plays inside the game window,
+    then transitions into the loading screen and finally the story/menu flow.
 
 - **Polished Combat Juice & Visuals**:
   - 🌌 Parallax cosmic background with drifting mythological realms.
@@ -92,6 +94,9 @@
 
 ### 1. Prerequisites
 - Python 3.10 or higher (Tested on Python 3.11)
+- The desktop launch cinematic uses `opencv-python-headless` for MP4 frame
+  decoding. It is installed by the requirements file; if unavailable, the
+  game safely skips the cinematic and continues booting.
 
 ### 2. Installation
 Clone the repository and install dependencies:
@@ -117,10 +122,76 @@ linked from **Main Menu → ACCOUNT**. After registration, the local session is
 remembered between launches and authenticated leaderboard scores use the
 displayed Game ID.
 
+### 5. Run the React Web Frontend
+
+The URL that returns the endpoint JSON is the API health page, not the web UI.
+Run the React/Vite frontend separately:
+
+```bash
+cd web
+pnpm install --frozen-lockfile
+pnpm run dev
+```
+
+To point the web UI at a different API during development:
+
+```bash
+VITE_API_URL=http://127.0.0.1:5000 pnpm run dev
+```
+
+The Render blueprint now defines two services: `vimana-wars-api` for Flask and
+`vimana-wars-web` for the static React build. Configure `CORS_ORIGINS` on the
+API with the final web URL if you rename either service.
+
+If PowerShell says `pnpm` is not recognized, Node.js/npm is enough:
+
+```powershell
+cd web
+.\start_web.ps1
+```
+
+The helper uses pnpm when available and automatically falls back to npm. If you
+are already inside `web`, do not run `cd web` a second time.
+
+If the project already has `web/node_modules`, the helper reuses it and starts
+Vite directly. This avoids an npm 11 false `Unsupported URL Type
+"workspace:*"` error caused by pnpm's internal links. You can also run
+`npm run dev` directly from `web` after dependencies are installed.
+
+For the desktop game, keep the virtual environment active and run:
+
+```powershell
+cd "D:\Vimana Wars"
+python main.py
+```
+
+To connect the desktop build to a hosted API, set the URL before launching:
+
+```powershell
+$env:VIMANA_API_URL = "https://vimana-wars.onrender.com"
+python main.py
+```
+
 For production hosting, deploy `backend.app:app` with Gunicorn and provide a
 managed PostgreSQL `DATABASE_URL`. The included `render.yaml` is a starting
 point for HTTPS-hosted deployment; set `VIMANA_API_URL` to the resulting HTTPS
 API URL before releasing a build.
+
+### Vercel web deployment
+
+The API URL and the visual web UI are different services. In Vercel, either set
+the project Root Directory to `web` (Build Command `npm run build`, Output
+Directory `dist`) or deploy from the repository root using the included
+`vercel.json`. Add the environment variable
+`VITE_API_URL=https://vimana-wars.onrender.com`, redeploy, and open the Vercel
+URL—not the Render API URL. A successful API root response is JSON by design;
+it is not the game website.
+
+The included Render defaults keep email verification off because the project
+does not yet have an SMTP provider configured; otherwise new accounts would be
+created but users would never receive their verification token. Enable
+`REQUIRE_EMAIL_VERIFICATION=true` only after wiring a transactional email
+provider and a secure verification-email delivery path.
 
 ---
 

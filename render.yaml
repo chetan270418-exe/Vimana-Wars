@@ -10,6 +10,26 @@ services:
       - key: DATABASE_URL
         sync: false
       - key: REQUIRE_EMAIL_VERIFICATION
-        value: "true"
+        # Keep sign-up usable until an SMTP provider is configured. Turn this
+        # on only after adding a real verification-email delivery service.
+        value: "false"
       - key: SHOW_DEV_AUTH_TOKENS
         value: "false"
+      - key: CORS_ORIGINS
+        value: "https://vimana-wars-web.onrender.com,http://localhost:5173,http://localhost:4173,http://localhost:8443"
+
+  # The Flask service above is the API.  The React/Vite project is a separate
+  # static site; keeping it separate prevents the API root from being mistaken
+  # for the game's web UI.
+  - type: web
+    runtime: static
+    name: vimana-wars-web
+    buildCommand: corepack enable && cd web && pnpm install --frozen-lockfile && pnpm run build
+    staticPublishPath: web/dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://vimana-wars.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

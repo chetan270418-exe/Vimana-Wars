@@ -172,8 +172,8 @@ export default function Settings({ onNavigate }: Props) {
                   <div className="flex flex-col gap-5">
                     <Slider label="MASTER VOLUME" value={master} onChange={setMaster} color="#E9C400" />
                     <Slider label="MUSIC" value={music} onChange={setMusic} color="#74F5FF" />
-                    <Slider label="SOUND EFFECTS" value={sfx} onChange={setSfx} color="#FF9650" />
-                    <Slider label="AMBIENCE" value={ambience} onChange={setAmbience} color="#D264FF" />
+                    <Slider label="SOUND EFFECTS" value={sfx} onChange={setSfx} color="#74F5FF" />
+                    <Slider label="AMBIENCE" value={ambience} onChange={setAmbience} color="#8F98A8" />
                   </div>
                 </div>
 

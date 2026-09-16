@@ -8,6 +8,9 @@ import Victory from './components/Victory';
 import RealmMap from './components/RealmMap';
 import Leaderboard from './components/Leaderboard';
 import Settings from './components/Settings';
+import Codex from './components/Codex';
+import Account from './components/Account';
+import SanghaNetwork from './components/SanghaNetwork';
 import ScreenNav from './components/ui/ScreenNav';
 
 export default function App() {
@@ -46,7 +49,10 @@ export default function App() {
         {screen === 'victory'    && <Victory   {...props} />}
         {screen === 'realm-map'  && <RealmMap  {...props} />}
         {screen === 'leaderboard'&& <Leaderboard {...props} />}
+        {screen === 'account'   && <Account   {...props} />}
+        {screen === 'sangha'    && <SanghaNetwork {...props} />}
         {screen === 'settings'   && <Settings  {...props} />}
+        {screen === 'codex'      && <Codex     {...props} />}
       </div>
 
       <ScreenNav current={screen} onNavigate={navigate} />

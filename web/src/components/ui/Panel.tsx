@@ -1,9 +1,9 @@
 type Variant = 'default' | 'selected' | 'active' | 'danger' | 'dim';
 
 const VSTYLES: Record<Variant, { border: string; bg: string; glow: string }> = {
-  default:  { border: 'rgba(233,196,0,0.22)',  bg: 'rgba(14,20,35,0.93)',  glow: 'drop-shadow(0 0 4px rgba(233,196,0,0.08))' },
+  default:  { border: 'rgba(0,219,231,0.22)',   bg: 'rgba(14,20,35,0.93)',  glow: 'drop-shadow(0 0 4px rgba(0,219,231,0.08))' },
   selected: { border: 'rgba(233,196,0,0.88)',  bg: 'rgba(22,32,52,0.97)',  glow: 'drop-shadow(0 0 14px rgba(233,196,0,0.42)) drop-shadow(0 2px 30px rgba(233,196,0,0.18))' },
-  active:   { border: 'rgba(0,219,231,0.65)',  bg: 'rgba(10,24,40,0.95)',  glow: 'drop-shadow(0 0 10px rgba(0,219,231,0.32))' },
+  active:   { border: 'rgba(233,196,0,0.72)',  bg: 'rgba(18,27,44,0.97)',  glow: 'drop-shadow(0 0 10px rgba(233,196,0,0.28))' },
   danger:   { border: 'rgba(191,0,54,0.72)',   bg: 'rgba(28,8,18,0.95)',   glow: 'drop-shadow(0 0 10px rgba(191,0,54,0.38))' },
   dim:      { border: 'rgba(143,152,168,0.18)', bg: 'rgba(11,15,24,0.88)', glow: 'none' },
 };

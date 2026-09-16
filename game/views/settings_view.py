@@ -10,6 +10,7 @@ import arcade
 
 from constants import WIDTH, HEIGHT
 from game.systems import save_system
+from game.systems.sound_manager import SoundManager
 from game.ui.nav_rail import NavRail
 from game.ui.transitions import transition_to, TransitionOverlay
 from game.ui.vedic_theme import (
@@ -56,7 +57,6 @@ class SettingsView(arcade.View):
         self.colorblind_mode = data.get("colorblind_mode", "off")
         self.fullscreen = bool(data.get("fullscreen", False))
 
-        from game.systems.sound_manager import SoundManager
         self.sound_manager = SoundManager()
 
         self._active_tab = 0
@@ -267,8 +267,9 @@ class SettingsView(arcade.View):
 
         # Diamond thumb (14x14 rotated square)
         tx = x + fill_w
-        arcade.draw_rectangle_filled(tx, y, 12, 12, GOLD_BRIGHT, tilt_angle=45)
-        arcade.draw_rectangle_outline(tx, y, 12, 12, OBSIDIAN, 1.5, tilt_angle=45)
+        diamond = [(tx, y + 8.5), (tx + 8.5, y), (tx, y - 8.5), (tx - 8.5, y)]
+        arcade.draw_polygon_filled(diamond, GOLD_BRIGHT)
+        arcade.draw_polygon_outline(diamond, OBSIDIAN, 1.5)
 
     def _draw_toggle(self, x: float, y: float, label: str, on_text: str, off_text: str, state: bool) -> None:
         arcade.draw_text(label, x, y + 20, STARLIGHT, font_size=10, bold=True, font_name=FONT_INTERFACE)
@@ -286,8 +287,10 @@ class SettingsView(arcade.View):
 
     def _draw_diamond_toggle(self, x: float, y: float, label: str, desc: str, state: bool) -> None:
         # 16x16 rotated square diamond toggle per Section 7.11
-        arcade.draw_rectangle_filled(x + 12, y + 6, 16, 16, GOLD if state else WELL, tilt_angle=45)
-        arcade.draw_rectangle_outline(x + 12, y + 6, 16, 16, BRASS, 1.5, tilt_angle=45)
+        cx, cy = x + 12, y + 6
+        diamond = [(cx, cy + 11.5), (cx + 11.5, cy), (cx, cy - 11.5), (cx - 11.5, cy)]
+        arcade.draw_polygon_filled(diamond, GOLD if state else WELL)
+        arcade.draw_polygon_outline(diamond, BRASS, 1.5)
         if state:
             arcade.draw_text("✓", x + 12, y + 6, OBSIDIAN, font_size=10, bold=True,
                              anchor_x="center", anchor_y="center")

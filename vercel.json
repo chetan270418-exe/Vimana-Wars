@@ -1,0 +1,5 @@
+{
+  "buildCommand": "npm --prefix web install --no-package-lock && npm --prefix web run build",
+  "outputDirectory": "web/dist",
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}

@@ -4,6 +4,7 @@ import Panel from './ui/Panel';
 import VedicButton from './ui/VedicButton';
 import StatBar from './ui/StatBar';
 import StarField from './ui/StarField';
+import { getProgression, isShipUnlocked, shipUnlockWave, unlockedShipCount } from '../lib/progression';
 
 type Props = { onNavigate: (s: string) => void };
 
@@ -15,13 +16,13 @@ const STAT_COLORS: Record<string, string> = {
   agility: '#40E090',
 };
 
-function ShipCard({ ship, selected, onClick }: { ship: Ship; selected: boolean; onClick: () => void }) {
+function ShipCard({ ship, selected, locked, onClick }: { ship: Ship; selected: boolean; locked: boolean; onClick: () => void }) {
   return (
     <Panel
       variant={selected ? 'selected' : 'default'}
       cut={8}
       onClick={onClick}
-      className="transition-transform duration-150 hover:-translate-y-0.5"
+      className={`transition-transform duration-150 ${locked ? 'opacity-60' : 'hover:-translate-y-0.5'}`}
     >
       <div className="p-3 flex flex-col items-center gap-2">
         <img
@@ -31,7 +32,7 @@ function ShipCard({ ship, selected, onClick }: { ship: Ship; selected: boolean; 
           style={{
             filter: selected
               ? `drop-shadow(0 0 10px ${ship.color}88)`
-              : 'brightness(0.7) saturate(0.7)',
+              : locked ? 'brightness(0.35) saturate(0)' : 'brightness(0.7) saturate(0.7)',
           }}
           onError={e => { (e.target as HTMLImageElement).style.opacity = '0.3'; }}
         />
@@ -43,7 +44,7 @@ function ShipCard({ ship, selected, onClick }: { ship: Ship; selected: boolean; 
             {ship.name.toUpperCase()}
           </div>
           <div className="text-[9px] tracking-wider mt-0.5" style={{ color: ship.color, opacity: selected ? 1 : 0.5 }}>
-            {ship.shipClass}
+            {locked ? `LOCKED · WAVE ${shipUnlockWave(ship.id)}` : ship.shipClass}
           </div>
         </div>
       </div>
@@ -52,7 +53,8 @@ function ShipCard({ ship, selected, onClick }: { ship: Ship; selected: boolean; 
 }
 
 export default function ShipSelect({ onNavigate }: Props) {
-  const [selected, setSelected] = useState<Ship>(SHIPS[0]);
+  const progression = getProgression();
+  const [selected, setSelected] = useState<Ship>(SHIPS.find(ship => isShipUnlocked(ship.id, progression.lastWave)) ?? SHIPS[0]);
 
   return (
     <div className="relative w-full h-full overflow-hidden" style={{ background: '#08090F', paddingBottom: 40 }}>
@@ -85,11 +87,11 @@ export default function ShipSelect({ onNavigate }: Props) {
         {/* Ship grid */}
         <div className="flex flex-col gap-3" style={{ width: 320 }}>
           <div className="text-[10px] tracking-[0.3em] mb-1" style={{ fontFamily: '"Cinzel", serif', color: '#8F98A8' }}>
-            8 VIMANAS AVAILABLE
+            {unlockedShipCount(progression.lastWave)} / {SHIPS.length} VIMANAS AVAILABLE
           </div>
           <div className="grid grid-cols-4 gap-2">
             {SHIPS.map(ship => (
-              <ShipCard key={ship.id} ship={ship} selected={selected.id === ship.id} onClick={() => setSelected(ship)} />
+              <ShipCard key={ship.id} ship={ship} locked={!isShipUnlocked(ship.id, progression.lastWave)} selected={selected.id === ship.id} onClick={() => { if (isShipUnlocked(ship.id, progression.lastWave)) setSelected(ship); }} />
             ))}
           </div>
 
@@ -114,7 +116,7 @@ export default function ShipSelect({ onNavigate }: Props) {
 
         {/* Detail panel */}
         <div className="flex-1 flex flex-col gap-4">
-          <Panel variant="default" cut={14} className="flex-1">
+          <Panel variant="selected" cut={14} className="flex-1">
             <div className="p-6 flex gap-6 h-full">
               {/* Ship art */}
               <div className="flex flex-col items-center justify-center" style={{ width: 220 }}>
@@ -138,17 +140,6 @@ export default function ShipSelect({ onNavigate }: Props) {
                       t.style.display = 'none';
                     }}
                   />
-                </div>
-                <div className="mt-3 text-center">
-                  <div className="text-[9px] tracking-[0.2em] px-3 py-1 inline-block" style={{
-                    fontFamily: '"JetBrains Mono", monospace',
-                    color: selected.color,
-                    border: `1px solid ${selected.color}44`,
-                    background: `${selected.color}0F`,
-                    clipPath: 'polygon(4px 0%,calc(100% - 4px) 0%,100% 4px,100% calc(100% - 4px),calc(100% - 4px) 100%,4px 100%,0% calc(100% - 4px),0% 4px)',
-                  }}>
-                    {selected.shipClass.toUpperCase()}
-                  </div>
                 </div>
               </div>
 

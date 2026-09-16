@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { LEADERBOARD } from '../data/gameData';
+import type { LeaderboardEntry } from '../data/gameData';
+import { getTopScores } from '../lib/api';
 import Panel from './ui/Panel';
 import StarField from './ui/StarField';
 import VedicButton from './ui/VedicButton';
@@ -16,8 +18,29 @@ type Props = { onNavigate: (s: string) => void };
 
 export default function Leaderboard({ onNavigate }: Props) {
   const [tab, setTab] = useState<Tab>('global');
+  const [remoteEntries, setRemoteEntries] = useState<LeaderboardEntry[] | null>(null);
 
-  const entries = LEADERBOARD.map((e, i) => ({
+  useEffect(() => {
+    const controller = new AbortController();
+    getTopScores(10, controller.signal).then(payload => {
+      const mapped = (payload.leaderboard ?? []).map((row, index) => ({
+        rank: index + 1,
+        player: String(row.player_name ?? row.game_id ?? 'UNKNOWN PILOT'),
+        score: Number(row.score ?? 0),
+        realmReached: `Wave ${Number(row.level_reached ?? 0)}`,
+        ship: String(row.ship_class ?? 'pushpaka'),
+        date: String(row.created_at ?? '').slice(0, 10) || '—',
+        isCurrentPlayer: false,
+      }));
+      if (mapped.length > 0) setRemoteEntries(mapped);
+    }).catch(() => {
+      // Keep the local preview records visible when the hosted API is asleep
+      // or the player is offline.
+    });
+    return () => controller.abort();
+  }, []);
+
+  const entries = (remoteEntries ?? LEADERBOARD).map((e, i) => ({
     ...e,
     score: tab === 'weekly' ? Math.floor(e.score * 0.62) : tab === 'monthly' ? Math.floor(e.score * 0.88) : e.score,
     rank: i + 1,

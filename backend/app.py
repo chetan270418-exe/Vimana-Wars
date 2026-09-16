@@ -32,6 +32,17 @@ SESSION_TTL_SECONDS = 30 * 24 * 60 * 60
 ACTION_TOKEN_TTL_SECONDS = 30 * 60
 REQUIRE_EMAIL_VERIFICATION = os.environ.get("REQUIRE_EMAIL_VERIFICATION", "0").lower() in ("1", "true", "yes")
 SHOW_DEV_AUTH_TOKENS = os.environ.get("SHOW_DEV_AUTH_TOKENS", "0").lower() in ("1", "true", "yes")
+# Browser clients need explicit CORS origins when the React site is hosted on
+# a different Render domain.  Keep this allow-list based instead of using '*'
+# so bearer tokens are never exposed to arbitrary origins.
+_CORS_ORIGINS = {
+    origin.strip().rstrip("/")
+    for origin in os.environ.get(
+        "CORS_ORIGINS",
+        "http://localhost:5173,http://localhost:4173,http://localhost:8443",
+    ).split(",")
+    if origin.strip()
+}
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 _SHIP_IDS = (
     "pushpaka", "tripura", "garuda", "vajra", "naga",
@@ -196,8 +207,28 @@ def init_db():
 init_db()
 
 
-@app.route("/", methods=["GET"])
+@app.after_request
+def add_cors_headers(response):
+    """Allow the separately hosted React frontend to call this API."""
+    origin = request.headers.get("Origin", "").rstrip("/")
+    if origin in _CORS_ORIGINS:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, OPTIONS"
+        response.headers["Access-Control-Max-Age"] = "600"
+        response.headers.add("Vary", "Origin")
+    return response
+
+
+@app.route("/<path:_path>", methods=["OPTIONS"])
+def cors_preflight(_path):
+    return ("", 204)
+
+
+@app.route("/", methods=["GET", "OPTIONS"])
 def index():
+    if request.method == "OPTIONS":
+        return ("", 204)
     logger.info("API Root status checked from %s", request.remote_addr)
     return jsonify({
         "game": "Vimana Wars API",
@@ -296,6 +327,7 @@ def _lobby_payload(lobby: dict) -> dict:
         "host_game_id": lobby["host_game_id"],
         "players": list(lobby["players"].values()),
         "created_at": lobby["created_at"],
+        "rules": lobby.get("rules", {"health": 100, "win_condition": "first pilot to reduce the opponent to 0 HP"}),
     }
 
 
@@ -572,6 +604,10 @@ def _lobby_player(user, ship_class="pushpaka", ready=False, host=False):
         "ship_class": ship_class if ship_class in _SHIP_IDS else "pushpaka",
         "ready": bool(ready),
         "host": bool(host),
+        # These are match rules/initial values for the future authoritative
+        # duel server. HTTP lobby state is not trusted for combat results.
+        "health": 100,
+        "max_health": 100,
     }
 
 
@@ -594,11 +630,13 @@ def multiplayer_lobbies():
         return error
     data = request.get_json(silent=True) or {}
     mode = str(data.get("mode", "campaign")).lower()
-    if mode not in ("campaign", "endless"):
+    if mode not in ("campaign", "endless", "duel"):
         mode = "campaign"
     try:
         max_players = min(4, max(2, int(data.get("max_players", 2))))
     except (TypeError, ValueError):
+        max_players = 2
+    if mode == "duel":
         max_players = 2
     ship_class = str(data.get("ship_class", "pushpaka")).lower()
     code = _new_lobby_code()
@@ -607,6 +645,13 @@ def multiplayer_lobbies():
         "code": code, "mode": mode, "max_players": max_players,
         "status": "waiting", "host_game_id": user["game_id"],
         "players": {user["game_id"]: host}, "created_at": time.time(),
+        "rules": {
+            "health": 100,
+            "win_condition": "first pilot to reduce the opponent to 0 HP",
+        } if mode == "duel" else {
+            "health": 100,
+            "win_condition": "complete the selected wave set",
+        },
     }
     with _lobbies_lock:
         _lobbies[code] = lobby

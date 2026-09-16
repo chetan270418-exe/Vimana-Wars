@@ -6,7 +6,7 @@ Uses arcade.Text objects (no draw_text calls).
 import math
 import random
 import arcade
-from constants import WIDTH, HEIGHT
+from constants import WIDTH, HEIGHT, COLOR_SCORE, COLOR_WHITE
 from game.systems import save_system
 from game.ui.easing import ease_out_cubic, ease_in_out_cubic, clamp
 from game.ui.tween import TweenManager, Tween

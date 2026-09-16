@@ -180,6 +180,7 @@ export type Realm = {
   accentColor: string;
   x: number;
   y: number;
+  transmission: { speaker: string; title: string; body: string };
 };
 
 export const REALMS: Realm[] = [
@@ -192,6 +193,7 @@ export const REALMS: Realm[] = [
     accentColor: '#78C8FF',
     x: 10,
     y: 72,
+    transmission: { speaker: 'COMMANDER TARA', title: 'THE FIRST SIGNAL', body: 'The border beacons are burning. Hold Swarga long enough for the celestial fleet to wake.' },
   },
   {
     id: 'kshira-sagara',
@@ -203,6 +205,7 @@ export const REALMS: Realm[] = [
     accentColor: '#50F0DC',
     x: 25,
     y: 55,
+    transmission: { speaker: 'VARUNA', title: 'A POISONED OCEAN', body: 'Vritra has turned the milk sea against us. Follow the current and cut the serpent off from the deep.' },
   },
   {
     id: 'dandaka',
@@ -214,6 +217,7 @@ export const REALMS: Realm[] = [
     accentColor: '#D264FF',
     x: 42,
     y: 62,
+    transmission: { speaker: 'SAGE AGASTYA', title: 'THE SLEEPER AWAKENS', body: 'The Dandaka Void remembers every fear. Kumbhakarna is awake; your light is the only map home.' },
   },
   {
     id: 'lanka',
@@ -225,6 +229,7 @@ export const REALMS: Realm[] = [
     accentColor: '#FF4646',
     x: 56,
     y: 44,
+    transmission: { speaker: 'VIBHISHANA', title: 'THE TENFOLD CROWN', body: 'Lanka is no longer a fortress below the clouds. Ravana has raised it into orbit, and every gun is aimed at Dharma.' },
   },
   {
     id: 'setu',
@@ -236,6 +241,7 @@ export const REALMS: Realm[] = [
     accentColor: '#FF9650',
     x: 70,
     y: 55,
+    transmission: { speaker: 'HANUMAN', title: 'THE BRIDGE OF FIRE', body: 'The Setu is breaking piece by piece. Keep the causeway alive and the scattered worlds can still be joined.' },
   },
   {
     id: 'naraka',
@@ -246,6 +252,7 @@ export const REALMS: Realm[] = [
     accentColor: '#FF6428',
     x: 81,
     y: 40,
+    transmission: { speaker: 'VISHWAKARMA', title: 'FORGE OF ASURA', body: 'Every war machine here was made from stolen celestial metal. Survive the furnace and reclaim the blueprint of the next age.' },
   },
   {
     id: 'mahayuddha',
@@ -256,6 +263,7 @@ export const REALMS: Realm[] = [
     accentColor: '#FF50BE',
     x: 90,
     y: 25,
+    transmission: { speaker: 'THE LAST ARCHIVIST', title: 'MAHAYUDDHA', body: 'There is no retreat beyond this citadel. Bring every boon, every lesson, and every liberated voice to the final sky.' },
   },
 ];
 

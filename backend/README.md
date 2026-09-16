@@ -61,6 +61,10 @@ HTTPS in front of Gunicorn.
 - `GET /scores/top?limit=10&difficulty=normal` — Fetch top 10 scores
 - `GET /scores/stats` — Total scores and global high score
 
+The React frontend is hosted separately from this API. Configure
+`CORS_ORIGINS` as a comma-separated list of trusted frontend origins, for
+example `https://vimana-wars-web.onrender.com,http://localhost:5173`.
+
 Passwords are stored as salted PBKDF2-SHA256 hashes and session tokens are
 stored only as SHA-256 hashes. Set `REQUIRE_EMAIL_VERIFICATION=true` in a
 public deployment. Email delivery is intentionally provider-neutral: connect
@@ -89,3 +93,8 @@ You can deploy this on **Render**, **Railway**, or **PythonAnywhere** in 2 minut
 5. Copy your live URL (e.g. `https://vimana-wars.onrender.com`) and launch the
    game with `VIMANA_API_URL=https://vimana-wars.onrender.com` set in its
    environment. This avoids changing source code between local and hosted builds.
+
+The repository also contains a Vite React frontend in `web/`. The root API URL
+intentionally returns JSON for health checks; it is not the visual website.
+The included root `render.yaml` deploys the frontend as a separate static site
+with `pnpm run build` and publishes `web/dist`.

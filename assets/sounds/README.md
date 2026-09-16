@@ -8,18 +8,24 @@ Place sound files in this directory. The game loads them automatically.
 | Filename | What it's for | Freesound search |
 |---|---|---|
 | `shoot.wav` | Player fires a bullet | "laser shoot 8bit" |
+| `dash.wav` | Divine dash / thruster burst | "thruster burst" |
 | `hit.wav` | Player takes damage | "damage hit player" |
 | `explosion.wav` | Enemy explodes | "explosion arcade" |
 | `powerup.wav` | Power-up collected | "item pickup jingle" |
 | `boss_roar.wav` | Ravana appears | "monster roar deep" |
+| `warning_siren.wav` | Boss warning | "warning siren short" |
 | `victory.wav` | Ravana defeated | "fanfare win short" |
 | `game_over.wav` | Player dies | "game over sting" |
 | `wave_clear.wav` | Wave completed | "stage clear short" |
+| `ui_click.wav` | Menu button click | "menu click" |
+| `dodge_chime.wav` | Perfect dodge feedback | "success chime" |
+| `synergy.wav` | Deva synergy activated | "magic power activate" |
 | `combat_loop.mp3` | Looping combat background music | OpenGameArt CC0 track |
 
-The `online_*.ogg` files are selected CC0 variations from Kenney's Sci-fi
-Sounds pack. The game prefers them for shooting, impacts, explosions, and
-dashes, and falls back to the generated WAVs if the OGG files are unavailable.
+The four `online_*.ogg` files are selected CC0 variations from Kenney's
+Sci-fi Sounds pack. The game prefers them for shooting, impacts, explosions,
+and dashes, and falls back to the generated WAVs if the OGG files are
+unavailable. In total, this directory contains 18 runtime audio assets.
 
 ## License Reminder
 The generated WAV effects require no external attribution.

@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import StarField from './ui/StarField';
+import { getApiHealth } from '../lib/api';
 
 const ASSET = 'https://raw.githubusercontent.com/chetan270418-exe/Vimana-Wars/main/assets/images/';
 
@@ -6,9 +8,10 @@ const NAV = [
   { label: 'PLAY CAMPAIGN',    screen: 'ship-select', primary: true,  desc: 'Launch a new run' },
   { label: 'ARMORY',           screen: 'ship-select', primary: false, desc: 'Browse all Vimanas' },
   { label: 'REALM MAP',        screen: 'realm-map',   primary: false, desc: '7 realms · 20 waves' },
-  { label: 'SANGHA NETWORK',   screen: 'leaderboard', primary: false, desc: 'Global rankings' },
+  { label: 'SANGHA NETWORK',   screen: 'sangha',      primary: false, desc: '1v1 rooms · matchmaking' },
+  { label: 'PILOT ACCOUNT',    screen: 'account',     primary: false, desc: 'Game ID · cloud progress' },
   { label: 'SETTINGS',         screen: 'settings',    primary: false, desc: 'Audio · Display · Controls' },
-  { label: 'CODEX',            screen: 'game-hud',    primary: false, desc: 'Enemy & lore archive' },
+  { label: 'CODEX',            screen: 'codex',       primary: false, desc: 'Enemy & lore archive' },
 ];
 
 const ORBIT_DOTS = Array.from({ length: 8 }, (_, i) => {
@@ -19,6 +22,16 @@ const ORBIT_DOTS = Array.from({ length: 8 }, (_, i) => {
 type Props = { onNavigate: (s: string) => void };
 
 export default function MainMenu({ onNavigate }: Props) {
+  const [apiOnline, setApiOnline] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getApiHealth(controller.signal)
+      .then(payload => setApiOnline(payload.status === 'online'))
+      .catch(() => setApiOnline(false));
+    return () => controller.abort();
+  }, []);
+
   return (
     <div className="relative w-full h-full overflow-hidden" style={{ background: '#08090F', paddingBottom: 40 }}>
       <StarField />
@@ -165,6 +178,9 @@ export default function MainMenu({ onNavigate }: Props) {
           }}
         >
           12
+        </div>
+        <div className="text-[9px] tracking-wider" style={{ fontFamily: '"JetBrains Mono", monospace', color: apiOnline === true ? '#40E090' : apiOnline === false ? '#FF6B72' : '#8F98A8' }}>
+          {apiOnline === true ? '● API ONLINE' : apiOnline === false ? '● OFFLINE MODE' : '○ LINKING'}
         </div>
       </div>
 

@@ -92,6 +92,8 @@ class MenuView(arcade.View):
         self._last_wave = max(0, int(saved.get("last_wave", 0)))
         self._high_score = saved.get("high_score", 0)
         self._last_ship_id = saved.get("last_ship", "pushpaka")
+        # Refresh the connection badge without blocking the render thread.
+        leaderboard_client.check_health()
 
     def on_update(self, delta_time: float) -> None:
         TransitionOverlay.update(delta_time)
@@ -270,22 +272,6 @@ class MenuView(arcade.View):
         elif action == "quit":
             arcade.exit()
 
-    def _play_pv_video(self) -> None:
-        import os, sys, subprocess
-        from pathlib import Path
-        pv_path = Path("vimana_wars_pv_final.mp4").resolve()
-        if not pv_path.exists():
-            return
-        try:
-            if sys.platform == "win32":
-                os.startfile(str(pv_path))
-            elif sys.platform == "darwin":
-                subprocess.Popen(["open", str(pv_path)])
-            else:
-                subprocess.Popen(["xdg-open", str(pv_path)])
-        except Exception:
-            pass
-
     def on_mouse_motion(self, x: float, y: float, dx: float, dy: float) -> None:
         self.nav_rail.on_mouse_motion(x, y)
         self._hovered_deploy = self._btn_deploy.contains(x, y)
@@ -340,7 +326,5 @@ class MenuView(arcade.View):
             self._activate("settings")
         elif key == arcade.key.P:
             self._activate("account")
-        elif key == arcade.key.V:
-            self._play_pv_video()
         elif key == arcade.key.ESCAPE:
             arcade.exit()

@@ -37,12 +37,18 @@ from game.ui.easing import ease_out_cubic, ease_out_elastic, ease_out_back, ease
 
 class GameView(arcade.View):
     def __init__(self, difficulty: str = "normal", ship_class: str = "pushpaka",
-                 is_endless: bool = False, start_wave: int = 1):
+                 is_endless: bool = False, start_wave: int = 1,
+                 realm_id: int | None = None):
         super().__init__()
         self._difficulty = difficulty
         self._ship_class_id = ship_class
         self.is_endless = is_endless
         self.start_wave = max(1, int(start_wave))
+        # ShipSelectView carries the selected realm through the flow.  Keep it
+        # optional for older restart/game-over callers, deriving it from the
+        # starting wave when they do not provide one.
+        derived_realm = ((self.start_wave - 1) // 3) + 1
+        self.realm_id = max(1, int(realm_id)) if realm_id is not None else min(7, derived_realm)
         self._mults = get_difficulty_mults(difficulty)
 
         sdata = SHIP_CLASSES.get(ship_class, SHIP_CLASSES["pushpaka"])
@@ -173,7 +179,7 @@ class GameView(arcade.View):
         self.hud.colorblind_mode = self.colorblind_mode
         self.hud.reduced_flashes = self.reduced_flashes
         saved["last_ship"] = self._ship_class_id
-        saved["last_realm"] = min(7, ((self.start_wave - 1) // 3) + 1)
+        saved["last_realm"] = self.realm_id
         save_system.save(saved)
         self.sound_manager.start_music()
         

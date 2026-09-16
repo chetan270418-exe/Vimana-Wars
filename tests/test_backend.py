@@ -235,3 +235,20 @@ def test_multiplayer_lobby_lifecycle(client):
     started = client.post(f"/multiplayer/lobbies/{code}/start", headers=host_headers)
     assert started.status_code == 200
     assert started.get_json()["lobby"]["status"] == "running"
+
+
+def test_duel_lobby_has_two_slots_and_health_rules(client):
+    account = client.post("/auth/register", json={
+        "email": "duelist@example.com", "password": "celestial123", "player_name": "Duelist"
+    }).get_json()
+    headers = {"Authorization": f"Bearer {account['token']}"}
+
+    response = client.post("/multiplayer/lobbies", headers=headers, json={
+        "mode": "duel", "max_players": 4, "ship_class": "surya"
+    })
+    assert response.status_code == 201
+    lobby = response.get_json()["lobby"]
+    assert lobby["mode"] == "duel"
+    assert lobby["max_players"] == 2
+    assert lobby["rules"]["health"] == 100
+    assert lobby["players"][0]["health"] == 100

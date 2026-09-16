@@ -1,85 +1,77 @@
-import os
-os.environ['DATABASE_URL'] = 'postgresql://postgres.wlergqltjdyzpqiucovr:CHetanamit37@aws-0-ap-southeast-2.pooler.supabase.com:6543/postgres'
+"""Optional live backend smoke test.
 
-from backend.app import app
+This file is deliberately opt-in.  It must never contain a real database
+password and it must not connect to a hosted database during ordinary pytest
+collection.  Run it explicitly with ``VIMANA_LIVE_DATABASE_URL`` when a live
+PostgreSQL deployment needs checking.
+"""
+import os
 import time
 
-client = app.test_client()
-unique = str(int(time.time()))
 
-print('=== BACKEND FULL TEST SUITE ===')
+def run_live_checks(database_url: str) -> None:
+    os.environ["DATABASE_URL"] = database_url
+    from backend.app import app
 
-# 1. Root
-res = client.get('/')
-j = res.get_json()
-status = j.get("status", "?") if j else "NO JSON"
-print(f'[1] GET / -> {res.status_code} {status}')
+    client = app.test_client()
+    unique = str(int(time.time()))
+    print("=== BACKEND LIVE SMOKE TEST ===")
 
-# 2. Scores top
-res = client.get('/scores/top')
-j = res.get_json() or {}
-print(f'[2] GET /scores/top -> {res.status_code}, count={j.get("count")}')
+    res = client.get("/")
+    body = res.get_json() or {}
+    print(f"[1] GET / -> {res.status_code} {body.get('status', '?')}")
 
-# 3. Submit score (guest)
-res = client.post('/scores', json={
-    'player_name': 'ArjunaTest',
-    'score': 22500,
-    'level_reached': 8,
-    'difficulty': 'hard',
-    'ship_class': 'garuda',
-    'kills': 88,
-    'total_damage': 28000,
-    'duration_seconds': 240.0
-})
-j = res.get_json() or {}
-print(f'[3] POST /scores (guest) -> {res.status_code} id={j.get("id")} score={j.get("score")} err={j.get("error")}')
+    res = client.get("/scores/top")
+    body = res.get_json() or {}
+    print(f"[2] GET /scores/top -> {res.status_code}, count={body.get('count')}")
 
-# 4. Register user
-email = f'pilot_{unique}@vimana.test'
-res = client.post('/auth/register', json={
-    'email': email,
-    'password': 'BrahmaAstra2025!',
-    'player_name': f'Dharmic_{unique[:6]}'
-})
-j = res.get_json() or {}
-user_data = j.get("user") or {}
-print(f'[4] POST /auth/register -> {res.status_code} token={bool(j.get("token"))} player={user_data.get("player_name")} err={j.get("error")}')
-session_token = j.get('token')
+    res = client.post("/scores", json={
+        "player_name": "ArjunaTest",
+        "score": 22500,
+        "level_reached": 8,
+        "difficulty": "hard",
+        "ship_class": "garuda",
+        "kills": 88,
+        "total_damage": 28000,
+        "duration_seconds": 240.0,
+    })
+    body = res.get_json() or {}
+    print(f"[3] POST /scores -> {res.status_code}, score={body.get('score')}")
 
-# 5. Login
-res = client.post('/auth/login', json={'email': email, 'password': 'BrahmaAstra2025!'})
-j = res.get_json() or {}
-print(f'[5] POST /auth/login -> {res.status_code} success={j.get("success")} err={j.get("error")}')
-if j.get('token'):
-    session_token = j['token']
+    email = f"pilot_{unique}@vimana.test"
+    res = client.post("/auth/register", json={
+        "email": email,
+        "password": "BrahmaAstra2025!",
+        "player_name": f"Dharmic_{unique[:6]}",
+    })
+    body = res.get_json() or {}
+    print(f"[4] POST /auth/register -> {res.status_code}, game_id={(body.get('user') or {}).get('game_id')}")
+    token = body.get("token")
+    if not token:
+        print("Registration did not return a session token; stop here.")
+        return
 
-# 6. Get profile
-headers = {'Authorization': f'Bearer {session_token}'} if session_token else {}
-res = client.get('/account/profile', headers=headers)
-j = res.get_json() or {}
-profile = j.get("profile") or {}
-print(f'[6] GET /account/profile -> {res.status_code} player={profile.get("player_name")} err={j.get("error")}')
+    headers = {"Authorization": f"Bearer {token}"}
+    res = client.get("/account/profile", headers=headers)
+    print(f"[5] GET /account/profile -> {res.status_code}")
 
-# 7. Authenticated score
-res = client.post('/scores', json={
-    'player_name': 'ShouldBeIgnored',
-    'score': 55000,
-    'level_reached': 10,
-    'difficulty': 'hard',
-    'ship_class': 'vajra',
-    'kills': 200,
-    'total_damage': 75000,
-    'duration_seconds': 480.0
-}, headers=headers)
-j = res.get_json() or {}
-print(f'[7] POST /scores (auth) -> {res.status_code} id={j.get("id")} player={j.get("player_name")} err={j.get("error")}')
+    res = client.post("/scores", headers=headers, json={
+        "player_name": "ShouldBeIgnored",
+        "score": 55000,
+        "level_reached": 10,
+        "difficulty": "hard",
+        "ship_class": "vajra",
+        "kills": 200,
+        "total_damage": 75000,
+        "duration_seconds": 480.0,
+    })
+    body = res.get_json() or {}
+    print(f"[6] POST /scores authenticated -> {res.status_code}, player={body.get('player_name')}")
 
-# 8. Leaderboard final
-res = client.get('/scores/top')
-j = res.get_json() or {}
-lb = j.get("leaderboard", [])
-top = lb[0] if lb else {}
-print(f'[8] GET /scores/top -> count={j.get("count")} top={top.get("player_name")} score={top.get("score")}')
 
-print()
-print('=== DONE ===')
+if __name__ == "__main__":
+    live_url = os.environ.get("VIMANA_LIVE_DATABASE_URL", "").strip()
+    if not live_url:
+        print("Set VIMANA_LIVE_DATABASE_URL to run the live smoke test; nothing was executed.")
+    else:
+        run_live_checks(live_url)

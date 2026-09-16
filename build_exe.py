@@ -41,6 +41,8 @@ def build():
         f"--add-data=constants.py{sep}.",
         f"--add-data=CREDITS.md{sep}.",
         f"--add-data=README.md{sep}.",
+        f"--add-data=vimana_wars_pv_final.mp4{sep}.",
+        "--collect-all=cv2",
         "main.py",
     ]
 

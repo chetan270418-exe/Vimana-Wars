@@ -3,11 +3,7 @@ import { REALMS, type Realm } from '../data/gameData';
 import Panel from './ui/Panel';
 import VedicButton from './ui/VedicButton';
 import StarField from './ui/StarField';
-
-const COMPLETED = new Set(['swarga', 'kshira-sagara']);
-const CURRENT = 'dandaka';
-
-const PATH_POINTS = REALMS.map(r => `${r.x}% ${r.y}%`).join(', ');
+import { getProgression, isRealmUnlocked, realmEndWave } from '../lib/progression';
 
 type Props = { onNavigate: (s: string) => void };
 
@@ -70,9 +66,16 @@ function RealmNode({ realm, status, selected, onClick }: {
 }
 
 export default function RealmMap({ onNavigate }: Props) {
-  const [selected, setSelected] = useState<Realm>(REALMS.find(r => r.id === CURRENT) ?? REALMS[0]);
+  const progression = getProgression();
+  const firstAvailable = REALMS.find(realm => isRealmUnlocked(realm.id, progression.lastWave)) ?? REALMS[0];
+  const [selected, setSelected] = useState<Realm>(firstAvailable);
 
-  const status = (id: string) => COMPLETED.has(id) ? 'completed' : id === CURRENT ? 'current' : 'locked';
+  const completed = new Set([
+    ...progression.completedRealms,
+    ...REALMS.filter(realm => progression.lastWave >= realmEndWave(realm.id)).map(realm => realm.id),
+  ]);
+  const currentRealm = REALMS.find(realm => isRealmUnlocked(realm.id, progression.lastWave) && !completed.has(realm.id))?.id ?? firstAvailable.id;
+  const status = (id: string) => !isRealmUnlocked(id, progression.lastWave) ? 'locked' : completed.has(id) ? 'completed' : id === currentRealm ? 'current' : 'completed';
 
   return (
     <div className="relative w-full h-full overflow-hidden" style={{ background: '#08090F', paddingBottom: 40 }}>
@@ -100,19 +103,19 @@ export default function RealmMap({ onNavigate }: Props) {
           REALM MAP — CAMPAIGN
         </span>
         <div className="ml-auto flex items-center gap-4 text-[10px] tracking-wider" style={{ fontFamily: '"JetBrains Mono", monospace', color: '#8F98A8' }}>
-          <span style={{ color: '#E9C400' }}>2 REALMS CLEANSED</span>
+          <span style={{ color: '#E9C400' }}>{completed.size} REALMS CLEANSED</span>
           <span>·</span>
-          <span>CURRENT: DANDAKA VOID</span>
+          <span>CURRENT: {REALMS.find(realm => realm.id === currentRealm)?.name.toUpperCase()}</span>
         </div>
       </div>
 
       {/* Map canvas */}
       <div className="absolute z-10" style={{ top: 52, bottom: 40, left: 0, right: 320 }}>
         {/* SVG connection path */}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none">
+        <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
           {/* Base path */}
           <polyline
-            points={REALMS.map(r => `${r.x * window.innerWidth / 100 - 320 / 100},${r.y * (window.innerHeight - 92) / 100}`).join(' ')}
+            points={REALMS.map(r => `${r.x},${r.y}`).join(' ')}
             fill="none"
             stroke="rgba(143,152,168,0.12)"
             strokeWidth="2"
@@ -120,31 +123,12 @@ export default function RealmMap({ onNavigate }: Props) {
           />
           {/* Completed path */}
           <polyline
-            points={[...REALMS.slice(0, 3)].map(r => `${r.x * window.innerWidth / 100 - 320 / 100},${r.y * (window.innerHeight - 92) / 100}`).join(' ')}
+            points={REALMS.filter(realm => completed.has(realm.id) || realm.id === currentRealm).map(r => `${r.x},${r.y}`).join(' ')}
             fill="none"
             stroke="rgba(233,196,0,0.35)"
             strokeWidth="2"
           />
         </svg>
-        {/* Simple CSS path overlay using divs */}
-        {REALMS.map((realm, i) => {
-          if (i === 0) return null;
-          const prev = REALMS[i - 1];
-          const isPast = COMPLETED.has(realm.id) || COMPLETED.has(prev.id);
-          return (
-            <div
-              key={`path-${i}`}
-              className="absolute pointer-events-none"
-              style={{
-                left: `${Math.min(prev.x, realm.x)}%`,
-                top: `${Math.min(prev.y, realm.y)}%`,
-                width: `${Math.abs(realm.x - prev.x)}%`,
-                height: `${Math.abs(realm.y - prev.y)}%`,
-                borderLeft: `1px dashed ${isPast ? 'rgba(233,196,0,0.3)' : 'rgba(143,152,168,0.12)'}`,
-              }}
-            />
-          );
-        })}
         {/* Realm nodes */}
         {REALMS.map(realm => (
           <RealmNode
@@ -184,9 +168,19 @@ export default function RealmMap({ onNavigate }: Props) {
 
             <div className="h-px" style={{ background: `linear-gradient(to right, ${selected.accentColor}50, transparent)` }} />
 
-            <p className="text-xs leading-relaxed flex-1" style={{ color: '#D0C6AB' }}>
+            <p className="text-xs leading-relaxed" style={{ color: '#D0C6AB' }}>
               {selected.description}
             </p>
+
+            <Panel variant="dim" cut={8} scanlines={false} corners={false}>
+              <div className="p-3">
+                <div className="text-[9px] tracking-[0.2em] mb-1" style={{ fontFamily: '"Cinzel", serif', color: '#8F98A8' }}>
+                  TRANSMISSION · {selected.transmission.speaker}
+                </div>
+                <div className="text-xs tracking-wider mb-1" style={{ color: '#E9C400' }}>{selected.transmission.title}</div>
+                <div className="text-xs leading-relaxed" style={{ color: '#D0C6AB' }}>{selected.transmission.body}</div>
+              </div>
+            </Panel>
 
             <Panel variant="dim" cut={8} scanlines={false} corners={false}>
               <div className="p-3">

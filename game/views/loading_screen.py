@@ -1,14 +1,10 @@
 """
 game/views/loading_screen.py
 Cinematic Loading and Prologue Screen for Vimana Wars: "The Reclamation of Dharma".
-Displays high-tech Vedic-punk visuals, narrative crawl, asset initialization telemetry,
-and provides direct launch of the promotional video trailer.
+Displays high-tech Vedic-punk visuals, narrative crawl, and asset initialization
+telemetry after the automatic launch cinematic has finished.
 """
 import math
-import os
-import sys
-import subprocess
-from pathlib import Path
 import arcade
 
 from constants import WIDTH, HEIGHT, COLOR_BG
@@ -46,7 +42,7 @@ class LoadingView(arcade.View):
         self._elapsed = 0.0
         self._progress = 0.0
         self._ready_to_advance = False
-        self._pv_status = ""
+        self._advance_requested = False
         self.sound_manager = SoundManager()
 
         # Cached text labels
@@ -74,13 +70,6 @@ class LoadingView(arcade.View):
             anchor_x="center", anchor_y="center",
             font_name=FONT_TELEMETRY[0],
         )
-        self._pv_button_text = arcade.Text(
-            "[ V ]  WATCH CINEMATIC TRAILER (PV)", WIDTH // 2, 75,
-            CYAN_BRIGHT, font_size=10, bold=True,
-            anchor_x="center", anchor_y="center",
-            font_name=FONT_TELEMETRY[0],
-        )
-
         # Starfield
         self._stars = [
             (
@@ -117,6 +106,10 @@ class LoadingView(arcade.View):
 
         if self._progress >= 1.0:
             self._ready_to_advance = True
+            # Loading is now a real boot phase: once the systems are ready,
+            # continue automatically instead of waiting for a key press.
+            if self._elapsed >= 3.25:
+                self._advance_to_menu()
 
     def on_draw(self) -> None:
         self.clear()
@@ -178,47 +171,22 @@ class LoadingView(arcade.View):
 
         self._status_label.draw()
 
-        # 7. PV Trailer Button Panel
-        pv_alpha = pulse_alpha(self._elapsed, 120, 240, 2.0)
-        draw_chamfered_panel(WIDTH // 2 - 170, WIDTH // 2 + 170, 62, 88, CYAN, fill=SURFACE_LOW, alpha=200, cut=8)
-        self._pv_button_text.color = (*CYAN_BRIGHT[:3], pv_alpha)
-        self._pv_button_text.draw()
-
-        # 8. Start Prompt
+        # 7. Automatic hand-off prompt
         if self._ready_to_advance:
             p_alpha = pulse_alpha(self._elapsed, 160, 255, 3.5)
+            self._prompt.text = "COMMAND CONSOLE READY // ENTERING..."
             self._prompt.color = (*GOLD_BRIGHT[:3], p_alpha)
             self._prompt.draw()
         else:
-            skip_hint = "SPACE: SKIP TO MENU"
+            skip_hint = "LOADING CELESTIAL SYSTEMS..."
             arcade.draw_text(skip_hint, WIDTH // 2, 45, MUTED, font_size=10, anchor_x="center", anchor_y="center")
-
-        if self._pv_status:
-            arcade.draw_text(self._pv_status, WIDTH // 2, 18, (120, 240, 180), font_size=9, bold=True, anchor_x="center")
 
         TransitionOverlay.draw()
 
-    def _play_pv_video(self) -> None:
-        pv_path = Path("vimana_wars_pv_final.mp4").resolve()
-        if not pv_path.exists():
-            self._pv_status = "VIDEO FILE NOT FOUND (vimana_wars_pv_final.mp4)"
-            return
-
-        self._pv_status = "LAUNCHING CINEMATIC TRAILER..."
-        try:
-            if sys.platform == "win32":
-                os.startfile(str(pv_path))
-            elif sys.platform == "darwin":
-                subprocess.Popen(["open", str(pv_path)])
-            else:
-                subprocess.Popen(["xdg-open", str(pv_path)])
-            self._pv_status = "PLAYING TRAILER IN SYSTEM MEDIA PLAYER"
-        except Exception as e:
-            self._pv_status = f"COULD NOT LAUNCH VIDEO: {e}"
-
     def _advance_to_menu(self) -> None:
-        if TransitionOverlay.is_active:
+        if self._advance_requested or TransitionOverlay.is_active:
             return
+        self._advance_requested = True
         self.sound_manager.play_ui_click()
         # Give first-time pilots a skippable narrative briefing.  Returning
         # players go straight to the command console, so the story never
@@ -234,13 +202,9 @@ class LoadingView(arcade.View):
     def on_mouse_press(self, x: float, y: float, button: int, modifiers: int) -> None:
         if button != arcade.MOUSE_BUTTON_LEFT:
             return
-        if WIDTH // 2 - 170 <= x <= WIDTH // 2 + 170 and 62 <= y <= 88:
-            self._play_pv_video()
-            return
-        self._advance_to_menu()
+        if self._ready_to_advance:
+            self._advance_to_menu()
 
     def on_key_press(self, key: int, modifiers: int) -> None:
-        if key == arcade.key.V:
-            self._play_pv_video()
-        elif key in (arcade.key.SPACE, arcade.key.ENTER, arcade.key.ESCAPE):
+        if key in (arcade.key.SPACE, arcade.key.ENTER, arcade.key.ESCAPE):
             self._advance_to_menu()
