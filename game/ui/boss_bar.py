@@ -6,7 +6,10 @@ Uses arcade.Text objects (no draw_text calls).
 import math
 import arcade
 from constants import WIDTH, COLOR_WHITE
-from game.ui.vedic_theme import RED, RED_BRIGHT, GOLD, MUTED, draw_chamfered_panel, draw_telemetry_ticks
+from game.ui.vedic_theme import (
+    RED, RED_BRIGHT, ASTRA_RED, ASTRA_RED_BRIGHT,
+    GOLD, MUTED, draw_chamfered_panel, draw_telemetry_ticks, draw_segmented_bar,
+)
 
 
 class BossBar:
@@ -51,8 +54,14 @@ class BossBar:
             fill_color = phase_fills[getattr(boss, "phase", 1) - 1]
 
         if frac > 0:
+            # Ghost trail — slightly wider semi-transparent version of fill
             arcade.draw_lrbt_rectangle_filled(
-                bar_x, bar_x + bar_w * frac, bar_y, bar_y + bar_h, fill_color)
+                bar_x - 2, bar_x + bar_w * frac + 2,
+                bar_y, bar_y + bar_h,
+                (*fill_color[:3], 60))
+            # Segmented fill with 20 segments
+            draw_segmented_bar(bar_x, bar_x + bar_w, bar_y, bar_y + bar_h,
+                               frac, fill_color, segments=20, gap=2)
 
         phase = max(1, int(getattr(boss, "phase", 1)))
         phase_count = 3 if boss_name in ("RAVANA", "VRITRA") else 2

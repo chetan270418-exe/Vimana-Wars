@@ -12,6 +12,7 @@ from game.systems import save_system
 from game.systems.leaderboard_client import leaderboard_client
 from game.systems.sound_manager import SoundManager
 from game.ui.menu_button import MenuButton
+from game.ui.nav_rail import NavRail
 from game.ui.transitions import transition_to, TransitionOverlay
 from game.ui.vedic_theme import (
     OBSIDIAN, SURFACE_LOW, SURFACE_HIGH, GOLD, GOLD_BRIGHT, CYAN,
@@ -45,6 +46,7 @@ class AccountView(arcade.View):
         self._status_color = MUTED
         self._hovered = -1
         self._pulse = 0.0
+        self._nav_rail = NavRail(current_screen="account")
 
         self._title = arcade.Text(
             "ACCOUNT // ASTRAL IDENTITY", WIDTH // 2, 548,
@@ -124,6 +126,7 @@ class AccountView(arcade.View):
 
     def on_update(self, delta_time: float) -> None:
         TransitionOverlay.update(delta_time)
+        self._nav_rail.update(delta_time)
         self._pulse += delta_time
         for i, (button, _) in enumerate(self._buttons):
             button.update(delta_time, i == self._hovered)
@@ -196,13 +199,13 @@ class AccountView(arcade.View):
 
     def _draw_background(self) -> None:
         self.clear()
-        arcade.draw_lrbt_rectangle_filled(90, WIDTH - 90, 75, 490, (9, 14, 25, 235))
-        draw_chamfered_panel(90, WIDTH - 90, 75, 490, CYAN,
+        arcade.draw_lrbt_rectangle_filled(240, WIDTH - 90, 75, 490, (9, 14, 25, 235))
+        draw_chamfered_panel(240, WIDTH - 90, 75, 490, CYAN,
                              fill=OBSIDIAN, alpha=235, border_width=1, cut=16)
-        draw_corner_etching(90, WIDTH - 90, 75, 490, GOLD, length=20, alpha=130)
+        draw_corner_etching(240, WIDTH - 90, 75, 490, GOLD, length=20, alpha=130)
         # Slow scan line gives the account console a little life.
         scan_y = 95 + ((self._pulse * 24) % 370)
-        arcade.draw_lrbt_rectangle_filled(115, WIDTH - 115, scan_y, scan_y + 1, (80, 210, 255, 35))
+        arcade.draw_lrbt_rectangle_filled(265, WIDTH - 115, scan_y, scan_y + 1, (80, 210, 255, 35))
 
     def _draw_profile(self, account: dict) -> None:
         arcade.draw_text("ACCOUNT LINKED", WIDTH // 2, 430, CYAN_BRIGHT,
@@ -303,6 +306,7 @@ class AccountView(arcade.View):
         for button, _ in self._buttons:
             button.draw()
         self._hint.draw()
+        self._nav_rail.draw()
         TransitionOverlay.draw()
 
     def _back(self) -> None:
@@ -404,6 +408,7 @@ class AccountView(arcade.View):
             leaderboard_client.logout(on_done)
 
     def on_mouse_motion(self, x, y, dx, dy) -> None:
+        self._nav_rail.on_mouse_motion(x, y)
         new_hovered = -1
         for i, (button, _) in enumerate(self._buttons):
             if button.contains(x, y):
@@ -415,6 +420,9 @@ class AccountView(arcade.View):
 
     def on_mouse_press(self, x, y, button, modifiers) -> None:
         if button != arcade.MOUSE_BUTTON_LEFT or self._submitting:
+            return
+        nav = self._nav_rail.on_mouse_press(x, y, self.window)
+        if nav:
             return
         account = leaderboard_client.current_account()
         if not account:
@@ -435,6 +443,7 @@ class AccountView(arcade.View):
                 self.sound_manager.play_ui_click()
                 self._activate(action)
                 return
+
 
     def on_key_press(self, key, modifiers) -> None:
         if key == arcade.key.ESCAPE:

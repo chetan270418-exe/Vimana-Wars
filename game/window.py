@@ -18,7 +18,7 @@ class VimanaWindow(arcade.Window):
     def _apply_logical_viewport(self) -> None:
         physical_w = max(1, int(self.width))
         physical_h = max(1, int(self.height))
-        scale = min(physical_w / WIDTH, physical_h / HEIGHT)
+        scale = max(0.001, min(physical_w / WIDTH, physical_h / HEIGHT))
         view_w = max(1, int(WIDTH * scale))
         view_h = max(1, int(HEIGHT * scale))
         offset_x = (physical_w - view_w) // 2
@@ -41,14 +41,18 @@ class VimanaWindow(arcade.Window):
 
     def _logical_point(self, x: float, y: float) -> tuple[float, float]:
         scale = getattr(self, "_logical_scale", 1.0)
+        if scale <= 0:
+            scale = 1.0
         offset_x, offset_y = getattr(self, "_logical_offset", (0, 0))
         return ((x - offset_x) / scale, (y - offset_y) / scale)
 
     def dispatch_event(self, event_type, *args):
         """Translate pointer events from physical pixels to game pixels."""
+        scale = getattr(self, "_logical_scale", 1.0)
+        if scale <= 0:
+            scale = 1.0
         if event_type in ("on_mouse_motion", "on_mouse_drag") and len(args) >= 4:
             x, y = self._logical_point(args[0], args[1])
-            scale = getattr(self, "_logical_scale", 1.0)
             args = (x, y, args[2] / scale, args[3] / scale, *args[4:])
         elif event_type in ("on_mouse_press", "on_mouse_release") and len(args) >= 2:
             x, y = self._logical_point(args[0], args[1])
@@ -56,13 +60,26 @@ class VimanaWindow(arcade.Window):
         return super().dispatch_event(event_type, *args)
 
 
+def load_game_fonts() -> None:
+    """Load bundled OFL fonts (Cinzel, Space Grotesk, JetBrains Mono) if available."""
+    from pathlib import Path
+    fonts_dir = Path(__file__).resolve().parent.parent / "assets" / "fonts"
+    if fonts_dir.exists():
+        for font_file in fonts_dir.glob("*.ttf"):
+            try:
+                arcade.load_font(str(font_file))
+            except Exception:
+                pass
+
+
 def create_window() -> arcade.Window:
+    load_game_fonts()
     saved = save_system.load()
     fullscreen = bool(saved.get("fullscreen", False))
     window = VimanaWindow(
         WIDTH, HEIGHT, SCREEN_TITLE,
         fullscreen=fullscreen,
-        resizable=False,
+        resizable=True,
         center_window=not fullscreen,
     )
     from game.views.loading_screen import LoadingView

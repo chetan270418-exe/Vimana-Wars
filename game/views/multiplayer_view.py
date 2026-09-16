@@ -15,6 +15,7 @@ from game.systems.leaderboard_client import leaderboard_client
 from game.systems.asset_manager import AssetManager
 from game.systems.sound_manager import SoundManager
 from game.ui.menu_button import MenuButton
+from game.ui.nav_rail import NavRail
 from game.ui.transitions import transition_to, TransitionOverlay
 from game.ui.vedic_theme import (
     OBSIDIAN, SURFACE_LOW, SURFACE_HIGH, GOLD, GOLD_BRIGHT, CYAN,
@@ -48,6 +49,7 @@ class MultiplayerView(arcade.View):
         self._pending = None
         self._status = ""
         self._status_color = MUTED
+        self._nav_rail = NavRail(current_screen="sangha")
 
         self._title = arcade.Text(
             "MULTIPLAYER // SANGHA NETWORK", WIDTH // 2, 550,
@@ -94,6 +96,7 @@ class MultiplayerView(arcade.View):
 
     def on_update(self, delta_time: float) -> None:
         TransitionOverlay.update(delta_time)
+        self._nav_rail.update(delta_time)
         self._pulse += delta_time
         self._poll_timer += delta_time
         for i, (button, _) in enumerate(self._buttons):
@@ -152,31 +155,31 @@ class MultiplayerView(arcade.View):
             alpha = int(55 + 35 * math.sin(self._pulse + x * 0.02))
             arcade.draw_circle_filled(sx, y, 1.2, (120, 190, 255, alpha))
         draw_scanlines(0, WIDTH, 0, HEIGHT, CYAN, spacing=20, alpha=5)
-        draw_chamfered_panel(45, 585, 95, 485, CYAN, fill=OBSIDIAN, alpha=235, cut=14)
-        draw_corner_etching(45, 585, 95, 485, GOLD, length=18, alpha=125)
+        draw_chamfered_panel(265, 585, 95, 485, CYAN, fill=OBSIDIAN, alpha=235, cut=14)
+        draw_corner_etching(265, 585, 95, 485, GOLD, length=18, alpha=125)
         draw_chamfered_panel(610, 850, 95, 485, GOLD, fill=OBSIDIAN, alpha=235, cut=14)
         draw_corner_etching(610, 850, 95, 485, CYAN, length=18, alpha=115)
 
     def _draw_lobby_list(self) -> None:
-        arcade.draw_text("OPEN WINGS", 75, 450, GOLD, font_size=11, bold=True)
+        arcade.draw_text("OPEN WINGS", 285, 450, GOLD, font_size=11, bold=True)
         if not self._lobbies:
-            arcade.draw_text("No open lobbies yet.", 315, 320, MUTED, font_size=12, anchor_x="center")
-            arcade.draw_text("Create one and invite another Game ID.", 315, 295, PARCHMENT, font_size=9, anchor_x="center")
+            arcade.draw_text("No open lobbies yet.", 425, 320, MUTED, font_size=12, anchor_x="center")
+            arcade.draw_text("Create one and invite another Game ID.", 425, 295, PARCHMENT, font_size=9, anchor_x="center")
             return
         for i, lobby in enumerate(self._lobbies[:7]):
             y = 415 - i * 45
             selected = i == self._selected_lobby
             color = GOLD_BRIGHT if selected else (75, 100, 140)
             fill = SURFACE_HIGH if selected else SURFACE_LOW
-            draw_chamfered_panel(70, 560, y - 16, y + 17, color, fill=fill, alpha=240, cut=6)
+            draw_chamfered_panel(280, 570, y - 16, y + 17, color, fill=fill, alpha=240, cut=6)
             players = lobby.get("players", [])
-            arcade.draw_text(lobby.get("code", "------"), 88, y + 3, color, font_size=14, bold=True)
-            arcade.draw_text(lobby.get("mode", "campaign").upper(), 205, y + 4, PARCHMENT, font_size=9, bold=True)
+            arcade.draw_text(lobby.get("code", "------"), 298, y + 3, color, font_size=14, bold=True)
+            arcade.draw_text(lobby.get("mode", "campaign").upper(), 415, y + 4, PARCHMENT, font_size=9, bold=True)
             arcade.draw_text(
                 f"{len(players)}/{lobby.get('max_players', 2)} PILOTS  •  {lobby.get('status', 'waiting').upper()}",
-                205, y - 9, MUTED, font_size=8,
+                415, y - 9, MUTED, font_size=8,
             )
-            arcade.draw_text(lobby.get("host_game_id", "UNKNOWN"), 545, y - 1, CYAN_BRIGHT, font_size=8, anchor_x="right")
+            arcade.draw_text(lobby.get("host_game_id", "UNKNOWN"), 555, y - 1, CYAN_BRIGHT, font_size=8, anchor_x="right")
 
     def _draw_current_lobby(self) -> None:
         account = leaderboard_client.current_account()
@@ -216,6 +219,7 @@ class MultiplayerView(arcade.View):
         for button, _ in self._buttons:
             button.draw()
         self._hint.draw()
+        self._nav_rail.draw()
         TransitionOverlay.draw()
 
     def _selected_code(self) -> str:
@@ -278,7 +282,12 @@ class MultiplayerView(arcade.View):
             if self._current_lobby:
                 self._queue_request("leave", lambda done: leaderboard_client.leave_lobby(self._current_lobby["code"], done))
 
+    def _handle_nav(self, key: str) -> None:
+        """Delegate navigation from the rail to the appropriate view."""
+        self._nav_rail.navigate_to(key, self.window)
+
     def on_mouse_motion(self, x, y, dx, dy) -> None:
+        self._nav_rail.on_mouse_motion(x, y)
         new_hovered = -1
         for i, (button, _) in enumerate(self._buttons):
             if button.contains(x, y):
@@ -291,12 +300,16 @@ class MultiplayerView(arcade.View):
     def on_mouse_press(self, x, y, button, modifiers) -> None:
         if button != arcade.MOUSE_BUTTON_LEFT:
             return
+        nav = self._nav_rail.on_mouse_press(x, y, self.window)
+        if nav:
+            self._handle_nav(nav)
+            return
         if 635 <= x <= 825 and 165 <= y <= 195:
             self._code = ""
             return
         for i, lobby in enumerate(self._lobbies[:7]):
             row_y = 415 - i * 45
-            if 70 <= x <= 560 and row_y - 16 <= y <= row_y + 17:
+            if 280 <= x <= 570 and row_y - 16 <= y <= row_y + 17:
                 self._selected_lobby = i
                 self._code = lobby.get("code", "")
                 return

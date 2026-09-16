@@ -1,11 +1,7 @@
-"""
-game/views/leaderboard_view.py
-In-game Online Leaderboard screen.
-Fetches top scores from the backend API asynchronously.
-"""
 import arcade
 from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_SCORE, COLOR_WAVE, COLOR_WHITE
 from game.systems.leaderboard_client import leaderboard_client
+from game.ui.nav_rail import NavRail
 from game.ui.transitions import transition_to, TransitionOverlay
 from game.ui.vedic_theme import MUTED, CYAN_BRIGHT, draw_menu_backdrop, draw_focus_panel
 
@@ -26,6 +22,9 @@ class LeaderboardView(arcade.View):
         self.return_view = return_view
         self._filter_index = 0
         self._pulse = 0.0
+
+        # Nav Rail
+        self._nav_rail = NavRail(current_screen="sangha")
 
         # UI Text elements
         self._title = arcade.Text(
@@ -56,6 +55,7 @@ class LeaderboardView(arcade.View):
 
         # Trigger initial fetch
         self._refresh()
+
 
     def _refresh(self) -> None:
         selected_diff = _FILTERS[self._filter_index]
@@ -124,6 +124,7 @@ class LeaderboardView(arcade.View):
     def on_update(self, delta_time: float) -> None:
         TransitionOverlay.update(delta_time)
         self._pulse += delta_time
+        self._nav_rail.update(delta_time)
         pending = getattr(self, "_pending_data", None)
         if pending is not None:
             self._pending_data = None
@@ -135,11 +136,11 @@ class LeaderboardView(arcade.View):
         self._title.draw()
         self._current_filter_text.draw()
 
-        # Header bar
+        # Header bar — offset right to clear nav rail
         header_y = HEIGHT - 122
-        draw_focus_panel(70, WIDTH - 70, header_y - 6, header_y + 18, COLOR_WAVE)
-        arcade.draw_text("RANK", 90, header_y, (120, 140, 180), font_size=10, bold=True)
-        arcade.draw_text("WARRIOR / GAME ID", 160, header_y, (120, 140, 180), font_size=10, bold=True)
+        draw_focus_panel(240, WIDTH - 30, header_y - 6, header_y + 18, COLOR_WAVE)
+        arcade.draw_text("RANK", 260, header_y, (120, 140, 180), font_size=10, bold=True)
+        arcade.draw_text("WARRIOR / GAME ID", 330, header_y, (120, 140, 180), font_size=10, bold=True)
         arcade.draw_text("SCORE", WIDTH - 260, header_y, (120, 140, 180), font_size=10, bold=True, anchor_x="right")
         arcade.draw_text("WAVE", WIDTH - 160, header_y, (120, 140, 180), font_size=10, bold=True, anchor_x="center")
         arcade.draw_text("DIFFICULTY", WIDTH - 80, header_y, (120, 140, 180), font_size=10, bold=True, anchor_x="right")
@@ -150,14 +151,23 @@ class LeaderboardView(arcade.View):
         else:
             for i, row in enumerate(self._row_texts):
                 row_y = HEIGHT - 150 - i * 36
-                # Alternating row background highlight
                 if i % 2 == 1:
-                    arcade.draw_lrbt_rectangle_filled(70, WIDTH - 70, row_y - 8, row_y + 20, (12, 12, 30, 80))
+                    arcade.draw_lrbt_rectangle_filled(240, WIDTH - 30, row_y - 8, row_y + 20, (12, 12, 30, 80))
                 for cell in row:
                     cell.draw()
 
         self._tab_hint.draw()
+        self._nav_rail.draw()
         TransitionOverlay.draw()
+
+    def on_mouse_motion(self, x, y, dx, dy) -> None:
+        self._nav_rail.on_mouse_motion(x, y)
+
+    def on_mouse_press(self, x, y, button, modifiers) -> None:
+        if button == arcade.MOUSE_BUTTON_LEFT:
+            nav = self._nav_rail.on_mouse_press(x, y, self.window)
+            if nav:
+                return
 
     def on_key_press(self, key, modifiers) -> None:
         if key in (arcade.key.TAB, arcade.key.RIGHT, arcade.key.D):
@@ -174,3 +184,4 @@ class LeaderboardView(arcade.View):
             else:
                 from game.views.menu_view import MenuView
                 transition_to(self.window, MenuView())
+

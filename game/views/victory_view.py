@@ -1,12 +1,17 @@
 import math
 import random
 import arcade
-from constants import WIDTH, HEIGHT, COLOR_SCORE, COLOR_WAVE, COLOR_WHITE
+from constants import WIDTH, HEIGHT
 from game.systems import save_system
 from game.ui.easing import ease_out_cubic, ease_out_elastic, ease_in_out_cubic, clamp
 from game.ui.tween import TweenManager
 from game.ui.transitions import transition_to, TransitionOverlay
-from game.ui.vedic_theme import draw_menu_backdrop, draw_focus_panel
+from game.ui.vedic_theme import (
+    draw_menu_backdrop, draw_focus_panel,
+    GOLD, GOLD_BRIGHT, CYAN, CYAN_BRIGHT, OBSIDIAN, ASTRA_RED,
+    PARCHMENT, STARLIGHT, GREY,
+    FONT_CEREMONIAL, FONT_INTERFACE,
+)
 try:
     from game.systems.sound_manager import SoundManager
 except ImportError:
@@ -75,7 +80,85 @@ class VictoryView(arcade.View):
         
         # Glow pulse state
         self._glow_pulse = 0.0
-        
+
+        # ── Pre-built arcade.Text objects ────────────────────────────────────
+        # Title — position is animated; y updated each frame in on_draw
+        self._t_title = arcade.Text(
+            "VICTORY!",
+            WIDTH // 2, int(self._title_y),
+            GOLD, font_size=52,
+            font_name=FONT_CEREMONIAL[0],
+            anchor_x="center", anchor_y="center",
+        )
+
+        # Subtitle lore line (y set relative to title_y in on_draw)
+        self._t_subtitle = arcade.Text(
+            "KARMIC TRANSCENDENCE  \u2022  DHARMA RESTORED",
+            WIDTH // 2, 0,
+            CYAN_BRIGHT, font_size=11, bold=True,
+            font_name=FONT_INTERFACE[0],
+            anchor_x="center", anchor_y="center",
+        )
+
+        # Stat rows — content and color updated each frame in on_draw
+        _cx   = WIDTH // 2
+        _base = int(HEIGHT * 0.58)
+        _sp   = 46
+
+        self._t_score_row = arcade.Text(
+            "", _cx, _base,
+            (*GOLD[:3], 0), font_size=22,
+            font_name=FONT_INTERFACE[0],
+            anchor_x="center", anchor_y="center",
+        )
+        self._t_kills_row = arcade.Text(
+            "", _cx, _base - _sp,
+            (*STARLIGHT[:3], 0), font_size=18,
+            font_name=FONT_INTERFACE[0],
+            anchor_x="center", anchor_y="center",
+        )
+        self._t_combo_row = arcade.Text(
+            "", _cx, _base - _sp * 2,
+            (*CYAN[:3], 0), font_size=18,
+            font_name=FONT_INTERFACE[0],
+            anchor_x="center", anchor_y="center",
+        )
+        self._t_diff_row = arcade.Text(
+            "", _cx, _base - _sp * 3,
+            (*STARLIGHT[:3], 0), font_size=18,
+            font_name=FONT_INTERFACE[0],
+            anchor_x="center", anchor_y="center",
+        )
+        self._t_breakdown = arcade.Text(
+            "", _cx, _base - _sp * 4,
+            (255, 170, 80, 0), font_size=14,
+            font_name=FONT_INTERFACE[0],
+            anchor_x="center", anchor_y="center",
+        )
+
+        # Bottom prompts
+        _prompt_y = int(HEIGHT * 0.14)
+        self._t_prompt_enter = arcade.Text(
+            "ENTER  \u2014  NEXT REALM / SORTIE",
+            _cx, _prompt_y + 30,
+            (*GOLD[:3], 0), font_size=14, bold=True,
+            font_name=FONT_INTERFACE[0],
+            anchor_x="center", anchor_y="center",
+        )
+        self._t_prompt_l = arcade.Text(
+            "L  \u2014  AKASHIC RECORDS",
+            _cx, _prompt_y,
+            (*CYAN[:3], 0), font_size=14, bold=True,
+            font_name=FONT_INTERFACE[0],
+            anchor_x="center", anchor_y="center",
+        )
+        self._t_prompt_esc = arcade.Text(
+            "ESC  \u2014  RETURN TO SOURCE",
+            _cx, _prompt_y - 30,
+            (*GREY[:3], 0), font_size=14,
+            font_name=FONT_INTERFACE[0],
+            anchor_x="center", anchor_y="center",
+        )
     def on_show_view(self):
         if SoundManager:
             SoundManager.stop_music()
@@ -178,80 +261,73 @@ class VictoryView(arcade.View):
         
     def on_draw(self):
         reduced = bool(save_system.load().get("reduced_flashes", False))
-        draw_menu_backdrop("MISSION COMPLETE", "CAMPAIGN RESULT // REWARDS AND RECORDS", COLOR_SCORE, pulse=self.time_elapsed, reduced=reduced)
-        draw_focus_panel(WIDTH // 2 - 240, WIDTH // 2 + 240, HEIGHT * 0.12, HEIGHT * 0.66, COLOR_SCORE, selected=True)
+        draw_menu_backdrop("MISSION COMPLETE", "CAMPAIGN RESULT // REWARDS AND RECORDS", GOLD, pulse=self.time_elapsed, reduced=reduced)
+        draw_focus_panel(WIDTH // 2 - 240, WIDTH // 2 + 240, HEIGHT * 0.12, HEIGHT * 0.66, GOLD, selected=True)
         # Draw particles
         for p in self.particles:
             p.draw()
-            
+
         # Draw Title with glow
         title_y = int(self._title_y)
-        
+
         # Pulse glow
         glow_radius_1 = 60 + 20 * self._glow_pulse
         glow_radius_2 = 100 + 30 * self._glow_pulse
-        
+
         arcade.draw_circle_filled(WIDTH // 2, title_y, glow_radius_2, (255, 215, 0, 20))
         arcade.draw_circle_filled(WIDTH // 2, title_y, glow_radius_1, (255, 215, 0, 40))
-        
-        arcade.draw_text(
-            "VICTORY!",
-            WIDTH // 2,
-            title_y + 10,
-            arcade.color.GOLD,
-            font_size=50,
-            font_name="Kenney Future",
-            anchor_x="center",
-            anchor_y="center"
-        )
-        arcade.draw_text(
-            "KARMIC TRANSCENDENCE // DHARMA RESTORED",
-            WIDTH // 2,
-            title_y - 30,
-            (116, 245, 255),
-            font_size=10,
-            bold=True,
-            anchor_x="center",
-            anchor_y="center"
-        )
-        
+
+        # Title (animated y position)
+        self._t_title.y = title_y
+        self._t_title.draw()
+
+        # Subtitle lore line — 36px below title centre
+        self._t_subtitle.y = title_y - 36
+        self._t_subtitle.draw()
+
         # Draw Stats
-        base_y = int(HEIGHT * 0.58)
-        spacing = 46
-        
         # Score
         alpha0 = int(clamp(self._row_alphas[0], 0, 255))
-        arcade.draw_text(f"Dharmic Karma Reclaimed: {int(self._displayed_score):,}", WIDTH // 2, base_y, COLOR_SCORE[:3] + (alpha0,), font_size=22, font_name="Kenney Future", anchor_x="center", anchor_y="center")
-        
+        self._t_score_row.text = f"Dharmic Karma Reclaimed: {int(self._displayed_score):,}"
+        self._t_score_row.color = (*GOLD[:3], alpha0)
+        self._t_score_row.draw()
+
         # Kills
         alpha1 = int(clamp(self._row_alphas[1], 0, 255))
-        arcade.draw_text(f"Asura Legion Purged: {self.kills}", WIDTH // 2, base_y - spacing, COLOR_WHITE[:3] + (alpha1,), font_size=18, font_name="Kenney Future", anchor_x="center", anchor_y="center")
-        
+        self._t_kills_row.text = f"Asura Legion Purged: {self.kills}"
+        self._t_kills_row.color = (*STARLIGHT[:3], alpha1)
+        self._t_kills_row.draw()
+
         # Combo
         alpha2 = int(clamp(self._row_alphas[2], 0, 255))
-        arcade.draw_text(f"Highest Battle Flow: {self.highest_combo}", WIDTH // 2, base_y - spacing * 2, COLOR_WAVE[:3] + (alpha2,), font_size=18, font_name="Kenney Future", anchor_x="center", anchor_y="center")
-        
+        self._t_combo_row.text = f"Highest Battle Flow: {self.highest_combo}"
+        self._t_combo_row.color = (*CYAN[:3], alpha2)
+        self._t_combo_row.draw()
+
         # Difficulty
         alpha3 = int(clamp(self._row_alphas[3], 0, 255))
-        arcade.draw_text(f"Difficulty: {self.difficulty.capitalize()}", WIDTH // 2, base_y - spacing * 3, COLOR_WHITE[:3] + (alpha3,), font_size=18, font_name="Kenney Future", anchor_x="center", anchor_y="center")
+        self._t_diff_row.text = f"Difficulty: {self.difficulty.capitalize()}"
+        self._t_diff_row.color = (*STARLIGHT[:3], alpha3)
+        self._t_diff_row.draw()
 
         # Compact combat breakdown
         alpha4 = int(clamp(self._row_alphas[4], 0, 255))
         total_damage = int(self.stats.get("total_damage", 0))
         perfect_dodges = int(self.stats.get("perfect_dodges", 0))
-        arcade.draw_text(
-            f"Total Damage: {total_damage:,}  •  Perfect Dodges: {perfect_dodges}",
-            WIDTH // 2, base_y - spacing * 4,
-            (255, 170, 80, alpha4), font_size=14,
-            font_name="Kenney Future", anchor_x="center", anchor_y="center",
-        )
-        
-        # Prompts
-        prompt_y = int(HEIGHT * 0.14)
-        arcade.draw_text("ENTER  NEXT REALM / SORTIE", WIDTH // 2, prompt_y + 30, COLOR_WHITE[:3] + (alpha4,), font_size=14, font_name="Kenney Future", anchor_x="center", anchor_y="center")
-        arcade.draw_text("L  AKASHIC RECORDS", WIDTH // 2, prompt_y, COLOR_WHITE[:3] + (alpha4,), font_size=14, font_name="Kenney Future", anchor_x="center", anchor_y="center")
-        arcade.draw_text("ESC  RETURN TO SOURCE", WIDTH // 2, prompt_y - 30, COLOR_WHITE[:3] + (alpha4,), font_size=14, font_name="Kenney Future", anchor_x="center", anchor_y="center")
-        
+        self._t_breakdown.text = f"Total Damage: {total_damage:,}  \u2022  Perfect Dodges: {perfect_dodges}"
+        self._t_breakdown.color = (255, 170, 80, alpha4)
+        self._t_breakdown.draw()
+
+        # Prompts (gold / cyan / muted)
+        self._t_prompt_enter.color = (*GOLD[:3], alpha4)
+        self._t_prompt_enter.draw()
+
+        self._t_prompt_l.color = (*CYAN[:3], alpha4)
+        self._t_prompt_l.draw()
+
+        self._t_prompt_esc.color = (*GREY[:3], alpha4)
+        self._t_prompt_esc.draw()
+
         TransitionOverlay.draw()
 
     def on_key_press(self, symbol, modifiers):

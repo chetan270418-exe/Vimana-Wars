@@ -6,12 +6,17 @@ Uses arcade.Text objects (no draw_text calls).
 import math
 import random
 import arcade
-from constants import WIDTH, HEIGHT, COLOR_SCORE, COLOR_WHITE
+from constants import WIDTH, HEIGHT
 from game.systems import save_system
 from game.ui.easing import ease_out_cubic, ease_in_out_cubic, clamp
 from game.ui.tween import TweenManager, Tween
 from game.ui.transitions import transition_to, TransitionOverlay
-from game.ui.vedic_theme import draw_menu_backdrop, draw_focus_panel
+from game.ui.vedic_theme import (
+    draw_menu_backdrop, draw_focus_panel,
+    ASTRA_RED, ASTRA_RED_BRIGHT, CYAN, CYAN_BRIGHT,
+    GOLD, STARLIGHT, GREY, MUTED, PARCHMENT,
+    FONT_CEREMONIAL, FONT_INTERFACE,
+)
 
 
 class GameOverView(arcade.View):
@@ -42,6 +47,16 @@ class GameOverView(arcade.View):
             self._title_text_str,
             WIDTH // 2, int(HEIGHT * 0.82),
             (220, 30, 30), font_size=52, bold=True,
+            font_name=FONT_CEREMONIAL[0],
+            anchor_x="center", anchor_y="center",
+        )
+
+        # Subtitle lore line below title
+        self._t_subtitle = arcade.Text(
+            "VESSEL DESTROYED  \u2022  KARMA PRESERVED",
+            WIDTH // 2, int(HEIGHT * 0.82) - 36,
+            (*ASTRA_RED_BRIGHT[:3], 180), font_size=11, bold=True,
+            font_name=FONT_INTERFACE[0],
             anchor_x="center", anchor_y="center",
         )
 
@@ -82,20 +97,23 @@ class GameOverView(arcade.View):
             y = int(HEIGHT * 0.62) - i * 22
             self._stat_labels.append(arcade.Text(
                 label, WIDTH // 2 - 160, y,
-                (140, 140, 170, 0), font_size=10, bold=True,
+                (*GREY[:3], 0), font_size=10, bold=True,
+                font_name=FONT_INTERFACE[0],
             ))
             val_str = str(value)
             self._stat_values.append(arcade.Text(
                 val_str, WIDTH // 2 + 160, y,
                 (*val_color[:3], 0), font_size=11, bold=True,
+                font_name=FONT_INTERFACE[0],
                 anchor_x="right",
             ))
 
         # ── Prompt ───────────────────────────────────────────────────
         self._prompt = arcade.Text(
-            "R — REINCARNATE (RETRY)   •   A — ARSENAL   •   L — AKASHIC RECORDS   •   ESC — RETURN TO SOURCE",
+            "R \u2014 REINCARNATE (RETRY)   \u2022   A \u2014 ARSENAL   \u2022   L \u2014 AKASHIC RECORDS   \u2022   ESC \u2014 RETURN TO SOURCE",
             WIDTH // 2, int(HEIGHT * 0.06),
-            COLOR_WHITE, font_size=11, bold=True,
+            STARLIGHT, font_size=11, bold=True,
+            font_name=FONT_INTERFACE[0],
             anchor_x="center",
         )
 
@@ -191,20 +209,23 @@ class GameOverView(arcade.View):
 
     def on_draw(self) -> None:
         reduced = bool(save_system.load().get("reduced_flashes", False))
-        draw_menu_backdrop("DHARMIC REBIRTH", "PHYSICAL VESSEL LOST // KARMA RECORDED IN AKASHIC CHRONICLES", (220, 60, 60), pulse=self._pulse, reduced=reduced)
-        draw_focus_panel(WIDTH // 2 - 230, WIDTH // 2 + 230, HEIGHT * 0.08, HEIGHT * 0.68, (220, 60, 60), selected=True)
-        
+        draw_menu_backdrop("DHARMIC REBIRTH", "PHYSICAL VESSEL LOST // KARMA RECORDED IN AKASHIC CHRONICLES", ASTRA_RED, pulse=self._pulse, reduced=reduced)
+        draw_focus_panel(WIDTH // 2 - 230, WIDTH // 2 + 230, HEIGHT * 0.08, HEIGHT * 0.68, ASTRA_RED, selected=True)
+
         # Draw embers
         for e in self._embers:
             alpha = int(255 * clamp(e["life"] / e["max_life"], 0.0, 1.0))
             color = (*e["color"], alpha)
             arcade.draw_circle_filled(e["x"], e["y"], e["size"], color)
-            
-        # Draw title
+
+        # Draw title (typewriter effect)
         chars = int(self._title_chars)
         if chars > 0:
             self._title.text = self._title_text_str[:chars]
             self._title.draw()
+            # Subtitle fades in once title is fully revealed
+            if chars >= len(self._title_text_str):
+                self._t_subtitle.draw()
 
         if self._is_new_record:
             self._record_banner.draw()
@@ -215,7 +236,7 @@ class GameOverView(arcade.View):
             val.draw()
 
         self._prompt.draw()
-        
+
         TransitionOverlay.draw()
 
     def on_key_press(self, key, modifiers) -> None:

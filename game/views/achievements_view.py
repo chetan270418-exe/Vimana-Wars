@@ -3,6 +3,7 @@ import arcade
 from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_SCORE, COLOR_WHITE
 from game.systems import save_system
 from game.systems.achievement_system import ACHIEVEMENTS_LIST
+from game.ui.nav_rail import NavRail
 from game.ui.transitions import TransitionOverlay, transition_to
 from game.ui.vedic_theme import draw_menu_backdrop, draw_focus_panel
 
@@ -16,6 +17,10 @@ class AchievementsView(arcade.View):
         self._page = 0
         self._selected = 0
         self._unlocked = set(save_system.load().get("achievements") or [])
+
+        # Nav Rail
+        self._nav_rail = NavRail(current_screen="codex")
+
         self._title = arcade.Text("ACHIEVEMENT HALL", WIDTH // 2, HEIGHT - 48,
                                   COLOR_SCORE, font_size=28, bold=True,
                                   anchor_x="center", anchor_y="center")
@@ -34,6 +39,7 @@ class AchievementsView(arcade.View):
 
     def on_update(self, delta_time):
         TransitionOverlay.update(delta_time)
+        self._nav_rail.update(delta_time)
 
     def on_draw(self):
         draw_menu_backdrop("ACHIEVEMENT HALL", "CAMPAIGN RECORDS // SELECT A TROPHY FOR DETAILS", COLOR_SCORE)
@@ -46,7 +52,8 @@ class AchievementsView(arcade.View):
         for index, achievement in enumerate(page_items):
             col = index // 4
             row = index % 4
-            cx = 250 + col * 400
+            # Shift columns right by 170px to clear the 220px nav rail
+            cx = 420 + col * 400
             cy = 430 - row * 88
             absolute_index = start + index
             is_unlocked = achievement["id"] in self._unlocked
@@ -72,6 +79,7 @@ class AchievementsView(arcade.View):
             arcade.draw_text(self._detail, WIDTH // 2, 58, COLOR_SCORE,
                              font_size=9, anchor_x="center")
         self._hint.draw()
+        self._nav_rail.draw()
         TransitionOverlay.draw()
 
     def _activate_selected(self):
@@ -88,19 +96,23 @@ class AchievementsView(arcade.View):
         for index in range(len(items)):
             col = index // 4
             row = index % 4
-            cx = 250 + col * 400
+            cx = 420 + col * 400
             cy = 430 - row * 88
             if cx - 180 <= x <= cx + 180 and cy - 32 <= y <= cy + 32:
                 return index
         return -1
 
     def on_mouse_motion(self, x, y, dx, dy):
+        self._nav_rail.on_mouse_motion(x, y)
         index = self._item_at(x, y)
         if index >= 0:
             self._selected = index
 
     def on_mouse_press(self, x, y, button, modifiers):
         if button == arcade.MOUSE_BUTTON_LEFT:
+            nav = self._nav_rail.on_mouse_press(x, y, self.window)
+            if nav:
+                return
             index = self._item_at(x, y)
             if index >= 0:
                 self._selected = index

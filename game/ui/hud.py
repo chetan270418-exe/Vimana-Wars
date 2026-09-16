@@ -16,10 +16,12 @@ from constants import (
 )
 from game.ui.easing import ease_out_cubic, ease_in_out_cubic, lerp, lerp_color, clamp
 from game.ui.vedic_theme import (
-    CYAN, GOLD, CYAN_BRIGHT, MUTED, RED_BRIGHT,
+    CYAN, GOLD, CYAN_BRIGHT, MUTED, RED_BRIGHT, ASTRA_RED,
+    JADE, AMBER,
     draw_chamfered_panel, draw_corner_etching, draw_scanlines,
     draw_telemetry_ticks, draw_segmented_bar,
 )
+from game.ui.radial_gauge import draw_radial_gauge
 
 _POWERUP_COLORS = {
     "SHIELD": COLOR_POWERUP_SHIELD,
@@ -222,6 +224,9 @@ class HUD:
         arcade.draw_line(215, 70, 215, HEIGHT - 88, (*CYAN, 28), 1)
         arcade.draw_text("PRANA TELEMETRY", 226, HEIGHT - 84, CYAN_BRIGHT, font_size=7, bold=True)
         arcade.draw_text("ASTRA CONTROL // LIVE", WIDTH - 226, HEIGHT - 84, MUTED, font_size=7, bold=True, anchor_x="right")
+        # 12px chamfered cockpit border inset (border only, no fill)
+        draw_chamfered_panel(10, WIDTH - 10, 10, HEIGHT - 10, CYAN,
+                             fill=(0, 0, 0), alpha=0, border_width=1, cut=12)
 
     def _draw_hp_bar(self, player) -> None:
         draw_chamfered_panel(12, _BAR_X + _BAR_W + 8, _BAR_Y - 5, _BAR_Y + _BAR_H + 7,
@@ -408,15 +413,19 @@ class HUD:
             "surya_beam": "SY",
         }
 
+        from game.ui.vedic_theme import BOON_ACCENTS
         for i, (bid, lvl) in enumerate(boon_manager.active_boons.items()):
             bdata = next((b for b in BOONS_DATABASE if b["id"] == bid), None)
             if not bdata: continue
             bx = start_x + i * 28
+            # Use BOON_ACCENTS keyed by deity prefix (e.g. "agni_fury" → "Agni")
+            deity_key = bid.split("_")[0].capitalize()
+            chip_color = BOON_ACCENTS.get(deity_key, bdata["color"])
             arcade.draw_circle_filled(bx + 10, start_y, 11, (20, 25, 45))
-            arcade.draw_circle_outline(bx + 10, start_y, 11, bdata["color"], 2)
-            
+            arcade.draw_circle_outline(bx + 10, start_y, 11, chip_color, 2)
+
             abbr = rune_abbr.get(bid, bdata["name"][:2].upper())
-            arcade.draw_text(abbr, bx + 10, start_y - 4, bdata["color"], font_size=7, bold=True, anchor_x="center")
+            arcade.draw_text(abbr, bx + 10, start_y - 4, chip_color, font_size=7, bold=True, anchor_x="center")
 
             # Stack level badge
             if lvl > 1:
@@ -443,51 +452,38 @@ class HUD:
         arcade.draw_line(200, 12, WIDTH - 184, 12, (*CYAN, 42), 1)
         arcade.draw_text("ASTRA CONTROL", 202, 51, CYAN_BRIGHT, font_size=7, bold=True)
         arcade.draw_text("COOLDOWN / CHARGE TELEMETRY", 202, 40, MUTED, font_size=7, bold=True)
-        # Dash [SPACE]
-        cx1, cy1, r1 = 38, 32, 16
-        dash_ratio = player.dash_ratio
-        ready_col = (60, 230, 255) if player.dash_ready else (60, 100, 140)
 
-        arcade.draw_circle_filled(cx1, cy1, r1, (15, 25, 45))
-        arcade.draw_circle_outline(cx1, cy1, r1, ready_col, 2)
-        if dash_ratio > 0:
-            steps = max(1, int(30 * dash_ratio))
-            for i in range(1, steps + 1):
-                a = math.radians(90 - (360 * dash_ratio) * (i / 30))
-                arcade.draw_line(cx1, cy1, cx1 + math.cos(a) * r1, cy1 + math.sin(a) * r1, ready_col, 2)
-
+        # Dash [SPACE] — JADE when ready
         dash_label = f"DASH ({player.dash_charges})" if player.dash_charges_max > 1 else "DASH"
-        dash_state = "READY" if player.dash_ready else f"{max(0.0, player.dash_cooldown_timer):.1f}s"
-        arcade.draw_text("◆", cx1, cy1 - 5, COLOR_WHITE, font_size=10, bold=True, anchor_x="center")
-        arcade.draw_text("SPACE", cx1, cy1 - 21, COLOR_WHITE, font_size=6, bold=True, anchor_x="center")
-        arcade.draw_text(f"{dash_label} {dash_state}", cx1, cy1 - 31, ready_col, font_size=6, bold=True, anchor_x="center")
+        draw_radial_gauge(
+            38, 32, 16,
+            player.dash_ratio,
+            JADE,
+            dash_label,
+            "SPACE",
+            player.dash_ready,
+        )
 
-        # Chakram [Q]
-        cx2, cy2, r2 = 88, 32, 16
-        chk_ratio = player.chakram_ratio
-        chk_col = (255, 215, 60) if player.chakram_ready else (120, 100, 40)
+        # Chakram [Q] — AMBER when ready
+        draw_radial_gauge(
+            88, 32, 16,
+            player.chakram_ratio,
+            AMBER,
+            "CHAKRAM",
+            "Q",
+            player.chakram_ready,
+        )
 
-        arcade.draw_circle_filled(cx2, cy2, r2, (35, 30, 15))
-        arcade.draw_circle_outline(cx2, cy2, r2, chk_col, 2)
-        if chk_ratio > 0:
-            steps = max(1, int(30 * chk_ratio))
-            for i in range(1, steps + 1):
-                a = math.radians(90 - (360 * chk_ratio) * (i / 30))
-                arcade.draw_line(cx2, cy2, cx2 + math.cos(a) * r2, cy2 + math.sin(a) * r2, chk_col, 2)
-
-        chk_state = "READY" if player.chakram_ready else f"{max(0.0, player.chakram_cooldown_timer):.1f}s"
-        arcade.draw_text("◈", cx2, cy2 - 5, COLOR_WHITE, font_size=10, bold=True, anchor_x="center")
-        arcade.draw_text("Q", cx2, cy2 - 21, COLOR_WHITE, font_size=6, bold=True, anchor_x="center")
-        arcade.draw_text(f"CHAKRAM {chk_state}", cx2, cy2 - 31, chk_col, font_size=6, bold=True, anchor_x="center")
-
-        # Bomb [F]
+        # Bomb [F] — ASTRA_RED
         if player.bomb_count > 0:
-            cx3, cy3 = 145, 32
-            arcade.draw_circle_filled(cx3, cy3, 16, (45, 15, 50))
-            arcade.draw_circle_outline(cx3, cy3, 16, COLOR_POWERUP_BOMB, 2)
-            arcade.draw_text("✦", cx3, cy3 - 5, COLOR_WHITE, font_size=10, bold=True, anchor_x="center")
-            arcade.draw_text(f"F ×{player.bomb_count}", cx3, cy3 - 21, COLOR_WHITE, font_size=6, bold=True, anchor_x="center")
-            arcade.draw_text("BOMB READY", cx3, cy3 - 31, COLOR_POWERUP_BOMB, font_size=6, bold=True, anchor_x="center")
+            draw_radial_gauge(
+                145, 32, 16,
+                1.0,
+                ASTRA_RED,
+                f"BOMB ×{player.bomb_count}",
+                "F",
+                True,
+            )
 
     def _draw_offscreen_radar(self, player, enemies: list, powerups: list) -> None:
         """Draws glowing directional threat arrows along screen edges for off-screen enemies and power-ups."""

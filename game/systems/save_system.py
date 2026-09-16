@@ -22,6 +22,7 @@ _DEFAULTS = {
     "game_id":       "",
     "account_email": "",
     "last_realm":    1,
+    "story_intro_seen": False,
     "realm_unlock_seen": [],
     "total_kills":   0,
     "games_played":  0,
@@ -45,7 +46,7 @@ _DEFAULTS = {
 
 _SYNC_KEYS = (
     "player_name", "high_score", "last_wave", "difficulty", "last_ship",
-    "last_realm", "realm_unlock_seen", "total_kills", "games_played",
+    "last_realm", "story_intro_seen", "realm_unlock_seen", "total_kills", "games_played",
     "total_damage", "best_combo", "total_boons", "bosses_defeated",
     "playtime_seconds", "ships_mastered", "achievements", "endless_high_wave",
     "endless_high_score",

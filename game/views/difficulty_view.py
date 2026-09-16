@@ -8,8 +8,10 @@ import arcade
 from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_WAVE, COLOR_WHITE
 from game.systems import save_system
 from game.systems.sound_manager import SoundManager
+from game.ui.nav_rail import NavRail
 from game.ui.transitions import transition_to, TransitionOverlay
 from game.ui.vedic_theme import draw_menu_backdrop, draw_focus_panel
+
 
 _OPTIONS = ["easy", "normal", "hard", "endless"]
 _DESCRIPTIONS = {
@@ -37,6 +39,9 @@ class DifficultyView(arcade.View):
         self._hovered = -1
         self._pulse = 0.0
         self.sound_manager = SoundManager()
+
+        # Nav Rail
+        self._nav_rail = NavRail(current_screen="campaign")
 
         # ── Static text ──────────────────────────────────────────────
         self._title = arcade.Text(
@@ -82,6 +87,8 @@ class DifficultyView(arcade.View):
     def on_update(self, delta_time: float) -> None:
         TransitionOverlay.update(delta_time)
         self._pulse += delta_time
+        self._nav_rail.update(delta_time)
+
 
     def on_draw(self) -> None:
         draw_menu_backdrop("SELECT GAMEPLAY MODE", "CHOOSE A SORTIE PROFILE", COLOR_WAVE, pulse=self._pulse)
@@ -112,6 +119,7 @@ class DifficultyView(arcade.View):
             desc.draw()
 
         self._hint.draw()
+        self._nav_rail.draw()
         TransitionOverlay.draw()
 
     def _row_at(self, x: float, y: float) -> int:
@@ -140,6 +148,7 @@ class DifficultyView(arcade.View):
         )
 
     def on_mouse_motion(self, x, y, dx, dy) -> None:
+        self._nav_rail.on_mouse_motion(x, y)
         new_hovered = self._row_at(x, y)
         if new_hovered != self._hovered and new_hovered >= 0:
             self.sound_manager.play_ui_click(volume=0.20)
@@ -147,6 +156,9 @@ class DifficultyView(arcade.View):
 
     def on_mouse_press(self, x, y, button, modifiers) -> None:
         if button != arcade.MOUSE_BUTTON_LEFT:
+            return
+        nav = self._nav_rail.on_mouse_press(x, y, self.window)
+        if nav:
             return
         row = self._row_at(x, y)
         if row < 0:
@@ -156,6 +168,7 @@ class DifficultyView(arcade.View):
         else:
             self._selected = row
             self.sound_manager.play_ui_click(volume=0.35)
+
 
     def on_key_press(self, key, modifiers) -> None:
         if key in (arcade.key.UP, arcade.key.W):

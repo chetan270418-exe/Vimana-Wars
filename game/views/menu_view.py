@@ -1,28 +1,36 @@
 """
-Vimana Wars main menu with mouse/controller-friendly navigation.
+Vimana Wars Command Deck — Main Menu View.
+Reskinned per Section 7.1 and Section 9 of the authoritative specification.
+Features canonical 220px nav rail, Hero Vimana hologram panel, real Pilot Record dossier,
+primary Celestial Gold [ DEPLOY SORTIE ] button, and three-card mode row.
 """
 import math
 import random
 import arcade
-from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_WAVE, COLOR_SCORE, COLOR_WHITE
+
+from constants import WIDTH, HEIGHT, REALMS
 from game.entities.ship_classes import SHIP_CLASSES
-from game.systems import save_system
+from game.systems import save_system, achievement_system
 from game.systems.sound_manager import SoundManager
 from game.systems.asset_manager import AssetManager
+from game.systems.leaderboard_client import leaderboard_client
+from game.ui.nav_rail import NavRail
 from game.ui.menu_button import MenuButton
 from game.ui.transitions import transition_to, TransitionOverlay
 from game.ui.vedic_theme import (
-    OBSIDIAN, SURFACE_LOW, GOLD, GOLD_BRIGHT, CYAN, CYAN_BRIGHT,
-    PARCHMENT, MUTED, draw_chamfered_panel, draw_corner_etching,
-    draw_segmented_bar, draw_scanlines, draw_telemetry_ticks, pulse_alpha,
+    VOID, OBSIDIAN, SURFACE_LOW, SURFACE_HIGH, GOLD, GOLD_BRIGHT,
+    CYAN, CYAN_BRIGHT, ASTRA_RED, PARCHMENT, STARLIGHT, GREY, MUTED,
+    FONT_CEREMONIAL, FONT_INTERFACE, FONT_TELEMETRY,
+    draw_chamfered_panel, draw_corner_etching, draw_segmented_bar,
+    draw_scanlines, draw_telemetry_ticks, pulse_alpha, draw_state_badge,
 )
 
 
 _RNG = random.Random(42)
 _STARS = [
-    (_RNG.randint(0, WIDTH), _RNG.randint(0, HEIGHT),
-     _RNG.uniform(0.5, 1.7), _RNG.randint(80, 200), _RNG.uniform(0.4, 1.4))
-    for _ in range(140)
+    (_RNG.randint(220, WIDTH), _RNG.randint(0, HEIGHT),
+     _RNG.uniform(0.6, 1.8), _RNG.randint(80, 210), _RNG.uniform(0.5, 1.5))
+    for _ in range(80)
 ]
 
 
@@ -30,196 +38,202 @@ class MenuView(arcade.View):
     def __init__(self):
         super().__init__()
         self._pulse = 0.0
-        self._hovered = 0
         self.sound_manager = SoundManager()
+        self.nav_rail = NavRail("menu")
 
+        # Load real game state
         saved = save_system.load()
         self._reduced_flashes = bool(saved.get("reduced_flashes", False))
-        high_score = saved.get("high_score", 0)
-        last_diff = saved.get("difficulty", "normal").upper()
-        last_ship = saved.get("last_ship", "pushpaka")
-        last_ship_data = SHIP_CLASSES.get(last_ship, SHIP_CLASSES["pushpaka"])
-        self._last_ship_id = last_ship
-        last_wave = max(0, int(saved.get("last_wave", 0)))
-        unlocked = sum(1 for start in (1, 4, 7, 10, 13, 16, 19) if last_wave >= start)
-        unlocked = max(1, unlocked)
-        self._unlocked_realms = unlocked
+        self._high_score = saved.get("high_score", 0)
+        self._last_diff = saved.get("difficulty", "normal").upper()
+        self._last_ship_id = saved.get("last_ship", "pushpaka")
+        self._last_wave = max(0, int(saved.get("last_wave", 0)))
 
-        self._title = arcade.Text(
-            "VIMANA WARS", 274, 558,
-            GOLD_BRIGHT, font_size=28, bold=True,
-            anchor_x="left", anchor_y="center",
-        )
-        self._subtitle = arcade.Text(
-            "CELESTIAL WAR COMMAND CONSOLE", 255, 485,
-            CYAN_BRIGHT, font_size=12, bold=True,
-            anchor_x="left", anchor_y="center",
-        )
-        self._high_score = arcade.Text(
-            f"LOCAL BEST  {high_score:,}   •   LAST MODE  {last_diff}   •   LAST WAVE  {last_wave}",
-            255, 455, (160, 220, 160), font_size=10, bold=True,
-            anchor_x="left", anchor_y="center",
-        )
-        self._progress = arcade.Text(
-            f"CAMPAIGN PROGRESS   {unlocked}/7 REALMS UNLOCKED",
-            255, 432, PARCHMENT, font_size=10, bold=True,
-            anchor_x="left", anchor_y="center",
-        )
-        self._ship_label = arcade.Text(
-            f"LAST VIMANA  •  {last_ship_data['name']}",
-            744, 110, last_ship_data["color"], font_size=10, bold=True,
-            anchor_x="center", anchor_y="center",
-        )
-        self._hint = arcade.Text(
-            "MOUSE / D-PAD: NAVIGATE   •   ENTER: CONFIRM   •   V: TRAILER (PV)   •   ESC: QUIT",
-            560, 28, MUTED, font_size=9,
-            anchor_x="center", anchor_y="center",
-        )
-        self._version = arcade.Text(
-            "VIMANA WARS // OFFLINE CORE READY", WIDTH - 12, 570,
-            (120, 130, 150), font_size=8, bold=True, anchor_x="right",
-        )
-        self._section = arcade.Text(
-            "MISSION CONTROL", 255, 520, GOLD, font_size=9, bold=True,
-            anchor_x="left", anchor_y="center",
-        )
-        self._vitals = arcade.Text(
-            "VIMANA VITALS", 24, 535, GOLD_BRIGHT, font_size=10, bold=True,
-            anchor_x="left", anchor_y="center",
-        )
-        account_label = saved.get("game_id")
-        sync_text = f"ACCOUNT LINKED\n{account_label}" if account_label else "GUEST MODE\nOFFLINE"
-        self._sync = arcade.Text(
-            sync_text, 820, 557, CYAN_BRIGHT if account_label else MUTED, font_size=8,
-            bold=True, anchor_x="right", anchor_y="center",
+        # Calculate real unlocked realms
+        unlocked = sum(1 for start in (1, 4, 7, 10, 13, 16, 19) if self._last_wave >= start)
+        self._unlocked_realms = max(1, unlocked)
+
+        # Calculate real ships unlocked
+        self._unlocked_ships = sum(
+            1 for s in SHIP_CLASSES.values()
+            if self._last_wave >= s.get("unlock_wave", 0)
         )
 
-        button_x = 108
-        button_y = 405
-        button_gap = 34
-        button_data = [
-            ("START MISSION", "play", COLOR_SCORE),
-            ("ASTRA ARSENAL", "arsenal", (255, 170, 80)),
-            ("MULTIPLAYER", "multiplayer", (100, 240, 190)),
-            ("CAMPAIGN MAP", "map", (120, 210, 255)),
-            ("LEADERBOARDS", "leaderboard", (170, 130, 255)),
-            ("LIFETIME STATS", "stats", (255, 200, 100)),
-            ("ACHIEVEMENTS", "achievements", (255, 170, 80)),
-            ("CODEX", "codex", (100, 240, 190)),
-            ("ACCOUNT", "account", (116, 245, 255)),
-            ("SETTINGS", "settings", (190, 200, 220)),
-            ("QUIT", "quit", (255, 90, 100)),
+        # Calculate real trophies
+        achievements = achievement_system.get_all()
+        self._unlocked_trophies = sum(1 for a in achievements if a.get("unlocked", False))
+        self._total_trophies = len(achievements)
+
+        # Current realm name
+        realm_id = min(7, max(1, self._unlocked_realms))
+        self._current_realm_name = REALMS.get(realm_id, {}).get("name", "Swarga")
+
+        # Primary Sortie Action Button (Celestial Gold)
+        self._btn_deploy = MenuButton(
+            "DEPLOY SORTIE  ▶", 560, 168,
+            width=620, height=44, accent=GOLD, variant="celestial"
+        )
+
+        # Mode row buttons (Metallic)
+        self._mode_buttons = [
+            (MenuButton("CAMPAIGN MAP", 340, 102, 195, 34, accent=CYAN, variant="metallic"), "map"),
+            (MenuButton("ENDLESS MODE", 560, 102, 195, 34, accent=(180, 140, 255), variant="metallic"), "endless"),
+            (MenuButton("LEADERBOARDS", 780, 102, 195, 34, accent=GOLD, variant="metallic"), "leaderboard"),
         ]
-        self._buttons = [
-            (MenuButton(label, button_x, button_y - i * button_gap,
-                        202 if i == 0 else 190, 40 if i == 0 else 30, color), action)
-            for i, (label, action, color) in enumerate(button_data)
-        ]
+
+        self._hovered_mode = -1
+        self._hovered_deploy = False
 
     def on_show_view(self) -> None:
-        arcade.set_background_color(COLOR_BG)
+        arcade.set_background_color(OBSIDIAN)
         SoundManager.stop_music()
+        # Refresh dynamic state
         saved = save_system.load()
-        game_id = saved.get("game_id")
-        self._reduced_flashes = bool(saved.get("reduced_flashes", False))
-        self._sync.text = f"ACCOUNT LINKED\n{game_id}" if game_id else "GUEST MODE\nOFFLINE"
-        self._sync.color = CYAN_BRIGHT if game_id else MUTED
-        self._high_score.text = (
-            f"LOCAL BEST  {saved.get('high_score', 0):,}   •   LAST MODE  "
-            f"{saved.get('difficulty', 'normal').upper()}   •   LAST WAVE  {saved.get('last_wave', 0)}"
-        )
+        self._last_wave = max(0, int(saved.get("last_wave", 0)))
+        self._high_score = saved.get("high_score", 0)
+        self._last_ship_id = saved.get("last_ship", "pushpaka")
 
     def on_update(self, delta_time: float) -> None:
         TransitionOverlay.update(delta_time)
         self._pulse += delta_time
-        for i, (button, _) in enumerate(self._buttons):
-            button.update(delta_time, i == self._hovered)
+        self.nav_rail.update(delta_time)
+
+        self._btn_deploy.update(delta_time, self._hovered_deploy)
+        for i, (btn, _) in enumerate(self._mode_buttons):
+            btn.update(delta_time, i == self._hovered_mode)
 
     def on_draw(self) -> None:
         self.clear()
 
-        # Stitch-inspired command rail and holographic content frame.
-        arcade.draw_lrbt_rectangle_filled(0, 220, 0, HEIGHT, (14, 16, 22, 255))
-        arcade.draw_line(220, 0, 220, HEIGHT, (233, 196, 0, 75), 1)
-        arcade.draw_line(220, 548, WIDTH, 548, (233, 196, 0, 80), 1)
-
-        # Slow parallax drift keeps the menu alive without distracting from controls.
+        # ── Background Parallax Drift (x=220 to WIDTH) ───────────────────────
         for sx, sy, radius, base, speed in _STARS:
-            x = 220 + ((sx + self._pulse * speed * 5.0) % (WIDTH - 220))
+            x = 220 + ((sx - 220 + self._pulse * speed * 6.0) % (WIDTH - 220))
             y = (sy + self._pulse * speed * 1.5) % HEIGHT
-            brightness = int(base + 18 * math.sin(self._pulse * 0.8 + sx * 0.01))
-            arcade.draw_circle_filled(x, y, radius, (brightness, brightness, min(255, brightness + 15)))
+            brightness = int(base + 20 * math.sin(self._pulse * 0.8 + sx * 0.01))
+            arcade.draw_circle_filled(x, y, radius, (brightness, brightness, min(255, brightness + 20)))
 
-        draw_scanlines(221, WIDTH, 0, 548, CYAN, spacing=22, alpha=7)
-        hero = AssetManager.texture("hero_vimana_wars.png")
-        hero_drift = 0.0 if self._reduced_flashes else math.sin(self._pulse * 0.55) * 3.0
-        AssetManager.draw(hero, 575, 312 + hero_drift, 630, 420, color=(255, 255, 255, 105))
-        draw_chamfered_panel(235, 880, 145, 475, CYAN, fill=(9, 14, 25), alpha=150, cut=14)
-        draw_corner_etching(235, 880, 145, 475, GOLD, length=18, alpha=120)
-        draw_telemetry_ticks(260, 855, 165, CYAN, count=17, height=4, alpha=65)
+        draw_scanlines(220, WIDTH, 0, HEIGHT, CYAN, spacing=24, alpha=4)
 
-        ring_angle = 0.0 if self._reduced_flashes else self._pulse * 12.0
-        ring_alpha = pulse_alpha(self._pulse, 18, 38, 1.8, self._reduced_flashes)
-        for radius, alpha in ((125, ring_alpha), (155, max(10, ring_alpha // 2))):
-            arcade.draw_arc_outline(570, 315, radius * 2, radius * 0.55,
-                                    (100, 180, 255, alpha), ring_angle, ring_angle + 250, 2)
-        arcade.draw_circle_outline(570, 315, 54, (*GOLD, 34), 1)
-        arcade.draw_line(250, 414, 405, 414, (*CYAN, 80), 1)
-        arcade.draw_text("ACTIVE THEATER", 255, 395, CYAN_BRIGHT, font_size=8, bold=True)
-        arcade.draw_text("SWARGA APPROACH // LOCAL SORTIE", 255, 378, PARCHMENT, font_size=10, bold=True)
+        # ── Top Header Bar (y=548 to 600) ────────────────────────────────────
+        arcade.draw_lrbt_rectangle_filled(220, WIDTH, 548, HEIGHT, (*SURFACE_LOW, 220))
+        arcade.draw_line(220, 548, WIDTH, 548, (*GOLD, 85), 1)
 
-        self._title.draw()
-        self._subtitle.draw()
-        self._section.draw()
-        self._sync.draw()
-        logo = AssetManager.texture("vimana_wars_logo.png")
-        AssetManager.draw(logo, 245, 558, 34, 34)
+        # Wordmark & Context
+        arcade.draw_text("COMMAND DECK // BRIDGE CONSOLE", 240, 574, GOLD_BRIGHT,
+                         font_size=15, bold=True, font_name=FONT_INTERFACE)
+        arcade.draw_text(f"CURRENT THEATER: {self._current_realm_name.upper()} // WAVE {self._last_wave:02d}",
+                         240, 558, CYAN, font_size=8, bold=True, font_name=FONT_TELEMETRY)
 
-        # Vitals rail.
-        self._vitals.draw()
-        last_ship_data = SHIP_CLASSES.get(self._last_ship_id, SHIP_CLASSES["pushpaka"])
-        arcade.draw_text("PRANA", 24, 505, CYAN_BRIGHT, font_size=8, bold=True)
-        arcade.draw_text(f"{last_ship_data['hp']}/{last_ship_data['hp']}", 194, 505, PARCHMENT, font_size=8, bold=True, anchor_x="right")
-        draw_segmented_bar(24, 194, 493, 499, min(1.0, last_ship_data['hp'] / 190), CYAN, segments=8, gap=3)
-        arcade.draw_text("MANTRA", 24, 466, GOLD, font_size=8, bold=True)
-        arcade.draw_text(f"{min(100, self._unlocked_realms * 14)}%", 194, 466, PARCHMENT, font_size=8, bold=True, anchor_x="right")
-        draw_segmented_bar(24, 194, 454, 460, min(1.0, self._unlocked_realms / 7), GOLD, segments=8, gap=3)
+        # Online Sync Badge
+        saved = save_system.load()
+        game_id = saved.get("game_id", "")
+        sync_label = f"VMN-{game_id[-6:]}" if game_id else "LOCAL GUEST"
+        is_online = leaderboard_client.is_online()
+        sync_color = CYAN_BRIGHT if is_online else GREY
 
-        self._high_score.draw()
-        self._progress.draw()
-        map_y = 412
-        map_x = 270
-        arcade.draw_text("REALM ROUTE", map_x, map_y + 12, MUTED, font_size=7, bold=True)
-        for realm_index in range(7):
-            node_x = map_x + realm_index * 24
-            if realm_index:
-                arcade.draw_line(node_x - 20, map_y, node_x - 4, map_y, (*CYAN, 100), 2)
-            unlocked_node = realm_index < self._unlocked_realms
-            node_color = GOLD if unlocked_node else (70, 78, 105)
-            arcade.draw_circle_filled(node_x, map_y, 5 if unlocked_node else 4, node_color)
-            if unlocked_node and realm_index == self._unlocked_realms - 1:
-                arcade.draw_circle_outline(node_x, map_y, 9, (*CYAN_BRIGHT, 150), 1)
+        draw_state_badge(WIDTH - 70, 574, "ONLINE" if is_online else "OFFLINE", sync_color, width=74)
+        arcade.draw_text(sync_label, WIDTH - 120, 574, STARLIGHT,
+                         font_size=9, bold=True, anchor_x="right", anchor_y="center",
+                         font_name=FONT_TELEMETRY)
 
-        # Last ship mini-preview.
+        # ── Left Hero Vimana Panel (x=240 to 550, y=225 to 530) ─────────────
+        draw_chamfered_panel(240, 550, 225, 530, CYAN, fill=SURFACE_LOW, alpha=225, cut=10.0)
+        draw_corner_etching(240, 550, 225, 530, GOLD, length=14.0, alpha=110)
+
+        arcade.draw_text("ACTIVE VIMANA CRAFT", 256, 508, CYAN_BRIGHT,
+                         font_size=8, bold=True, font_name=FONT_TELEMETRY)
+
         ship_data = SHIP_CLASSES.get(self._last_ship_id, SHIP_CLASSES["pushpaka"])
-        last_texture = AssetManager.texture(ship_data.get("sprite", "pushpaka.png"))
-        if not AssetManager.draw(last_texture, 744, 155, 74, 74):
-            arcade.draw_triangle_filled(744, 185, 724, 145, 764, 145, ship_data["color"])
-            arcade.draw_circle_filled(744, 154, 5, ship_data["accent"])
-        self._ship_label.draw()
+        arcade.draw_text(ship_data["name"].upper(), 256, 488, GOLD_BRIGHT,
+                         font_size=16, bold=True, font_name=FONT_INTERFACE)
+        arcade.draw_text(ship_data.get("subtitle", "Celestial Flagship"), 256, 472, PARCHMENT,
+                         font_size=8, bold=True, font_name=FONT_INTERFACE)
 
-        draw_chamfered_panel(18, 198, 379, 431, GOLD, fill=(30, 27, 34), alpha=205, border_width=2, selected=True, cut=9)
-        arcade.draw_text("PRIMARY SORTIE", 108, 421, GOLD_BRIGHT, font_size=7, bold=True, anchor_x="center")
-        for button, _ in self._buttons:
-            button.draw()
-        self._hint.draw()
-        self._version.draw()
+        # Counter-rotating hologram halo rings
+        cx, cy = 395, 355
+        ring_angle = 0.0 if self._reduced_flashes else self._pulse * 14.0
+        ring_alpha = pulse_alpha(self._pulse, 20, 55, 1.8, self._reduced_flashes)
+        arcade.draw_circle_outline(cx, cy, 65, (*GOLD, 40), 1)
+        arcade.draw_arc_outline(cx, cy, 140, 140, (*CYAN, ring_alpha),
+                                ring_angle, ring_angle + 240, 2)
+        arcade.draw_arc_outline(cx, cy, 175, 175, (*GOLD, max(15, ring_alpha // 2)),
+                                -ring_angle, -ring_angle + 200, 1)
+
+        # Hero ship sprite
+        hero_tex = AssetManager.texture(ship_data.get("sprite", "pushpaka.png"))
+        float_y = 0.0 if self._reduced_flashes else math.sin(self._pulse * 1.2) * 4.0
+        if not AssetManager.draw(hero_tex, cx, cy + float_y, 110, 110):
+            arcade.draw_triangle_filled(cx, cy + 50 + float_y, cx - 40, cy - 40 + float_y,
+                                        cx + 40, cy - 40 + float_y, ship_data["color"])
+
+        # Reticle crosshair
+        arcade.draw_line(cx - 18, cy + float_y, cx + 18, cy + float_y, (*CYAN, 75), 1)
+        arcade.draw_line(cx, cy - 18 + float_y, cx, cy + 18 + float_y, (*CYAN, 75), 1)
+
+        # Weapon loadout strip
+        arcade.draw_line(256, 260, 534, 260, (*CYAN, 55), 1)
+        arcade.draw_text("SYSTEMS ARMED // READY FOR SORTIE", 256, 242, (*CYAN, 190),
+                         font_size=8, bold=True, font_name=FONT_TELEMETRY)
+
+        # ── Right Pilot Record Dossier (x=570 to 880, y=225 to 530) ─────────
+        draw_chamfered_panel(570, 880, 225, 530, GOLD, fill=SURFACE_LOW, alpha=225, cut=10.0)
+        draw_corner_etching(570, 880, 225, 530, CYAN, length=14.0, alpha=110)
+
+        arcade.draw_text("PILOT DOSSIER // CAMPAIGN RECORD", 586, 508, GOLD,
+                         font_size=8, bold=True, font_name=FONT_TELEMETRY)
+        arcade.draw_text("AKASHIC CHRONICLES", 586, 488, GOLD_BRIGHT,
+                         font_size=16, bold=True, font_name=FONT_INTERFACE)
+
+        # Campaign Progress Bar
+        arcade.draw_text("CAMPAIGN RESONANCE", 586, 452, STARLIGHT,
+                         font_size=9, bold=True, font_name=FONT_INTERFACE)
+        prog_pct = int((self._unlocked_realms / 7.0) * 100)
+        arcade.draw_text(f"{prog_pct}%  ({self._unlocked_realms}/7 REALMS)", 864, 452, GOLD_BRIGHT,
+                         font_size=9, bold=True, anchor_x="right", font_name=FONT_TELEMETRY)
+        draw_segmented_bar(586, 864, 436, 444, self._unlocked_realms / 7.0,
+                           color=GOLD, segments=7, gap=4.0)
+
+        # Real Statistics Grid
+        stat_rows = [
+            ("HIGHEST WAVE REACHED", f"WAVE {self._last_wave:02d} / 20", CYAN_BRIGHT),
+            ("VESSELS COMMISSIONED", f"{self._unlocked_ships} / 9 SHIPS", STARLIGHT),
+            ("HONORIFIC TROPHIES", f"{self._unlocked_trophies} / {self._total_trophies} UNLOCKED", GOLD_BRIGHT),
+            ("COMBAT DIFFICULTY", f"{self._last_diff}", PARCHMENT),
+            ("LIFETIME HIGH SCORE", f"{self._high_score:,}", GOLD_BRIGHT),
+        ]
+
+        sy = 398
+        for label, val, val_col in stat_rows:
+            arcade.draw_text(label, 586, sy, GREY, font_size=8, bold=True, font_name=FONT_TELEMETRY)
+            arcade.draw_text(val, 864, sy, val_col, font_size=9, bold=True, anchor_x="right", font_name=FONT_TELEMETRY)
+            arcade.draw_line(586, sy - 6, 864, sy - 6, (*GREY, 35), 1)
+            sy -= 32
+
+        # ── Primary Deploy Sortie Button ─────────────────────────────────────
+        self._btn_deploy.draw()
+
+        # ── Three-Card Mode Row ──────────────────────────────────────────────
+        for btn, _ in self._mode_buttons:
+            btn.draw()
+
+        # ── Bottom Command Hints ─────────────────────────────────────────────
+        arcade.draw_text(
+            "SPACE / ENTER: DEPLOY SORTIE   •   V: TRAILER (PV)   •   ESC: QUIT",
+            560, 32, MUTED, font_size=9, bold=True, anchor_x="center", anchor_y="center",
+            font_name=FONT_TELEMETRY
+        )
+
+        # ── Draw 220px Navigation Rail ───────────────────────────────────────
+        self.nav_rail.draw()
+
+        # Transition Wipe
         TransitionOverlay.draw()
 
     def _activate(self, action: str) -> None:
         if TransitionOverlay.is_active:
             return
         self.sound_manager.play_ui_click()
+
         if action == "play":
             from game.views.difficulty_view import DifficultyView
             transition_to(self.window, DifficultyView())
@@ -229,6 +243,9 @@ class MenuView(arcade.View):
         elif action == "map":
             from game.views.realm_map_view import RealmMapView
             transition_to(self.window, RealmMapView())
+        elif action == "endless":
+            from game.views.difficulty_view import DifficultyView
+            transition_to(self.window, DifficultyView())
         elif action == "multiplayer":
             from game.views.multiplayer_view import MultiplayerView
             transition_to(self.window, MultiplayerView(return_view=self))
@@ -269,35 +286,42 @@ class MenuView(arcade.View):
         except Exception:
             pass
 
-    def on_mouse_motion(self, x, y, dx, dy) -> None:
-        new_hovered = -1
-        for i, (button, _) in enumerate(self._buttons):
-            if button.contains(x, y):
-                new_hovered = i
-                break
-        if new_hovered != self._hovered and new_hovered >= 0:
-            self.sound_manager.play_ui_click(volume=0.22)
-        self._hovered = new_hovered
+    def on_mouse_motion(self, x: float, y: float, dx: float, dy: float) -> None:
+        self.nav_rail.on_mouse_motion(x, y)
+        self._hovered_deploy = self._btn_deploy.contains(x, y)
 
-    def on_mouse_press(self, x, y, button, modifiers) -> None:
+        new_hovered_mode = -1
+        for i, (btn, _) in enumerate(self._mode_buttons):
+            if btn.contains(x, y):
+                new_hovered_mode = i
+                break
+        if new_hovered_mode != self._hovered_mode and new_hovered_mode >= 0:
+            self.sound_manager.play_ui_click(volume=0.20)
+        self._hovered_mode = new_hovered_mode
+
+    def on_mouse_press(self, x: float, y: float, button: int, modifiers: int) -> None:
         if button != arcade.MOUSE_BUTTON_LEFT:
             return
-        for i, (menu_button, action) in enumerate(self._buttons):
-            if menu_button.contains(x, y):
-                self._hovered = i
+
+        # Check nav rail first
+        rail_action = self.nav_rail.on_mouse_press(x, y, self.window)
+        if rail_action:
+            return
+
+        # Check primary deploy button
+        if self._btn_deploy.contains(x, y):
+            self._activate("play")
+            return
+
+        # Check mode buttons
+        for btn, action in self._mode_buttons:
+            if btn.contains(x, y):
                 self._activate(action)
                 return
 
-    def on_key_press(self, key, modifiers) -> None:
-        if key in (arcade.key.UP, arcade.key.W):
-            self._hovered = (self._hovered - 1) % len(self._buttons)
-            self.sound_manager.play_ui_click(volume=0.22)
-        elif key in (arcade.key.DOWN, arcade.key.S):
-            self._hovered = (self._hovered + 1) % len(self._buttons)
-            self.sound_manager.play_ui_click(volume=0.22)
-        elif key in (arcade.key.ENTER, arcade.key.RETURN):
-            index = self._hovered if self._hovered >= 0 else 0
-            self._activate(self._buttons[index][1])
+    def on_key_press(self, key: int, modifiers: int) -> None:
+        if key in (arcade.key.ENTER, arcade.key.RETURN, arcade.key.SPACE):
+            self._activate("play")
         elif key in (arcade.key.H, arcade.key.R):
             self._activate("arsenal")
         elif key == arcade.key.M:
@@ -320,11 +344,3 @@ class MenuView(arcade.View):
             self._play_pv_video()
         elif key == arcade.key.ESCAPE:
             arcade.exit()
-
-    def on_joyhat_motion(self, joystick, hat_x, hat_y) -> None:
-        if hat_y > 0:
-            self._hovered = (self._hovered - 1) % len(self._buttons)
-            self.sound_manager.play_ui_click(volume=0.22)
-        elif hat_y < 0:
-            self._hovered = (self._hovered + 1) % len(self._buttons)
-            self.sound_manager.play_ui_click(volume=0.22)

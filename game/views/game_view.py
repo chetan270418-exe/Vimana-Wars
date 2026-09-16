@@ -26,6 +26,11 @@ from game.ui.hud import HUD
 from game.ui.boss_bar import BossBar
 from game.ui.parallax_bg import ParallaxBackground
 from game.ui.transitions import TransitionOverlay, transition_to
+from game.ui.vedic_theme import (
+    GOLD, GOLD_BRIGHT, CYAN, CYAN_BRIGHT, MUTED, ASTRA_RED_BRIGHT,
+    SURFACE_HIGH, FONT_INTERFACE, FONT_TELEMETRY,
+    draw_chamfered_panel, draw_corner_etching,
+)
 from game.ui.tween import TweenManager, Tween
 from game.ui.easing import ease_out_cubic, ease_out_elastic, ease_out_back, ease_in_out_cubic, lerp, clamp
 
@@ -96,15 +101,17 @@ class GameView(arcade.View):
 
         # Pause text objects
         self._pause_title = arcade.Text(
-            "GAME PAUSED", WIDTH // 2, int(HEIGHT * 0.82),
-            (200, 200, 255), font_size=32, bold=True,
+            "SORTIE SUSPENDED", WIDTH // 2, int(HEIGHT * 0.76),
+            GOLD, font_size=28, bold=True,
             anchor_x="center", anchor_y="center",
+            font_name=FONT_INTERFACE,
         )
         self._pause_hint = arcade.Text(
-            "ESC to resume  •  click a button or use the hotkey",
-            WIDTH // 2, int(HEIGHT * 0.20),
-            (140, 160, 200), font_size=11, bold=True,
+            "ESC  RESUME   •   R  RESTART   •   O  SETTINGS   •   M  MENU",
+            WIDTH // 2, int(HEIGHT * 0.235),
+            MUTED, font_size=10, bold=True,
             anchor_x="center",
+            font_name=FONT_TELEMETRY,
         )
 
         # ── Pause menu buttons (replaces the old key-hint overlay) ──────
@@ -967,14 +974,24 @@ class GameView(arcade.View):
             btn.update(dt, self._mouse_x, self._mouse_y)
 
     def _draw_pause(self) -> None:
-        # Dim backdrop
-        arcade.draw_lrbt_rectangle_filled(0, WIDTH, 0, HEIGHT, (0, 0, 0, 190))
-        # Subtle vignette ring for depth
-        arcade.draw_lrbt_rectangle_outline(0, WIDTH, 0, HEIGHT, (60, 80, 130, 80), 1)
+        # 70% dim scrim
+        arcade.draw_lrbt_rectangle_filled(0, WIDTH, 0, HEIGHT, (0, 0, 0, 179))
 
+        # Canonical Tier 2 chamfered panel
+        pw, ph = 460, 340
+        pl = WIDTH // 2 - pw // 2
+        pr = WIDTH // 2 + pw // 2
+        pb = HEIGHT // 2 - ph // 2
+        pt = HEIGHT // 2 + ph // 2
+        draw_chamfered_panel(pl, pr, pb, pt, GOLD,
+                             fill=SURFACE_HIGH, alpha=245, border_width=2,
+                             selected=True, cut=12.0, scanlines=True)
+        draw_corner_etching(pl, pr, pb, pt, GOLD, length=18, alpha=130)
+
+        # Title
         self._pause_title.draw()
 
-        # Mini-stats panel above the buttons
+        # Mini-stats panel above buttons
         self._draw_pause_mini_stats()
 
         # Buttons
@@ -985,19 +1002,15 @@ class GameView(arcade.View):
 
     def _draw_pause_mini_stats(self) -> None:
         """Compact in-pause summary: wave, score, HP, boons, time-in-run."""
+
         cx = WIDTH // 2
-        # Panel position: between the title and the first button
-        panel_y = HEIGHT // 2 + 100
-        panel_w, panel_h = 360, 60
-        arcade.draw_lrbt_rectangle_filled(
+        # Panel position: between title and buttons
+        panel_y = HEIGHT // 2 + 105
+        panel_w, panel_h = 390, 64
+        draw_chamfered_panel(
             cx - panel_w / 2, cx + panel_w / 2,
             panel_y - panel_h / 2, panel_y + panel_h / 2,
-            (15, 20, 42, 200),
-        )
-        arcade.draw_lrbt_rectangle_outline(
-            cx - panel_w / 2, cx + panel_w / 2,
-            panel_y - panel_h / 2, panel_y + panel_h / 2,
-            (90, 110, 150, 160), 1,
+            CYAN, fill=(10, 16, 28), alpha=210, border_width=1, cut=8
         )
 
         # Two rows of stats
@@ -1013,16 +1026,19 @@ class GameView(arcade.View):
         row1 = f"WAVE  {wave:<3}     SCORE  {score:>7,}     HP  {int(hp):>3}/{int(max_hp):<3}"
         arcade.draw_text(
             row1, cx, panel_y + 12,
-            (220, 230, 250), font_size=11, bold=True,
+            CYAN_BRIGHT, font_size=11, bold=True,
             anchor_x="center", anchor_y="center",
+            font_name=FONT_TELEMETRY,
         )
         # Row 2: BOONS  TIME
         row2 = f"BOONS  {boons:<2}     TIME  {mins:02d}:{secs:02d}"
         arcade.draw_text(
             row2, cx, panel_y - 12,
-            (160, 200, 240), font_size=10, bold=True,
+            GOLD, font_size=10, bold=True,
             anchor_x="center", anchor_y="center",
+            font_name=FONT_TELEMETRY,
         )
+
 
     # ── Helpers ─────────────────────────────────────────────────────────
 

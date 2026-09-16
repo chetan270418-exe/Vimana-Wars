@@ -5,11 +5,21 @@ Provides in-depth lore, vector illustrations, and tactical guides for Vimanas, A
 """
 import arcade
 from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_SCORE
+from game.ui.nav_rail import NavRail
 from game.ui.transitions import transition_to, TransitionOverlay
-from game.ui.vedic_theme import draw_menu_backdrop, draw_focus_panel
+from game.ui.vedic_theme import draw_menu_backdrop, draw_focus_panel, CYAN_BRIGHT, MUTED
 
 
 CODEX_ENTRIES = [
+    {
+        "category": "TRANSMISSION",
+        "title": "The Reclamation of Dharma",
+        "subtitle": "Opening Briefing // The Celestial Order",
+        "color": (255, 246, 223),
+        "lore": "Dharma is unraveling. Ravana has broken his exile and is draining Prana from the celestial realms to rebuild his tenfold power. The last Vimana pilot must cut a corridor through four falling heavens and reach Lanka before the balance is extinguished.",
+        "tip": "Begin with Swarga. Learn the flight path, collect Deva Astras, and keep moving when the warning telemetry turns red.",
+        "speaker": "AKASHIC ARCHIVIST // COMMAND BRIEFING",
+    },
     {
         "category": "CHRONICLES",
         "title": "Act I — Swarga",
@@ -130,7 +140,12 @@ class CodexView(arcade.View):
         super().__init__()
         self.return_view = return_view
         self._selected = 0
+        self._page = 0
+        self._page_size = 7
         self._pulse = 0.0
+
+        # Nav Rail
+        self._nav_rail = NavRail(current_screen="codex")
 
         # UI Texts
         self._title = arcade.Text(
@@ -152,18 +167,23 @@ class CodexView(arcade.View):
     def on_update(self, delta_time: float) -> None:
         TransitionOverlay.update(delta_time)
         self._pulse += delta_time
+        self._nav_rail.update(delta_time)
 
     def on_draw(self) -> None:
         draw_menu_backdrop("THE REALM ARCHIVES & CODEX", "TACTICAL RECORDS // VIMANAS, ASTRAS, ASURAS", COLOR_SCORE, pulse=self._pulse)
         self._title.draw()
 
-        # Left Sidebar (Entries List)
-        sidebar_x = 70
+        # Left Sidebar (Entries List) — shifted right to clear 220px nav rail
+        sidebar_x = 240
         sidebar_w = 260
         start_y = HEIGHT - 95
 
-        for i, entry in enumerate(CODEX_ENTRIES):
-            y = start_y - i * 52
+        page_count = (len(CODEX_ENTRIES) + self._page_size - 1) // self._page_size
+        page_start = self._page * self._page_size
+        visible_entries = CODEX_ENTRIES[page_start:page_start + self._page_size]
+        for local_i, entry in enumerate(visible_entries):
+            i = page_start + local_i
+            y = start_y - local_i * 52
             is_sel = (i == self._selected)
 
             if is_sel:
@@ -174,9 +194,19 @@ class CodexView(arcade.View):
             arcade.draw_text(f"[{entry['category']}]", sidebar_x + 14, y + 10, (140, 150, 180), font_size=8, bold=True)
             arcade.draw_text(entry["title"], sidebar_x + 14, y - 8, entry["color"] if is_sel else (200, 205, 220), font_size=12, bold=True)
 
+        arcade.draw_text(
+            f"ARCHIVE PAGE {self._page + 1}/{page_count}",
+            sidebar_x, 92, MUTED, font_size=8, bold=True,
+        )
+        arcade.draw_text(
+            "Q / E  PAGE   •   CLICK AN ENTRY",
+            sidebar_x + sidebar_w, 92, MUTED, font_size=8, bold=True,
+            anchor_x="right",
+        )
+
         # Right Detail Panel
-        detail_x = 360
-        detail_w = WIDTH - detail_x - 70
+        detail_x = 530
+        detail_w = WIDTH - detail_x - 30
         detail_y = HEIGHT - 100
         detail_h = 420
 
@@ -185,26 +215,32 @@ class CodexView(arcade.View):
         arcade.draw_lrbt_rectangle_outline(detail_x, detail_x + detail_w, detail_y - detail_h, detail_y, cur["color"], 2)
 
         # Header Details
-        arcade.draw_text(cur["title"].upper(), detail_x + 30, detail_y - 45, cur["color"], font_size=24, bold=True)
+        arcade.draw_text(cur["title"].upper(), detail_x + 30, detail_y - 45, cur["color"], font_size=22, bold=True)
         arcade.draw_text(cur["subtitle"], detail_x + 30, detail_y - 75, (170, 185, 215), font_size=12, bold=True)
         arcade.draw_line(detail_x + 30, detail_y - 90, detail_x + detail_w - 30, detail_y - 90, (60, 70, 100), 1)
 
+        if cur.get("speaker"):
+            arcade.draw_text(cur["speaker"], detail_x + 30, detail_y - 105,
+                             CYAN_BRIGHT, font_size=8, bold=True)
+
         # Lore Paragraph
-        arcade.draw_text("MYTHOLOGICAL RECORD:", detail_x + 30, detail_y - 125, COLOR_SCORE, font_size=11, bold=True)
-        lore_lines = self._wrap_text(cur["lore"], 46)
+        lore_top = detail_y - (142 if cur.get("speaker") else 125)
+        arcade.draw_text("MYTHOLOGICAL RECORD:", detail_x + 30, lore_top, COLOR_SCORE, font_size=11, bold=True)
+        lore_lines = self._wrap_text(cur["lore"], 40)
         for l_idx, line in enumerate(lore_lines):
-            arcade.draw_text(line, detail_x + 30, detail_y - 155 - l_idx * 22, (220, 225, 240), font_size=11)
+            arcade.draw_text(line, detail_x + 30, lore_top - 30 - l_idx * 22, (220, 225, 240), font_size=11)
 
         # Tactical Tip Box
         tip_y = detail_y - 300
         arcade.draw_lrbt_rectangle_filled(detail_x + 30, detail_x + detail_w - 30, tip_y - 60, tip_y + 10, (15, 18, 32))
         arcade.draw_lrbt_rectangle_outline(detail_x + 30, detail_x + detail_w - 30, tip_y - 60, tip_y + 10, (80, 140, 200), 1)
         arcade.draw_text("TACTICAL DOCTRINE:", detail_x + 45, tip_y - 12, (100, 220, 255), font_size=9, bold=True)
-        tip_lines = self._wrap_text(cur["tip"], 44)
+        tip_lines = self._wrap_text(cur["tip"], 38)
         for t_idx, line in enumerate(tip_lines):
             arcade.draw_text(line, detail_x + 45, tip_y - 32 - t_idx * 18, (190, 200, 220), font_size=9)
 
         self._hint.draw()
+        self._nav_rail.draw()
         TransitionOverlay.draw()
 
     def _wrap_text(self, text: str, max_chars: int) -> list[str]:
@@ -227,11 +263,46 @@ class CodexView(arcade.View):
     def on_key_press(self, key, modifiers) -> None:
         if key in (arcade.key.UP, arcade.key.W):
             self._selected = (self._selected - 1) % len(CODEX_ENTRIES)
+            self._page = self._selected // self._page_size
         elif key in (arcade.key.DOWN, arcade.key.S):
             self._selected = (self._selected + 1) % len(CODEX_ENTRIES)
+            self._page = self._selected // self._page_size
+        elif key in (arcade.key.Q, arcade.key.LEFT):
+            page_count = (len(CODEX_ENTRIES) + self._page_size - 1) // self._page_size
+            self._page = (self._page - 1) % page_count
+            self._selected = self._page * self._page_size
+        elif key in (arcade.key.E, arcade.key.RIGHT):
+            page_count = (len(CODEX_ENTRIES) + self._page_size - 1) // self._page_size
+            self._page = (self._page + 1) % page_count
+            self._selected = self._page * self._page_size
         elif key == arcade.key.ESCAPE:
             if self.return_view:
                 transition_to(self.window, self.return_view)
             else:
                 from game.views.menu_view import MenuView
                 transition_to(self.window, MenuView())
+
+    def on_mouse_motion(self, x, y, dx, dy) -> None:
+        self._nav_rail.on_mouse_motion(x, y)
+
+        # The list remains keyboard-friendly, but pointer selection now works
+        # consistently with the rest of the front-end.
+        sidebar_x = 240
+        sidebar_w = 260
+        start_y = HEIGHT - 95
+        if sidebar_x <= x <= sidebar_x + sidebar_w:
+            for local_i in range(self._page_size):
+                y_pos = start_y - local_i * 52
+                if y_pos - 18 <= y <= y_pos + 26:
+                    index = self._page * self._page_size + local_i
+                    if index < len(CODEX_ENTRIES):
+                        self._selected = index
+                    break
+
+    def on_mouse_press(self, x, y, button, modifiers) -> None:
+        if button != arcade.MOUSE_BUTTON_LEFT:
+            return
+        nav = self._nav_rail.on_mouse_press(x, y, self.window)
+        if nav:
+            return
+        self.on_mouse_motion(x, y, 0, 0)

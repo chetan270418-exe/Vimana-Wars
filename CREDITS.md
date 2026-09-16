@@ -22,7 +22,9 @@
   WAV effects remain fallback variants.
 
 ## Fonts
-_No external fonts yet._
+- **Cinzel** by Natanael Gama — [SIL Open Font License 1.1](http://scripts.sil.org/OFL)
+- **Space Grotesk** by Florian Karsten — [SIL Open Font License 1.1](http://scripts.sil.org/OFL)
+- **JetBrains Mono** by JetBrains — [SIL Open Font License 1.1](http://scripts.sil.org/OFL)
 
 ---
 

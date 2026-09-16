@@ -10,6 +10,14 @@ The implemented UI pass lives in `game/ui/vedic_theme.py`, `game/ui/hud.py`,
 PV and design references are tracked in the workspace root and catalogued in
 `assets/design/README.md`.
 
+The narrative pass is now live as well. `game/views/story_briefing_view.py`
+provides a three-page skippable transmission on first launch, `LoadingView`
+routes first-time pilots into it, and the Codex contains the same briefing as a
+replayable archive entry. The shared secondary-screen backdrop now has a
+restrained starfield, horizon grid, animated reticle, and consistent status
+band. Codex entries are paginated so every realm, Vimana, Astra, and boss entry
+remains reachable instead of flowing off the screen.
+
 ## Visual direction
 
 Vimana Wars is a celestial war console: deep obsidian surfaces, sacred

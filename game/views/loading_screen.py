@@ -19,6 +19,7 @@ from game.ui.vedic_theme import (
     OBSIDIAN, SURFACE_LOW, GOLD, GOLD_BRIGHT, CYAN, CYAN_BRIGHT,
     PARCHMENT, MUTED, draw_chamfered_panel, draw_corner_etching,
     draw_segmented_bar, draw_scanlines, draw_telemetry_ticks, pulse_alpha,
+    FONT_CEREMONIAL, FONT_TELEMETRY, FONT_INTERFACE
 )
 from game.ui.easing import ease_out_cubic, clamp
 
@@ -53,26 +54,31 @@ class LoadingView(arcade.View):
             "VIMANA WARS", WIDTH // 2, HEIGHT - 75,
             GOLD_BRIGHT, font_size=32, bold=True,
             anchor_x="center", anchor_y="center",
+            font_name=FONT_CEREMONIAL[0],
         )
         self._subtitle = arcade.Text(
             "THE RECLAMATION OF DHARMA // CELESTIAL PROLOGUE", WIDTH // 2, HEIGHT - 110,
             CYAN_BRIGHT, font_size=11, bold=True,
             anchor_x="center", anchor_y="center",
+            font_name=FONT_TELEMETRY[0],
         )
         self._status_label = arcade.Text(
             "INITIALIZING SYSTEMS...", WIDTH // 2, 115,
             GOLD, font_size=11, bold=True,
             anchor_x="center", anchor_y="center",
+            font_name=FONT_TELEMETRY[0],
         )
         self._prompt = arcade.Text(
             "PRESS SPACE OR ENTER TO ENGAGE COMMAND CONSOLE", WIDTH // 2, 45,
             GOLD_BRIGHT, font_size=12, bold=True,
             anchor_x="center", anchor_y="center",
+            font_name=FONT_TELEMETRY[0],
         )
         self._pv_button_text = arcade.Text(
             "[ V ]  WATCH CINEMATIC TRAILER (PV)", WIDTH // 2, 75,
             CYAN_BRIGHT, font_size=10, bold=True,
             anchor_x="center", anchor_y="center",
+            font_name=FONT_TELEMETRY[0],
         )
 
         # Starfield
@@ -158,7 +164,8 @@ class LoadingView(arcade.View):
                     WIDTH // 2, box_top - idx * line_height,
                     (*color[:3], alpha),
                     font_size=11, bold=(idx == 0 or idx == 3),
-                    anchor_x="center", anchor_y="center"
+                    anchor_x="center", anchor_y="center",
+                    font_name=FONT_INTERFACE[0]
                 )
 
         # 6. Segmented Telemetry Progress Bar
@@ -213,8 +220,16 @@ class LoadingView(arcade.View):
         if TransitionOverlay.is_active:
             return
         self.sound_manager.play_ui_click()
-        from game.views.menu_view import MenuView
-        transition_to(self.window, MenuView())
+        # Give first-time pilots a skippable narrative briefing.  Returning
+        # players go straight to the command console, so the story never
+        # becomes startup friction.
+        from game.systems import save_system
+        if not save_system.load().get("story_intro_seen", False):
+            from game.views.story_briefing_view import StoryBriefingView
+            transition_to(self.window, StoryBriefingView())
+        else:
+            from game.views.menu_view import MenuView
+            transition_to(self.window, MenuView())
 
     def on_mouse_press(self, x: float, y: float, button: int, modifiers: int) -> None:
         if button != arcade.MOUSE_BUTTON_LEFT:

@@ -654,3 +654,69 @@ class TestLoadingView:
         assert lv._progress >= 1.0
         assert lv._ready_to_advance is True
         assert "READY" in lv._status_text_str
+
+
+class TestStoryBriefingView:
+    def test_story_briefing_pages_and_completion_state(self, monkeypatch, tmp_path):
+        from game.systems import save_system
+        monkeypatch.setattr(save_system, "_SAVE_FILE", tmp_path / "save.json")
+        monkeypatch.setattr(save_system, "_SAVE_DIR", tmp_path)
+        import arcade
+        monkeypatch.setattr(arcade.View, "__init__", lambda self: None)
+        class _TextStub:
+            def __init__(self, text, *args, **kwargs):
+                self.text = text
+                self.color = kwargs.get("color", (255, 255, 255))
+            def draw(self):
+                return None
+        monkeypatch.setattr(arcade, "Text", _TextStub)
+        from game.views.story_briefing_view import StoryBriefingView
+
+        view = StoryBriefingView()
+        assert view.page == 0
+        view._set_page(2)
+        assert view._button.text == "BEGIN SORTIE"
+
+        data = save_system.load()
+        data["story_intro_seen"] = True
+        save_system.save(data)
+        assert save_system.load()["story_intro_seen"] is True
+
+
+class TestCanonicalTokensAndComponents:
+    def test_canonical_tokens(self):
+        from game.ui.vedic_theme import (
+            VOID, OBSIDIAN, WELL, GOLD, GOLD_BRIGHT, CYAN, CYAN_BRIGHT,
+            BRASS, ASTRA_RED, ASTRA_RED_BRIGHT, PARCHMENT, STARLIGHT, GREY,
+            JADE, AMBER, CRIMSON, get_gauge_color, BOON_ACCENTS
+        )
+        assert VOID == (7, 10, 19)
+        assert OBSIDIAN == (11, 13, 18)
+        assert GOLD == (233, 196, 0)
+        assert CYAN == (0, 219, 231)
+        assert ASTRA_RED == (191, 0, 54)
+        assert get_gauge_color(0.8) == JADE
+        assert get_gauge_color(0.5) == AMBER
+        assert get_gauge_color(0.2) == CRIMSON
+        assert "Agni" in BOON_ACCENTS
+
+    def test_nav_rail(self):
+        from game.ui.nav_rail import NavRail, NAV_ITEMS
+        rail = NavRail(current_screen="menu")
+        assert rail.current_screen == "menu"
+        assert len(NAV_ITEMS) == 7
+        rail.on_mouse_motion(100, 460)
+        assert rail.hovered_index == 0
+
+    def test_modal(self):
+        from game.ui.modal import Modal
+        m = Modal("PAUSE", "SORTIE SUSPENDED", body=["Mission is paused"],
+                  actions=[("RESUME", "resume", "celestial"), ("ABANDON", "abandon", "danger")])
+        assert not m.is_open
+        m.open()
+        assert m.is_open
+        assert len(m._buttons) == 2
+        # Test key press
+        import arcade
+        assert m.on_key_press(arcade.key.ESCAPE, 0) == "cancel"
+        assert not m.is_open

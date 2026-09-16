@@ -1,20 +1,28 @@
 """
 game/views/ship_select_view.py
-Vimana Flagship Selection Screen shown before entering battle.
-Displays detailed stats, vector preview, and unique ship class descriptions.
+Fleet Hangar & Astra Armory Selection Screen.
+Follows Section 7.5 and Section 9 of the authoritative specification.
+Features canonical 220px nav rail, 3 paginated cards per page with counter-rotating halos,
+5 real telemetry stats, lock silhouettes, detailed pilot dossier, and celestial deploy action.
 """
 import math
 import arcade
-from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_SCORE
+
+from constants import WIDTH, HEIGHT
 from game.entities.ship_classes import SHIP_CLASSES
 from game.systems import save_system
 from game.systems.sound_manager import SoundManager
 from game.systems.asset_manager import AssetManager
+from game.ui.nav_rail import NavRail
+from game.ui.menu_button import MenuButton
 from game.ui.transitions import transition_to, TransitionOverlay
 from game.ui.vedic_theme import (
-    GOLD, GOLD_BRIGHT, CYAN_BRIGHT, PARCHMENT, MUTED,
-    CYAN, draw_chamfered_panel, draw_scanlines, draw_telemetry_ticks,
-    pulse_alpha, draw_segmented_bar,
+    VOID, OBSIDIAN, SURFACE_LOW, SURFACE_HIGH, GOLD, GOLD_BRIGHT,
+    CYAN, CYAN_BRIGHT, BRASS, ASTRA_RED, ASTRA_RED_BRIGHT, PARCHMENT,
+    STARLIGHT, GREY, MUTED, WELL,
+    FONT_CEREMONIAL, FONT_INTERFACE, FONT_TELEMETRY,
+    draw_chamfered_panel, draw_corner_etching, draw_segmented_bar,
+    draw_scanlines, pulse_alpha, draw_state_badge,
 )
 
 
@@ -29,298 +37,263 @@ class ShipSelectView(arcade.View):
         self.difficulty = difficulty
         self.start_wave = max(1, int(start_wave))
         self.realm_id = realm_id
+
+        self.sound_manager = SoundManager()
+        self.nav_rail = NavRail("hangar")
+
         saved = save_system.load()
-        last_ship = saved.get("last_ship", "pushpaka")
-        self._last_ship = last_ship
+        self._last_ship = saved.get("last_ship", "pushpaka")
         self._last_wave = max(0, int(saved.get("last_wave", 0)))
         self._reduced_flashes = bool(saved.get("reduced_flashes", False))
-        self._selected = _SHIPS.index(last_ship) if last_ship in _SHIPS and self._is_unlocked(last_ship) else 0
+
+        self._selected = _SHIPS.index(self._last_ship) if self._last_ship in _SHIPS else 0
         self._hovered = -1
         self._pulse = 0.0
-        self.sound_manager = SoundManager()
 
-        # UI Texts
-        self._title = arcade.Text(
-            "ASTRA ARSENAL // VIMANA DEPLOYMENT",
-            WIDTH // 2, HEIGHT - 65,
-            GOLD_BRIGHT, font_size=26, bold=True,
-            anchor_x="center", anchor_y="center"
+        # Primary deploy button
+        self._btn_deploy = MenuButton(
+            "COMMENCE SORTIE  ▶", 755, 96,
+            width=210, height=40, accent=GOLD, variant="celestial"
         )
-        self._subtitle = arcade.Text(
-            "Configure your celestial hull • Locked vessels unlock through campaign resonance",
-            WIDTH // 2, HEIGHT - 86, CYAN_BRIGHT, font_size=9, bold=True,
-            anchor_x="center", anchor_y="center",
-        )
-        self._hint = arcade.Text(
-            "← → or A / D : Select   •   ENTER / SPACE : DEPLOY VIMANA   •   ESC : Back",
-            WIDTH // 2, 35,
-            MUTED, font_size=11, bold=True,
-            anchor_x="center"
-        )
+        self._hovered_deploy = False
+
+    def _is_unlocked(self, ship_id: str) -> bool:
+        sdata = SHIP_CLASSES.get(ship_id, {})
+        return self._last_wave >= sdata.get("unlock_wave", 0)
 
     def on_show_view(self) -> None:
-        arcade.set_background_color(COLOR_BG)
+        arcade.set_background_color(OBSIDIAN)
+        SoundManager.stop_music()
+        saved = save_system.load()
+        self._last_wave = max(0, int(saved.get("last_wave", 0)))
 
     def on_update(self, delta_time: float) -> None:
         TransitionOverlay.update(delta_time)
         self._pulse += delta_time
+        self.nav_rail.update(delta_time)
+        self._btn_deploy.update(delta_time, self._hovered_deploy)
 
     def on_draw(self) -> None:
         self.clear()
-        arcade.draw_lrbt_rectangle_filled(0, WIDTH, 0, HEIGHT, (7, 10, 19))
-        draw_scanlines(0, WIDTH, 52, HEIGHT - 42, CYAN, spacing=24, alpha=7)
-        draw_telemetry_ticks(32, WIDTH - 32, HEIGHT - 112, GOLD, count=21, height=4, alpha=55)
-        draw_telemetry_ticks(32, WIDTH - 32, 70, CYAN, count=21, height=4, alpha=55)
-        arcade.draw_line(24, HEIGHT - 46, WIDTH - 24, HEIGHT - 46, (*GOLD, 85), 1)
-        arcade.draw_text("CELESTIAL ARMORY", 24, HEIGHT - 31, GOLD, font_size=8, bold=True)
-        arcade.draw_text(
-            f"DEPLOYMENT WAVE {self.start_wave:02d}  //  {self.difficulty.upper()}",
-            WIDTH - 24, HEIGHT - 31, MUTED, font_size=8, bold=True, anchor_x="right",
-        )
 
-        self._title.draw()
-        self._subtitle.draw()
+        # Background scanlines
+        draw_scanlines(220, WIDTH, 0, HEIGHT, CYAN, spacing=24, alpha=4)
 
-        card_w = 250
-        card_h = 390
-        start_x = WIDTH // 2 - 280
-        spacing = 280
-        cy = HEIGHT // 2 - 15
+        # ── Top Header Bar (y=548 to 600) ────────────────────────────────────
+        arcade.draw_lrbt_rectangle_filled(220, WIDTH, 548, HEIGHT, (*SURFACE_LOW, 220))
+        arcade.draw_line(220, 548, WIDTH, 548, (*GOLD, 85), 1)
 
+        arcade.draw_text("FLEET HANGAR // VIMANA SPECIFICATION", 240, 574, GOLD_BRIGHT,
+                         font_size=15, bold=True, font_name=FONT_INTERFACE)
+        page_num = (self._selected // _PAGE_SIZE) + 1
+        total_pages = (len(_SHIPS) + _PAGE_SIZE - 1) // _PAGE_SIZE
+        arcade.draw_text(f"ARMORY SQUADRON  •  PAGE {page_num}/{total_pages}  •  SORTIE WAVE {self.start_wave:02d}",
+                         240, 558, CYAN, font_size=8, bold=True, font_name=FONT_TELEMETRY)
+
+        # Page indicator chips
         page_start = (self._selected // _PAGE_SIZE) * _PAGE_SIZE
         visible_ships = _SHIPS[page_start:page_start + _PAGE_SIZE]
-        arcade.draw_text(
-            f"ARMORY PAGE {page_start // _PAGE_SIZE + 1}/{(len(_SHIPS) + _PAGE_SIZE - 1) // _PAGE_SIZE}",
-            WIDTH // 2, HEIGHT - 95, (140, 155, 190), font_size=9,
-            bold=True, anchor_x="center",
-        )
+
+        # ── Three Paginated Ship Cards (y=190 to 535) ────────────────────────
+        card_w = 200.0
+        card_h = 325.0
+        spacing = 215.0
+        start_x = 240.0 + card_w / 2
 
         for local_i, ship_id in enumerate(visible_ships):
-            i = page_start + local_i
+            idx = page_start + local_i
             sdata = SHIP_CLASSES[ship_id]
-            cx = start_x + local_i * spacing
-            is_sel = (i == self._selected)
-            is_hovered = (i == self._hovered)
             unlocked = self._is_unlocked(ship_id)
+            selected = (idx == self._selected)
+            hovered = (local_i == self._hovered)
 
-            # Glassmorphic, chamfered armory card.
-            bg_col = ((34, 40, 72) if is_hovered and not is_sel else ((38, 48, 88) if is_sel else (28, 32, 60))) if unlocked else (18, 20, 32)
-            border_col = sdata["accent"] if unlocked and (is_sel or is_hovered) else (70, 80, 110)
-            border_w = 3 if is_sel else (2 if is_hovered else 1)
-            if is_sel and unlocked:
-                border_col = (*sdata["accent"][:3], pulse_alpha(self._pulse, 170, 255, 4.0, self._reduced_flashes))
-            draw_chamfered_panel(
-                cx - card_w // 2, cx + card_w // 2,
-                cy - card_h // 2, cy + card_h // 2,
-                border_col, fill=bg_col, alpha=245,
-                border_width=border_w, selected=is_sel, cut=12,
-            )
-
-            # Ship Title
-            arcade.draw_text(
-                sdata["name"] if unlocked else "LOCKED VIMANA",
-                cx, cy + 160,
-                sdata["color"] if unlocked else (105, 110, 135), font_size=15, bold=True, anchor_x="center"
-            )
-            arcade.draw_text(
-                sdata["subtitle"] if unlocked else f"Unlock at Wave {sdata['unlock_wave']}",
-                cx, cy + 140,
-                (170, 180, 210), font_size=9, bold=True, anchor_x="center"
-            )
-            if self._last_ship == ship_id and unlocked:
-                arcade.draw_text(
-                    "LAST USED", cx, cy + 120, (255, 220, 80),
-                    font_size=8, bold=True, anchor_x="center",
-                )
-
-            # Vector Ship Preview
-            preview_y = cy + 75
-            if unlocked:
-                if is_sel:
-                    halo = 44 + 4 * math.sin(self._pulse * 3.0)
-                    arcade.draw_circle_outline(cx, preview_y, halo, (*sdata["accent"], 100), 2)
-                self._draw_ship_preview(cx, preview_y, ship_id, sdata["color"], sdata["accent"])
-            else:
-                arcade.draw_lrbt_rectangle_outline(cx - 10, cx + 10, preview_y - 9, preview_y + 7, (110, 120, 145), 2)
-                arcade.draw_arc_outline(cx, preview_y + 7, 14, 14, (110, 120, 145), 0, 180, 2)
-                arcade.draw_circle_filled(cx, preview_y - 1, 2, (160, 170, 190))
-
-            # Stat Bars
-            self._draw_stat_bar("HULL", sdata["hp"] / 190.0, cx, cy - 5, (220, 60, 60))
-            self._draw_stat_bar("FIREPOWER", sdata["bullet_damage"] / 65.0, cx, cy - 31, (255, 200, 50))
-            self._draw_stat_bar("SPEED", sdata["speed"] / 7.2, cx, cy - 57, (60, 220, 100))
-            self._draw_stat_bar("DASH", 1.0 - sdata["dash_cooldown"] / 3.4, cx, cy - 83, (80, 190, 255))
-            self._draw_stat_bar("ASTRA POWER", (sdata["bullet_damage"] / sdata["fire_rate"]) / 650.0, cx, cy - 109, sdata["accent"])
-
-            # Description (Wrapped)
-            desc_lines = self._wrap_text(sdata["desc"], 27)
-            for l_idx, line in enumerate(desc_lines if unlocked else ["Complete more campaign waves", "to unlock this warship."]):
-                arcade.draw_text(
-                    line,
-                    cx, cy - 139 - l_idx * 15,
-                    (200, 205, 220), font_size=9, anchor_x="center"
-                )
-
-            # Ready indicator
-            if is_sel and unlocked:
-                pulse_val = int(200 + 55 * math.sin(self._pulse * 4))
-                arcade.draw_text(
-                    "▶ DEPLOY VIMANA  [ENTER] ◀",
-                    cx, cy - 186,
-                    (255, 220, 50, pulse_val), font_size=10, bold=True, anchor_x="center"
-                )
-
-        self._hint.draw()
-        TransitionOverlay.draw()
-
-    def _card_at(self, x: float, y: float) -> int:
-        card_w = 250
-        card_h = 390
-        start_x = WIDTH // 2 - 280
-        spacing = 280
-        cy = HEIGHT // 2 - 15
-        page_start = (self._selected // _PAGE_SIZE) * _PAGE_SIZE
-        visible_ships = _SHIPS[page_start:page_start + _PAGE_SIZE]
-        for local_i in range(len(visible_ships)):
-            i = page_start + local_i
             cx = start_x + local_i * spacing
-            if (cx - card_w / 2 <= x <= cx + card_w / 2
-                    and cy - card_h / 2 <= y <= cy + card_h / 2):
-                return i
-        return -1
+            cy = 365.0
 
-    def _is_unlocked(self, ship_id: str) -> bool:
-        return self._last_wave >= SHIP_CLASSES[ship_id].get("unlock_wave", 1)
+            left = cx - card_w / 2
+            right = cx + card_w / 2
+            bottom = cy - card_h / 2
+            top = cy + card_h / 2
 
-    def _select(self, index: int) -> None:
-        if index < 0 or index >= len(_SHIPS):
-            return
-        if index != self._selected:
-            self.sound_manager.play_ui_click(volume=0.35)
-        self._selected = index
+            # Card Container
+            accent_col = GOLD if selected else (CYAN if unlocked else BRASS)
+            fill_col = SURFACE_HIGH if selected else SURFACE_LOW
+            draw_chamfered_panel(left, right, bottom, top, accent_col,
+                                 fill=fill_col, alpha=235, border_width=2 if selected else 1,
+                                 selected=selected, cut=10.0)
+            if selected:
+                draw_corner_etching(left, right, bottom, top, GOLD, length=12.0, alpha=130)
 
-    def _confirm(self) -> None:
-        if TransitionOverlay.is_active:
-            return
-        chosen_ship = _SHIPS[self._selected]
-        if not self._is_unlocked(chosen_ship):
-            self.sound_manager.play_ui_click(volume=0.25)
-            return
-        saved = save_system.load()
-        saved["last_ship"] = chosen_ship
-        self._last_ship = chosen_ship
-        if self.realm_id is not None:
-            saved["last_realm"] = self.realm_id
-        save_system.save(saved)
-        self.sound_manager.play_ui_click()
-        is_endless = self.difficulty == "endless"
-        eff_diff = "normal" if is_endless else self.difficulty
-        from game.views.game_view import GameView
-        transition_to(
-            self.window,
-            GameView(
-                difficulty=eff_diff,
-                ship_class=chosen_ship,
-                is_endless=is_endless,
-                start_wave=1 if is_endless else self.start_wave,
-            ),
-            style="wipe",
+            # Hologram Viewport with counter-rotating halos
+            holo_cy = top - 80.0
+            arcade.draw_circle_filled(cx, holo_cy, 48.0, (*WELL, 200))
+            if selected and not self._reduced_flashes:
+                halo_a = pulse_alpha(self._pulse, 30, 90, 2.0)
+                arcade.draw_arc_outline(cx, holo_cy, 100, 100, (*CYAN, halo_a),
+                                        self._pulse * 18.0, self._pulse * 18.0 + 240, 1.5)
+                arcade.draw_arc_outline(cx, holo_cy, 114, 114, (*GOLD, halo_a // 2),
+                                        -self._pulse * 14.0, -self._pulse * 14.0 + 200, 1.0)
+
+            # Ship sprite
+            sprite_tex = AssetManager.texture(sdata.get("sprite", "pushpaka.png"))
+            drift = 0.0 if self._reduced_flashes or not selected else math.sin(self._pulse * 1.5) * 3.0
+            if unlocked:
+                AssetManager.draw(sprite_tex, cx, holo_cy + drift, 76, 76)
+            else:
+                # 25% opacity silhouette for locked craft
+                AssetManager.draw(sprite_tex, cx, holo_cy, 76, 76, color=(80, 85, 95, 65))
+                draw_state_badge(cx, holo_cy, f"WAVE {sdata.get('unlock_wave', 0):02d}", BRASS, width=78)
+
+            # Card Header Text
+            arcade.draw_text(sdata["name"].upper(), cx, top - 142,
+                             GOLD_BRIGHT if selected else (STARLIGHT if unlocked else GREY),
+                             font_size=11, bold=True, anchor_x="center", font_name=FONT_INTERFACE)
+            arcade.draw_text(sdata.get("subtitle", "").upper(), cx, top - 156,
+                             CYAN if unlocked else (*GREY, 120),
+                             font_size=7, bold=True, anchor_x="center", font_name=FONT_TELEMETRY)
+
+            arcade.draw_line(left + 16, top - 168, right - 16, top - 168, (*accent_col, 45), 1)
+
+            # 5 Canonical Telemetry Bars
+            bar_labels = [
+                ("HULL", sdata["hp"] / 190.0),
+                ("FIREPOWER", sdata["bullet_damage"] / 65.0),
+                ("SPEED", sdata["speed"] / 7.2),
+                ("DASH", 1.0 - (sdata["dash_cooldown"] - 1.2) / 2.2),
+                ("ASTRA", sdata.get("astra_power", 75) / 100.0),
+            ]
+
+            by = top - 188
+            for blabel, bfrac in bar_labels:
+                arcade.draw_text(blabel, left + 16, by + 2, (*GREY, 200),
+                                 font_size=7, bold=True, font_name=FONT_TELEMETRY)
+                draw_segmented_bar(left + 76, right - 16, by, by + 8,
+                                   bfrac, color=GOLD if selected else CYAN, segments=8, gap=2.0)
+                by -= 24
+
+            if not unlocked:
+                # Lock indicator banner at bottom of card
+                arcade.draw_text(f"UNLOCK AT WAVE {sdata.get('unlock_wave', 0):02d}",
+                                 cx, bottom + 16, BRASS,
+                                 font_size=8, bold=True, anchor_x="center", font_name=FONT_TELEMETRY)
+            elif selected:
+                arcade.draw_text("SELECTED VESSEL", cx, bottom + 16, GOLD,
+                                 font_size=8, bold=True, anchor_x="center", font_name=FONT_TELEMETRY)
+
+        # ── Lower Focused Ship Dossier (x=240 to 880, y=42 to 180) ───────────
+        draw_chamfered_panel(240, 880, 42, 180, GOLD, fill=SURFACE_LOW, alpha=235, cut=10.0)
+        draw_corner_etching(240, 880, 42, 180, GOLD, length=12.0, alpha=100)
+
+        sel_ship = SHIP_CLASSES[_SHIPS[self._selected]]
+        sel_unlocked = self._is_unlocked(_SHIPS[self._selected])
+
+        # Header with weapon & ability loadout
+        arcade.draw_text(sel_ship["name"].upper(), 256, 156, GOLD_BRIGHT,
+                         font_size=14, bold=True, font_name=FONT_INTERFACE)
+        draw_state_badge(450, 156, sel_ship.get("subtitle", "VESSEL").upper(), CYAN, width=120)
+
+        arcade.draw_text(f"PRIMARY WEAPON: {sel_ship.get('weapon', 'Brahmastra Cannon')}",
+                         600, 156, STARLIGHT, font_size=8, bold=True, font_name=FONT_TELEMETRY)
+        arcade.draw_text(f"DIVINE ABILITY: {sel_ship.get('ability', 'Divine Barrier')}",
+                         600, 142, CYAN_BRIGHT, font_size=8, bold=True, font_name=FONT_TELEMETRY)
+
+        arcade.draw_line(256, 134, 864, 134, (*GOLD, 40), 1)
+
+        # Lore narrative body
+        lore = sel_ship.get("desc", "Celestial craft forged for cosmic warfare.")
+        arcade.draw_text(lore, 256, 114, PARCHMENT, font_size=9, font_name=FONT_INTERFACE)
+
+        # Deploy Sortie or Unlock Banner
+        if sel_unlocked:
+            self._btn_deploy.draw()
+        else:
+            arcade.draw_text(f"HULL SECURED // SURVIVE TO WAVE {sel_ship.get('unlock_wave', 0):02d} TO COMMISSION",
+                             755, 96, BRASS, font_size=8, bold=True, anchor_x="center", font_name=FONT_TELEMETRY)
+
+        # Pagination & Controls Hint
+        arcade.draw_text(
+            "← → / A D: PREV/NEXT VESSEL   •   Q / E: FLIP PAGE   •   ENTER: COMMENCE SORTIE   •   ESC: BACK",
+            560, 22, MUTED, font_size=8, bold=True, anchor_x="center", font_name=FONT_TELEMETRY
         )
 
-    def on_mouse_motion(self, x, y, dx, dy) -> None:
-        new_hovered = self._card_at(x, y)
-        if new_hovered != self._hovered and new_hovered >= 0:
-            self.sound_manager.play_ui_click(volume=0.20)
-        self._hovered = new_hovered
+        # Draw Nav Rail
+        self.nav_rail.draw()
 
-    def on_mouse_press(self, x, y, button, modifiers) -> None:
+        # Transition
+        TransitionOverlay.draw()
+
+    def _deploy_focused_ship(self) -> None:
+        ship_id = _SHIPS[self._selected]
+        if not self._is_unlocked(ship_id) or TransitionOverlay.is_active:
+            return
+        self.sound_manager.play_ui_click()
+
+        # Save selected ship
+        saved = save_system.load()
+        saved["last_ship"] = ship_id
+        save_system.save(saved)
+
+        # Launch directly into GameView or DifficultyView
+        from game.views.game_view import GameView
+        game_view = GameView(difficulty=self.difficulty, start_wave=self.start_wave,
+                             ship_class=ship_id, realm_id=self.realm_id)
+        self.window.show_view(game_view)
+
+    def on_mouse_motion(self, x: float, y: float, dx: float, dy: float) -> None:
+        self.nav_rail.on_mouse_motion(x, y)
+        self._hovered_deploy = self._btn_deploy.contains(x, y)
+
+        page_start = (self._selected // _PAGE_SIZE) * _PAGE_SIZE
+        self._hovered = -1
+        card_w, card_h = 200.0, 325.0
+        start_x, spacing = 240.0 + card_w / 2, 215.0
+
+        for local_i in range(min(_PAGE_SIZE, len(_SHIPS) - page_start)):
+            cx = start_x + local_i * spacing
+            cy = 365.0
+            if cx - card_w / 2 <= x <= cx + card_w / 2 and cy - card_h / 2 <= y <= cy + card_h / 2:
+                self._hovered = local_i
+                break
+
+    def on_mouse_press(self, x: float, y: float, button: int, modifiers: int) -> None:
         if button != arcade.MOUSE_BUTTON_LEFT:
             return
-        index = self._card_at(x, y)
-        if index < 0:
-            return
-        if index == self._selected:
-            self._confirm()
-        else:
-            self._select(index)
 
-    def _draw_stat_bar(self, label: str, frac: float, cx: float, cy: float, col: tuple) -> None:
-        arcade.draw_text(label, cx - 100, cy, (160, 170, 190), font_size=8, bold=True)
-        draw_segmented_bar(cx + 10, cx + 10 + 90, cy - 1, cy + 7,
-                            min(1.0, frac), col, segments=6, gap=2)
-
-    def _draw_ship_preview(self, cx: float, cy: float, ship_id: str, col: tuple, acc: tuple) -> None:
-        r = 24
-        # Draw rotating/hovering ship preview
-        tilt = math.sin(self._pulse * 2.5) * 5.0
-        angle_rad = math.radians(90 + tilt)
-
-        if AssetManager.draw(AssetManager.texture(SHIP_CLASSES[ship_id].get("sprite", "pushpaka.png")),
-                             cx, cy, 96, 96, angle=-tilt):
+        rail_action = self.nav_rail.on_mouse_press(x, y, self.window)
+        if rail_action:
             return
 
-        tip_x = cx + math.cos(angle_rad) * r * 1.8
-        tip_y = cy + math.sin(angle_rad) * r * 1.8
+        if self._btn_deploy.contains(x, y):
+            self._deploy_focused_ship()
+            return
 
-        if ship_id == "tripura":
-            # Bulky Fortress Shape
-            w_l_x = cx + math.cos(angle_rad + 2.4) * r * 1.5
-            w_l_y = cy + math.sin(angle_rad + 2.4) * r * 1.5
-            w_r_x = cx + math.cos(angle_rad - 2.4) * r * 1.5
-            w_r_y = cy + math.sin(angle_rad - 2.4) * r * 1.5
-            arcade.draw_triangle_filled(tip_x, tip_y, w_l_x, w_l_y, w_r_x, w_r_y, col)
-            arcade.draw_circle_filled(cx, cy - 4, 14, acc)
-        elif ship_id == "garuda":
-            # Sharp Needle Interceptor
-            w_l_x = cx + math.cos(angle_rad + 2.6) * r * 1.4
-            w_l_y = cy + math.sin(angle_rad + 2.6) * r * 1.4
-            w_r_x = cx + math.cos(angle_rad - 2.6) * r * 1.4
-            w_r_y = cy + math.sin(angle_rad - 2.6) * r * 1.4
-            arcade.draw_triangle_filled(tip_x, tip_y, w_l_x, w_l_y, w_r_x, w_r_y, col)
-            arcade.draw_line(tip_x, tip_y, w_l_x, w_l_y, acc, 2)
-            arcade.draw_line(tip_x, tip_y, w_r_x, w_r_y, acc, 2)
-        else:
-            # Pushpaka Celestial Cruiser
-            w_l_x = cx + math.cos(angle_rad + 2.5) * r * 1.3
-            w_l_y = cy + math.sin(angle_rad + 2.5) * r * 1.3
-            w_r_x = cx + math.cos(angle_rad - 2.5) * r * 1.3
-            w_r_y = cy + math.sin(angle_rad - 2.5) * r * 1.3
-            arcade.draw_triangle_filled(tip_x, tip_y, w_l_x, w_l_y, w_r_x, w_r_y, col)
-            arcade.draw_circle_filled(cx, cy + 2, 5, (100, 240, 255))
+        page_start = (self._selected // _PAGE_SIZE) * _PAGE_SIZE
+        card_w, card_h = 200.0, 325.0
+        start_x, spacing = 240.0 + card_w / 2, 215.0
 
-    def _wrap_text(self, text: str, max_chars: int) -> list[str]:
-        words = text.split()
-        lines = []
-        cur = []
-        cur_len = 0
-        for w in words:
-            if cur_len + len(w) + 1 > max_chars:
-                lines.append(" ".join(cur))
-                cur = [w]
-                cur_len = len(w)
-            else:
-                cur.append(w)
-                cur_len += len(w) + 1
-        if cur:
-            lines.append(" ".join(cur))
-        return lines
+        for local_i in range(min(_PAGE_SIZE, len(_SHIPS) - page_start)):
+            cx = start_x + local_i * spacing
+            cy = 365.0
+            if cx - card_w / 2 <= x <= cx + card_w / 2 and cy - card_h / 2 <= y <= cy + card_h / 2:
+                self._selected = page_start + local_i
+                self.sound_manager.play_ui_click(volume=0.25)
+                return
 
-    def on_key_press(self, key, modifiers) -> None:
+    def on_key_press(self, key: int, modifiers: int) -> None:
         if key in (arcade.key.LEFT, arcade.key.A):
-            self._select((self._selected - 1) % len(_SHIPS))
+            self._selected = (self._selected - 1) % len(_SHIPS)
+            self.sound_manager.play_ui_click(volume=0.22)
         elif key in (arcade.key.RIGHT, arcade.key.D):
-            self._select((self._selected + 1) % len(_SHIPS))
+            self._selected = (self._selected + 1) % len(_SHIPS)
+            self.sound_manager.play_ui_click(volume=0.22)
+        elif key in (arcade.key.Q, arcade.key.PAGEUP):
+            self._selected = (self._selected - _PAGE_SIZE) % len(_SHIPS)
+            self.sound_manager.play_ui_click(volume=0.25)
+        elif key in (arcade.key.E, arcade.key.PAGEDOWN):
+            self._selected = (self._selected + _PAGE_SIZE) % len(_SHIPS)
+            self.sound_manager.play_ui_click(volume=0.25)
         elif key in (arcade.key.ENTER, arcade.key.RETURN, arcade.key.SPACE):
-            self._confirm()
+            self._deploy_focused_ship()
         elif key == arcade.key.ESCAPE:
-            from game.views.difficulty_view import DifficultyView
-            transition_to(
-                self.window,
-                DifficultyView(start_wave=self.start_wave, realm_id=self.realm_id),
-            )
-
-    def on_joyhat_motion(self, joystick, hat_x, hat_y) -> None:
-        if hat_x < 0:
-            self._select((self._selected - 1) % len(_SHIPS))
-        elif hat_x > 0:
-            self._select((self._selected + 1) % len(_SHIPS))
+            from game.views.menu_view import MenuView
+            transition_to(self.window, MenuView())
