@@ -15,6 +15,13 @@ class VimanaWindow(arcade.Window):
     views receive them.
     """
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from pyglet.window import key, mouse
+        self.keyboard = key.KeyStateHandler()
+        self.mouse = mouse.MouseStateHandler()
+        self.push_handlers(self.keyboard, self.mouse)
+
     def _apply_logical_viewport(self) -> None:
         physical_w = max(1, int(self.width))
         physical_h = max(1, int(self.height))

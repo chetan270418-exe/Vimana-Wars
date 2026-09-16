@@ -1,0 +1,10 @@
+{
+  "description": "Connect with your neighbors through local message boards and coordinate events effortlessly, fostering community engagement and collaboration.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

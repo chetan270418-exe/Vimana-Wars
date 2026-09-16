@@ -374,14 +374,21 @@ def register():
     with get_db() as conn:
         try:
             game_id = _new_game_id(conn)
-            cursor = conn.execute(
-                """
+            _reg_sql = """
                 INSERT INTO users (game_id, email, player_name, password_hash, email_verified)
                 VALUES (?, ?, ?, ?, ?)
-                """, (game_id, email, player_name, _password_hash(password),
+                """
+            if _is_postgres():
+                _reg_sql += " RETURNING id"
+            cursor = conn.execute(
+                _reg_sql, (game_id, email, player_name, _password_hash(password),
                       0 if REQUIRE_EMAIL_VERIFICATION else 1)
             )
-            user_id = cursor.lastrowid
+            if _is_postgres():
+                _urow = cursor.fetchone()
+                user_id = (_urow[0] if isinstance(_urow, (tuple, list)) else _urow["id"]) if _urow else None
+            else:
+                user_id = cursor.lastrowid
             verification_token = _new_action_token(conn, user_id, "verify_email")
             conn.execute(
                 "INSERT INTO profiles (user_id, profile_json) VALUES (?, ?)",
@@ -814,12 +821,15 @@ def submit_score():
         return jsonify({"error": "Run statistics failed sanity validation"}), 422
 
     with get_db() as conn:
-        cursor = conn.execute(
-            """
+        _insert_sql = """
                 INSERT INTO scores (player_name, score, level_reached, difficulty, ship_class,
                                     user_id, game_id, kills, total_damage, duration_seconds)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
+            """
+        if _is_postgres():
+            _insert_sql += " RETURNING id"
+        cursor = conn.execute(
+            _insert_sql,
             (
                 user["player_name"] if user else player_name,
                 score, level_reached, difficulty, ship_class,
@@ -828,8 +838,13 @@ def submit_score():
                 kills, total_damage, duration_seconds,
             )
         )
+        # Fetch RETURNING row BEFORE commit (commit closes the cursor on SQLite)
+        if _is_postgres():
+            _srow = cursor.fetchone()
+            inserted_id = (_srow[0] if isinstance(_srow, (tuple, list)) else _srow["id"]) if _srow else None
+        else:
+            inserted_id = cursor.lastrowid
         conn.commit()
-        inserted_id = cursor.lastrowid
 
     stored_name = user["player_name"] if user else player_name
     logger.info(
