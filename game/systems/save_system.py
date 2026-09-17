@@ -42,6 +42,7 @@ _DEFAULTS = {
     "fullscreen":         False,
     "endless_high_wave":  0,
     "endless_high_score": 0,
+    "unlocked_ships":     ["pushpaka", "tripura", "garuda"],
 }
 
 _SYNC_KEYS = (
@@ -80,6 +81,22 @@ def save(data: dict) -> None:
             json.dump(data, f, indent=2)
     except OSError:
         pass   # graceful degradation — never crash over a save failure
+
+
+def unlock_ship(ship_id: str) -> bool:
+    """Unlock a ship by ID. Returns True if newly unlocked, False if already unlocked."""
+    data = load()
+    unlocked = data.get("unlocked_ships", ["pushpaka", "tripura", "garuda"])
+    if ship_id in unlocked:
+        return False
+    unlocked.append(ship_id)
+    data["unlocked_ships"] = unlocked
+    save(data)
+    return True
+
+def get_unlocked_ships() -> list:
+    data = load()
+    return data.get("unlocked_ships", ["pushpaka", "tripura", "garuda"])
 
 
 def profile_for_sync(data: dict = None) -> dict:

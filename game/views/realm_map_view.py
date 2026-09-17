@@ -26,19 +26,35 @@ from game.ui.vedic_theme import (
 )
 
 
-REALM_ORDER = (1, 2, 3, 4, 5, 6, 7)
-REALM_START_WAVES = {1: 1, 2: 4, 3: 7, 4: 10, 5: 13, 6: 16, 7: 19}
-BOSS_REALMS = {2: "Kumbhakarna", 4: "Ravana", 7: "Vritra"}
+REALM_ORDER = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+REALM_START_WAVES = {1: 1, 2: 4, 3: 7, 4: 10, 5: 13, 6: 16, 7: 19, 8: 21, 9: 24, 10: 27}
+BOSS_REALMS = {2: "Kumbhakarna", 4: "Ravana", 7: "Vritra", 10: "Hiranyakashipu"}
+
+REALM_LORE = {
+    1: "Swarga, the Celestial Heaven — home of the Devas and the first line of defense against the Asura uprising. The golden gates are falling. You are the last Vimana standing between the invasion and the mortal world.",
+    2: "Kshira Sagara, the Cosmic Ocean of Milk — the birthplace of Amrita, the nectar of immortality. The Asuras seek to corrupt it. Kumbhakarna, the sleeping titan, has been roused by dark sorcery.",
+    3: "Dandaka Void, the Mystical Astral Forest — a dimension between worlds where Asura hunters stalk the debris of shattered planets. Navigate the phantom nebulae and eliminate the ambush fleet.",
+    4: "Lanka, the Molten Rift — Ravana's fortress realm, forged from volcanic celestial matter. The ten-headed Demon King commands his final legions here. Break his war machine before it reaches Earth.",
+    5: "Setu Expanse, the Bridge Between Worlds — the ancient Rama Setu reborn as an astral highway. Mahishasura, the buffalo warlord, has blockaded this corridor with his armored columns.",
+    6: "Naraka Forge, the Burning Foundry — where the Asuras manufacture their warships from captured celestial metals. Destroy the factory fleet before the next armada launches.",
+    7: "Mahayuddha Citadel, the Final Astral Battlefield — where the great war between Devas and Asuras reaches its crescendo. Vritra, the storm-serpent who swallows the sky, makes his last stand.",
+    8: "Patala Depths, the Serpent Kingdom Below — the subterranean astral ocean ruled by Vasuki and the Nagas. The Asuras have enlisted them as shock troops. Plunge into the deep and shatter their alliance.",
+    9: "Brahmaloka Summit, the Creator's Divine Citadel — the highest realm of Lord Brahma. The Asura tyrant Hiranyakashipu has besieged even this sacred place, believing himself indestructible.",
+    10: "Vaikuntha Gate, the Eternal Threshold of Vishnu — the final door between creation and dissolution. Hiranyakashipu, who cannot be killed by man or beast, day or night, inside or outside — you must find the moment of vulnerability and strike.",
+}
 
 # Curved trajectory coordinates across x=240 to 880 space
 _NODE_POS = {
-    1: (280, 360),
-    2: (375, 430),
-    3: (470, 340),
-    4: (570, 440),
-    5: (670, 350),
-    6: (765, 430),
-    7: (845, 330),
+    1: (260, 380),
+    2: (330, 380),
+    3: (420, 380),
+    4: (510, 380),
+    5: (590, 380),
+    6: (590, 250),
+    7: (510, 250),
+    8: (420, 250),
+    9: (330, 250),
+    10: (260, 250),
 }
 
 
@@ -214,8 +230,9 @@ class RealmMapView(arcade.View):
         arcade.draw_line(256, 178, 864, 178, (*GOLD, 50), 1)
 
         # Realm Lore Description
-        lore = sel_info.get("desc", "Celestial battle theater facing Asura vanguard.")
-        arcade.draw_text(lore, 260, 148, PARCHMENT, font_size=9, font_name=FONT_INTERFACE)
+        lore = REALM_LORE.get(self._selected, "Celestial battle theater facing Asura vanguard.")
+        arcade.draw_text(lore, 260, 155, PARCHMENT, font_size=9, font_name=FONT_INTERFACE,
+                         width=600, multiline=True, align="left", anchor_y="top")
 
         # Boss threat summary
         if self._selected in BOSS_REALMS:

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import MainMenu from './components/MainMenu';
 import ShipSelect from './components/ShipSelect';
 import BoonSelect from './components/BoonSelect';
@@ -15,6 +15,7 @@ import DuelResultModal from './components/DuelResultModal';
 import ScreenNav from './components/ui/ScreenNav';
 import { getSession, submitScore } from './lib/api';
 import { getProgression, saveProgression } from './lib/progression';
+import { createDuelSocket, destroyDuelSocket, type DuelSocket } from './lib/socket';
 import type { ScreenId, RunConfig, RunResult, DuelConfig, DuelResult } from './types/game';
 
 export default function App() {
@@ -31,6 +32,8 @@ export default function App() {
   // 1v1 PvP Duel state
   const [duelConfig, setDuelConfig] = useState<DuelConfig | null>(null);
   const [duelResult, setDuelResult] = useState<DuelResult | null>(null);
+  // Online duel socket (null = local/offline duel)
+  const duelSocketRef = useRef<DuelSocket | null>(null);
 
   const navigate = useCallback((to: ScreenId | string) => {
     setScreen(prev => {
@@ -112,6 +115,36 @@ export default function App() {
     setDuelConfig(config);
     setDuelResult(null);
     setScreen('duel');
+
+    // If this is a lobby-based (online) duel, connect the WebSocket
+    if (config.roomCode) {
+      const session = getSession();
+      if (session?.token) {
+        const sock = createDuelSocket({
+          token: session.token,
+          roomCode: config.roomCode,
+          gameId: config.player1.gameId,
+          shipClass: config.player1.shipId,
+        });
+        duelSocketRef.current = sock;
+        // Attach duel-end listener so server can signal winner
+        void sock.connect({
+          onDuelEnd: (payload) => {
+            const now = Date.now() / 1000;
+            setDuelResult({
+              roomCode: config.roomCode,
+              winnerGameId: payload.winner_game_id,
+              player1: config.player1,
+              player2: config.player2,
+              durationSeconds: 0,
+              timestamp: now,
+            });
+          },
+          onError: (msg) => console.warn('[DuelSocket]', msg),
+          onDisconnect: () => { duelSocketRef.current = null; },
+        });
+      }
+    }
   }, []);
 
   const handleDuelOver = useCallback((res: DuelResult) => {
@@ -119,6 +152,10 @@ export default function App() {
   }, []);
 
   const handleDuelRematch = useCallback(() => {
+    // Disconnect online socket on rematch (new socket created on next start)
+    duelSocketRef.current?.disconnect();
+    duelSocketRef.current = null;
+    destroyDuelSocket();
     setDuelResult(null);
     setDuelConfig(prev => {
       if (!prev) return prev;

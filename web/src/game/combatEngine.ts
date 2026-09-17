@@ -1,5 +1,6 @@
 import { SHIPS } from '../data/gameData';
 import { sound } from './audio';
+import { getActiveDuelSocket } from '../lib/socket';
 import type { RunConfig, RunResult, DuelConfig, DuelResult } from '../types/game';
 
 export interface CombatEngineOptions {
@@ -169,8 +170,46 @@ export class CombatEngine {
     this.initCanvasSize();
     this.initStars();
     this.initShips();
+    if (this.mode === 'duel' && this.duelConfig?.roomCode) {
+      this.bindOnlineDuelSocket();
+    }
     this.bindEvents();
     this.start();
+  }
+
+  private bindOnlineDuelSocket() {
+    const sock = getActiveDuelSocket();
+    if (!sock) return;
+    sock.updateHandlers({
+      onOpponentState: (state) => {
+        if (this.isDestroyed) return;
+        this.p2.x = state.x;
+        this.p2.y = state.y;
+        if (state.firing && this.p2.fireCooldown <= 0) {
+          this.p2.fireCooldown = this.p2.fireRate;
+          this.firePlayerLaser(this.p2.x, this.p2.y - this.p2.radius, 'p2', this.p2.color);
+        }
+        if (state.dash) {
+          sound.playDash();
+          this.spawnThrustBurst(this.p2.x, this.p2.y, this.p2.color, 16);
+        }
+      },
+      onHpUpdate: (update) => {
+        if (this.isDestroyed) return;
+        for (const player of update.players) {
+          if (player.game_id === this.duelConfig?.player1.gameId) {
+            this.p1.hp = player.hp;
+          } else {
+            this.p2.hp = player.hp;
+          }
+        }
+      },
+      onDuelEnd: (payload) => {
+        if (this.isDestroyed) return;
+        const winner = payload.winner_game_id === this.duelConfig?.player1.gameId ? 'p1' : 'p2';
+        this.handleDuelOver(winner);
+      },
+    });
   }
 
   private initCanvasSize() {
@@ -411,10 +450,36 @@ export class CombatEngine {
       p.fireCooldown = p.fireRate;
       this.firePlayerLaser(p.x, p.y - p.radius, 'p1', p.color);
     }
+
+    // Transmit state in online duel mode
+    if (this.mode === 'duel' && this.duelConfig?.roomCode) {
+      const sock = getActiveDuelSocket();
+      if (sock?.isConnected) {
+        sock.sendInput({
+          x: p.x,
+          y: p.y,
+          dx,
+          dy,
+          firing: Boolean(this.keys['Space']),
+          dash: Boolean((this.keys['ShiftLeft'] || this.keys['KeyQ']) && p.dashCooldown > 1.4),
+        });
+      }
+    }
   }
 
   private updatePlayer2(dt: number) {
     const p = this.p2;
+
+    if (this.duelConfig?.roomCode) {
+      // In online duel mode, P2 is driven by opponent WebSocket events
+      p.shieldRegenTimer += dt;
+      if (p.shieldRegenTimer > 3.0 && p.shield < p.maxShield) {
+        p.shield = Math.min(p.maxShield, p.shield + 12 * dt);
+      }
+      if (p.fireCooldown > 0) p.fireCooldown -= dt;
+      return;
+    }
+
     let dx = 0;
     let dy = 0;
 
@@ -708,6 +773,9 @@ export class CombatEngine {
           sound.playHit();
           this.spawnHitSparks(proj.x, proj.y, '#E9C400', 8);
           this.addFloatingText(this.p2.x, this.p2.y - 12, `-${proj.damage}`, '#E9C400');
+          if (this.duelConfig?.roomCode) {
+            getActiveDuelSocket()?.reportHit(proj.damage);
+          }
           if (this.p2.hp <= 0) {
             this.handleDuelOver('p1');
           }

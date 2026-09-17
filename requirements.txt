@@ -4,3 +4,5 @@ flask
 gunicorn
 psycopg[binary]
 opencv-python-headless>=4.8
+python-socketio[client]>=5.11.0
+websocket-client>=1.7.0

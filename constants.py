@@ -87,23 +87,44 @@ REALMS = {
         "nebula_palette": [(120, 15, 120), (70, 10, 80), (180, 30, 100)],
         "accent_color": (255, 80, 190),
     },
+    8: {
+        "name": "Patala Depths",
+        "subtitle": "The Serpent Kingdom Below",
+        "waves": (21, 22, 23),
+        "bg_color": (3, 12, 18),
+        "nebula_palette": [(0, 60, 50), (10, 80, 40), (0, 100, 60)],
+        "accent_color": (60, 255, 180),
+    },
+    9: {
+        "name": "Brahmaloka Summit",
+        "subtitle": "The Creator's Divine Citadel",
+        "waves": (24, 25, 26),
+        "bg_color": (20, 18, 30),
+        "nebula_palette": [(80, 60, 120), (100, 80, 140), (60, 40, 100)],
+        "accent_color": (200, 170, 255),
+    },
+    10: {
+        "name": "Vaikuntha Gate",
+        "subtitle": "The Eternal Threshold of Vishnu",
+        "waves": (27, 28, 29, 30),
+        "bg_color": (10, 5, 20),
+        "nebula_palette": [(80, 20, 80), (100, 10, 60), (120, 30, 100)],
+        "accent_color": (255, 150, 255),
+    },
 }
 
 def get_realm_for_wave(wave_num: int) -> dict:
-    effective_wave = ((wave_num - 1) % 20) + 1
-    if effective_wave <= 3:
-        return REALMS[1]
-    elif effective_wave <= 6:
-        return REALMS[2]
-    elif effective_wave <= 9:
-        return REALMS[3]
-    elif effective_wave <= 12:
-        return REALMS[4]
-    elif effective_wave <= 15:
-        return REALMS[5]
-    elif effective_wave <= 18:
-        return REALMS[6]
-    return REALMS[7]
+    effective_wave = ((wave_num - 1) % 30) + 1
+    if effective_wave <= 3:   return REALMS[1]
+    elif effective_wave <= 6: return REALMS[2]
+    elif effective_wave <= 9: return REALMS[3]
+    elif effective_wave <= 12: return REALMS[4]
+    elif effective_wave <= 15: return REALMS[5]
+    elif effective_wave <= 18: return REALMS[6]
+    elif effective_wave <= 20: return REALMS[7]
+    elif effective_wave <= 23: return REALMS[8]
+    elif effective_wave <= 26: return REALMS[9]
+    return REALMS[10]
 
 
 # Player
@@ -196,9 +217,9 @@ MAX_POWERUPS_ACTIVE = 2       # max collectables on map at once
 WAVE_ANNOUNCE_DURATION = 2.5  # seconds the "Wave X!" banner shows
 WAVE_CLEAR_DELAY = 3.0        # seconds between last kill and next wave
 BOSS_WAVE_NUMBER = 10
-CAMPAIGN_FINAL_WAVE = 20
-CAMPAIGN_BOSS_WAVES = (10, 20)
-CAMPAIGN_MINI_BOSS_WAVES = (5, 15)
+CAMPAIGN_FINAL_WAVE = 30
+CAMPAIGN_BOSS_WAVES = (10, 20, 30)
+CAMPAIGN_MINI_BOSS_WAVES = (5, 15, 25)
 POWERUP_SPAWN_EVERY_N_WAVES = 2
 
 # Score / combo

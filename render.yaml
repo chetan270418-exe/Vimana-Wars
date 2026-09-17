@@ -4,9 +4,11 @@ services:
     runtime: python
     plan: starter
     buildCommand: pip install -r backend/requirements.txt
-    startCommand: gunicorn --bind 0.0.0.0:$PORT backend.app:app
+    startCommand: gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:$PORT backend.app:app
     healthCheckPath: /
     envVars:
+      - key: WEB_CONCURRENCY
+        value: "1"
       - key: DATABASE_URL
         sync: false
       - key: REQUIRE_EMAIL_VERIFICATION

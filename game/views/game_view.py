@@ -132,6 +132,8 @@ class GameView(arcade.View):
         self.paused = False
         self._boss = None
         self._boss_announced = False
+        self._last_boss_roar_time: float = 0.0
+        self._boss_death_timer: float = 0.0
         self._was_clearing = False
         self._screen_shake = 0.0
         self._shake_intensity = 0.0
@@ -620,6 +622,18 @@ class GameView(arcade.View):
 
         if self.wave_manager.is_clearing and not self._was_clearing:
             self.sound_manager.play_wave_clear()
+            from game.systems import save_system as _ss
+            from game.entities.ship_classes import SHIP_CLASSES as _SC
+            _wave = self.wave_manager.wave_number
+            for _sid, _sdata in _SC.items():
+                _uw = _sdata.get("unlock_wave", 0)
+                if _uw > 0 and _wave >= _uw:
+                    if _ss.unlock_ship(_sid):  # Returns True if newly unlocked
+                        self.floating_texts.spawn_notification(
+                            self.player.x, self.player.y + 60,
+                            f"⚡ {_sdata['name']} UNLOCKED!",
+                            (233, 196, 0)
+                        )
         self._was_clearing = self.wave_manager.is_clearing
 
         # Collision System
@@ -716,6 +730,11 @@ class GameView(arcade.View):
 
         if self._screen_shake > 0:
             self._screen_shake -= delta_time
+            
+        if self._boss_death_timer > 0:
+            self._boss_death_timer -= delta_time
+            if self._boss_death_timer <= 0:
+                self._boss_announced = False
 
         self.enemies        = [e for e in self.enemies        if e.alive]
         self.player_bullets = [b for b in self.player_bullets if b.alive]
@@ -727,26 +746,32 @@ class GameView(arcade.View):
         from game.entities.enemies.boss_kumbhakarna import BossKumbhakarna
         from game.entities.enemies.boss_mahishasura import BossMahishasura
         from game.entities.enemies.boss_vritra import BossVritra
-        boss_types = (BossRavana, BossKumbhakarna, BossMahishasura, BossVritra)
+        from game.entities.enemies.boss_hiranyakashipu import BossHiranyakashipu
+        boss_types = (BossRavana, BossKumbhakarna, BossMahishasura, BossVritra, BossHiranyakashipu)
         prev_boss = self._boss
         self._boss = next(
             (e for e in self.enemies if isinstance(e, boss_types)), None
         )
         if self._boss and not self._boss_announced:
-            self._cinematic_timer = 2.4
-            self.sound_manager.play_warning_siren()
-            self.sound_manager.play_boss_roar()
-            boss_intro = {
-                "ravana": ("👑 LANKAPATI RAVANA", "LORD OF THE TEN HEADS — DEMON EMPEROR OF LANKA", (255, 60, 80)),
-                "kumbhakarna": ("🛡️ TITAN KUMBHAKARNA", "THE GIGANTIC ARMORED TITAN AWAKENS", (255, 180, 40)),
-                "mahishasura": ("🐂 WARLORD MAHISHASURA", "THE BUFFALO-DEMON WARLORD CHARGES", (255, 120, 40)),
-                "vritra": ("⚡ STORM SERPENT VRITRA", "THE FINAL SKY-BLOCKING DRAGON RISES", (190, 80, 255)),
-            }
-            title, subtitle, color = boss_intro.get(getattr(self._boss, "boss_id", ""), ("⚔️ BOSS INCOMING", "THE ASURA WARLORD APPROACHES", (255, 80, 100)))
-            self._cinematic_title = title
-            self._cinematic_subtitle = subtitle
-            self._cinematic_color = color
-            self._boss_announced = True
+            import time as _time
+            now = _time.monotonic()
+            if now - self._last_boss_roar_time > 3.0:
+                self._cinematic_timer = 2.4
+                self.sound_manager.play_warning_siren()
+                self.sound_manager.play_boss_roar()
+                self._last_boss_roar_time = now
+                boss_intro = {
+                    "ravana": ("👑 LANKAPATI RAVANA", "LORD OF THE TEN HEADS — DEMON EMPEROR OF LANKA", (255, 60, 80)),
+                    "kumbhakarna": ("🛡️ TITAN KUMBHAKARNA", "THE GIGANTIC ARMORED TITAN AWAKENS", (255, 180, 40)),
+                    "mahishasura": ("🐂 WARLORD MAHISHASURA", "THE BUFFALO-DEMON WARLORD CHARGES", (255, 120, 40)),
+                    "vritra": ("⚡ STORM SERPENT VRITRA", "THE FINAL SKY-BLOCKING DRAGON RISES", (190, 80, 255)),
+                    "hiranyakashipu": ("👑 TYRANT HIRANYAKASHIPU", "THE INDESTRUCTIBLE DEMON LORD RISES", (255, 200, 50)),
+                }
+                title, subtitle, color = boss_intro.get(getattr(self._boss, "boss_id", ""), ("⚔️ BOSS INCOMING", "THE ASURA WARLORD APPROACHES", (255, 80, 100)))
+                self._cinematic_title = title
+                self._cinematic_subtitle = subtitle
+                self._cinematic_color = color
+                self._boss_announced = True
         elif not self._boss:
             if prev_boss is not None:
                 boss_id = getattr(prev_boss, "boss_id", None)
@@ -768,12 +793,24 @@ class GameView(arcade.View):
                     }.get(boss_id, ""))
                     if len(defeated) >= 4:
                         self.achievement_manager.check_unlock("boss_collector")
-            self._boss_announced = False
+            self._boss_death_timer = 1.0
 
         if self.wave_manager.boss_wave_cleared and not self.is_endless:
             self.achievement_manager.check_unlock("campaign_conqueror")
             if self._difficulty == "hard":
                 self.achievement_manager.check_unlock("hardcore_hero")
+            from game.systems import save_system as _ss
+            from game.entities.ship_classes import SHIP_CLASSES as _SC
+            _wave = self.wave_manager.wave_number
+            for _sid, _sdata in _SC.items():
+                _uw = _sdata.get("unlock_wave", 0)
+                if _uw > 0 and _wave >= _uw:
+                    if _ss.unlock_ship(_sid):  # Returns True if newly unlocked
+                        self.floating_texts.spawn_notification(
+                            self.player.x, self.player.y + 60,
+                            f"⚡ {_sdata['name']} UNLOCKED!",
+                            (233, 196, 0)
+                        )
             self._go_to_victory()
             return
 

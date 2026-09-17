@@ -14,7 +14,11 @@ from constants import (
 def _wave_config(wave_num: int) -> dict:
     effective = ((wave_num - 1) % CAMPAIGN_FINAL_WAVE) + 1
 
-    if effective == 20:
+    if effective == 30:
+        return {"boss": "hiranyakashipu"}
+    elif effective == 25:
+        return {"mini_boss": "hiranyakashipu_herald", "fast": 5, "tank": 2}
+    elif effective == 20:
         return {"boss": "vritra"}
     elif effective == 15:
         return {"mini_boss": "mahishasura", "fast": 4, "tank": 1}
@@ -33,17 +37,27 @@ def _wave_config(wave_num: int) -> dict:
         {"fast": 4, "ranged": 3, "sniper": 2},                # 7
         {"fast": 5, "tank": 3, "ranged": 2, "healer": 1},     # 8
         {"fast": 6, "tank": 3, "sniper": 2, "kamikaze": 4},   # 9
-        {"boss": "ravana"},                                    # 10
+        {"boss": "ravana"},                                   # 10
         {"fast": 7, "ranged": 2, "kamikaze": 4},              # 11
         {"fast": 5, "tank": 3, "healer": 2, "sniper": 2},     # 12
         {"fast": 7, "ranged": 4, "sniper": 2, "kamikaze": 4}, # 13
         {"fast": 5, "tank": 4, "healer": 2, "sniper": 3},     # 14
         {"mini_boss": "mahishasura", "fast": 4, "tank": 1},   # 15
         {"fast": 8, "ranged": 4, "kamikaze": 5},              # 16
-        {"fast": 6, "tank": 4, "healer": 2, "sniper": 3},    # 17
-        {"fast": 8, "tank": 4, "ranged": 4, "kamikaze": 5},  # 18
-        {"fast": 10, "ranged": 4, "sniper": 4, "healer": 2}, # 19
-        {"boss": "vritra"},                                    # 20
+        {"fast": 6, "tank": 4, "healer": 2, "sniper": 3},     # 17
+        {"fast": 8, "tank": 4, "ranged": 4, "kamikaze": 5},   # 18
+        {"fast": 10, "ranged": 4, "sniper": 4, "healer": 2},  # 19
+        {"boss": "vritra"},                                   # 20
+        {"fast": 8, "ranged": 4, "kamikaze": 5},              # 21
+        {"fast": 6, "tank": 4, "healer": 3, "sniper": 3},     # 22
+        {"fast": 8, "tank": 4, "ranged": 4, "kamikaze": 6},   # 23
+        {"fast": 10, "ranged": 5, "sniper": 4, "healer": 2},  # 24
+        {"mini_boss": "hiranyakashipu_herald", "fast": 5, "tank": 2}, # 25
+        {"fast": 9, "tank": 5, "ranged": 5, "kamikaze": 6, "healer": 3}, # 26
+        {"fast": 10, "ranged": 6, "sniper": 5, "kamikaze": 6}, # 27
+        {"fast": 8, "tank": 6, "healer": 4, "sniper": 5},     # 28
+        {"fast": 12, "tank": 6, "ranged": 6, "kamikaze": 8, "sniper": 4}, # 29
+        {"boss": "hiranyakashipu"},                           # 30
     ]
     return configs[effective - 1]
 
@@ -141,18 +155,36 @@ class WaveManager:
             18: "Endure the forge armada",
             19: "Prepare the final astral assault",
             20: "Vanquish the storm-serpent Vritra",
+            21: "Descend into Patala — Survive the Naga serpent vanguard",
+            22: "The Naga War Corps — Break the serpent battle formation",
+            23: "Vasuki's Guard — Defeat the Serpent King's elite defenders",
+            24: "Brahmaloka Defenders — Breach the Creator's celestial fortress",
+            25: "Herald of Hiranyakashipu — Defeat the Tyrant's advance herald",
+            26: "Summit Assault — Storm the divine citadel battlements",
+            27: "Vaikuntha Approach — Endure the final threshold guardians",
+            28: "Gate Guardian Corps — Shatter the eternal gate defenses",
+            29: "The Final Armada — Annihilate the Asura supreme fleet",
+            30: "Vanquish the Indestructible Tyrant-Demon Hiranyakashipu",
         }
 
         effective = ((self.wave_number - 1) % CAMPAIGN_FINAL_WAVE) + 1
         self.current_objective = wave_objectives.get(effective, "Eliminate all incoming Asura vessels")
 
-        if effective in (10, 20):
-            self.announce_text = "BOSS WAVE — RAVANA APPROACHES!"
-            if effective == 20:
-                self.announce_text = "FINAL BOSS — VRITRA RISES!"
+        if effective in (10, 20, 30):
+            if effective == 30:
+                self.announce_text = "FINAL BOSS — HIRANYAKASHIPU RISES!"
+            elif effective == 20:
+                self.announce_text = "BOSS WAVE — VRITRA RISES!"
+            else:
+                self.announce_text = "BOSS WAVE — RAVANA APPROACHES!"
             self.announce_subtitle = f"Realm of {realm['name']} • {realm['subtitle']}"
-        elif effective in (5, 15):
-            self.announce_text = "MINI-BOSS — KUMBHAKARNA AWAKENS!" if effective == 5 else "MINI-BOSS — MAHISHASURA CHARGES!"
+        elif effective in (5, 15, 25):
+            if effective == 25:
+                self.announce_text = "MINI-BOSS — HERALD OF THE TYRANT!"
+            elif effective == 15:
+                self.announce_text = "MINI-BOSS — MAHISHASURA CHARGES!"
+            else:
+                self.announce_text = "MINI-BOSS — KUMBHAKARNA AWAKENS!"
             self.announce_subtitle = f"Realm of {realm['name']} • {realm['subtitle']}"
         else:
             self.announce_text = f"Wave {self.wave_number}"
@@ -165,7 +197,10 @@ class WaveManager:
         config = _wave_config(self.wave_number)
 
         if config.get("boss"):
-            if config["boss"] == "vritra":
+            if config["boss"] == "hiranyakashipu":
+                from game.entities.enemies.boss_hiranyakashipu import BossHiranyakashipu
+                boss = BossHiranyakashipu()
+            elif config["boss"] == "vritra":
                 from game.entities.enemies.boss_vritra import BossVritra
                 boss = BossVritra()
             else:
@@ -177,7 +212,12 @@ class WaveManager:
             return
 
         if config.get("mini_boss"):
-            if config["mini_boss"] == "mahishasura":
+            if config["mini_boss"] == "hiranyakashipu_herald":
+                from game.entities.enemies.boss_kumbhakarna import BossKumbhakarna
+                mini = BossKumbhakarna()
+                mini.hp *= 2.5
+                mini.max_hp = mini.hp
+            elif config["mini_boss"] == "mahishasura":
                 from game.entities.enemies.boss_mahishasura import BossMahishasura
                 mini = BossMahishasura()
             else:

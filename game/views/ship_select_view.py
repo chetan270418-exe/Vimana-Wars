@@ -29,6 +29,35 @@ from game.ui.vedic_theme import (
 _SHIPS = list(SHIP_CLASSES.keys())
 _PAGE_SIZE = 3
 
+def _draw_ship_silhouette(cx, cy, ship_id, color, size=32):
+    if ship_id == "pushpaka":
+        points = ((cx-size*0.8, cy-size*0.6), (cx+size*0.8, cy-size*0.6), (cx+size*0.5, cy+size*0.6), (cx-size*0.5, cy+size*0.6))
+    elif ship_id == "tripura":
+        points = ((cx-size*0.6, cy-size*0.8), (cx+size*0.6, cy-size*0.8), (cx, cy+size*0.8))
+    elif ship_id == "garuda":
+        points = ((cx, cy+size*0.8), (cx+size*0.8, cy-size*0.4), (cx+size*0.2, cy-size*0.2), (cx, cy-size*0.8), (cx-size*0.2, cy-size*0.2), (cx-size*0.8, cy-size*0.4))
+    elif ship_id == "vajra":
+        points = ((cx, cy+size*0.8), (cx+size*0.3, cy), (cx, cy-size*0.8), (cx-size*0.3, cy))
+    elif ship_id == "naga":
+        points = ((cx-size*0.4, cy-size*0.6), (cx+size*0.6, cy-size*0.2), (cx-size*0.6, cy+size*0.2), (cx+size*0.4, cy+size*0.6))
+    elif ship_id == "agneyastra":
+        arcade.draw_circle_filled(cx, cy, size*0.4, color)
+        points = ((cx-size*0.8, cy), (cx, cy+size*0.8), (cx+size*0.8, cy), (cx, cy-size*0.8))
+    elif ship_id == "soma":
+        arcade.draw_circle_filled(cx, cy, size*0.6, color)
+        arcade.draw_circle_filled(cx+size*0.2, cy+size*0.2, size*0.6, OBSIDIAN)
+        points = ()
+    elif ship_id == "kubera":
+        points = ((cx-size*0.6, cy-size*0.5), (cx+size*0.6, cy-size*0.5), (cx+size*0.6, cy+size*0.5), (cx-size*0.6, cy+size*0.5))
+    elif ship_id == "surya":
+        arcade.draw_circle_filled(cx, cy, size*0.5, color)
+        points = ((cx-size*0.9, cy-size*0.2), (cx-size*0.9, cy+size*0.2), (cx+size*0.9, cy+size*0.2), (cx+size*0.9, cy-size*0.2))
+    else:
+        points = ((cx, cy+size), (cx+size, cy), (cx, cy-size), (cx-size, cy))
+    
+    if points:
+        arcade.draw_polygon_filled(points, color)
+
 
 class ShipSelectView(arcade.View):
     def __init__(self, difficulty: str = "normal", start_wave: int = 1,
@@ -49,6 +78,7 @@ class ShipSelectView(arcade.View):
         self._selected = _SHIPS.index(self._last_ship) if self._last_ship in _SHIPS else 0
         self._hovered = -1
         self._pulse = 0.0
+        self._newly_unlocked: set = set()
 
         # Primary deploy button
         self._btn_deploy = MenuButton(
@@ -58,8 +88,8 @@ class ShipSelectView(arcade.View):
         self._hovered_deploy = False
 
     def _is_unlocked(self, ship_id: str) -> bool:
-        sdata = SHIP_CLASSES.get(ship_id, {})
-        return self._last_wave >= sdata.get("unlock_wave", 0)
+        from game.systems.save_system import get_unlocked_ships
+        return ship_id in get_unlocked_ships()
 
     def on_show_view(self) -> None:
         arcade.set_background_color(OBSIDIAN)
@@ -143,14 +173,12 @@ class ShipSelectView(arcade.View):
                 arcade.draw_arc_outline(cx, holo_cy, 114, 114, (*GOLD, halo_a // 2),
                                         -self._pulse * 14.0, -self._pulse * 14.0 + 200, 1.0)
 
-            # Ship sprite
-            sprite_tex = AssetManager.texture(sdata.get("sprite", "pushpaka.png"))
+            # Ship sprite replaced by silhouette
             drift = 0.0 if self._reduced_flashes or not selected else math.sin(self._pulse * 1.5) * 3.0
             if unlocked:
-                AssetManager.draw(sprite_tex, cx, holo_cy + drift, 76, 76)
+                _draw_ship_silhouette(cx, holo_cy + drift, ship_id, accent_col, size=32)
             else:
-                # 25% opacity silhouette for locked craft
-                AssetManager.draw(sprite_tex, cx, holo_cy, 76, 76, color=(80, 85, 95, 65))
+                _draw_ship_silhouette(cx, holo_cy, ship_id, (80, 85, 95, 65), size=32)
                 draw_state_badge(cx, holo_cy, f"WAVE {sdata.get('unlock_wave', 0):02d}", BRASS, width=78)
 
             # Card Header Text
@@ -165,29 +193,51 @@ class ShipSelectView(arcade.View):
 
             # 5 Canonical Telemetry Bars
             bar_labels = [
-                ("HULL", sdata["hp"] / 190.0),
-                ("FIREPOWER", sdata["bullet_damage"] / 65.0),
-                ("SPEED", sdata["speed"] / 7.2),
-                ("DASH", 1.0 - (sdata["dash_cooldown"] - 1.2) / 2.2),
-                ("ASTRA", sdata.get("astra_power", 75) / 100.0),
+                ("HULL", sdata["hp"] / 190.0, sdata["hp"]),
+                ("FIREPOWER", sdata["bullet_damage"] / 65.0, sdata["bullet_damage"]),
+                ("SPEED", sdata["speed"] / 7.2, round(sdata["speed"], 1)),
+                ("DASH", 1.0 - (sdata["dash_cooldown"] - 1.2) / 2.2, round(sdata["dash_cooldown"], 1)),
+                ("ASTRA", sdata.get("astra_power", 75) / 100.0, sdata.get("astra_power", 75)),
             ]
 
             by = top - 188
-            for blabel, bfrac in bar_labels:
+            for blabel, bfrac, bval in bar_labels:
                 arcade.draw_text(blabel, left + 16, by + 2, (*GREY, 200),
                                  font_size=7, bold=True, font_name=FONT_TELEMETRY)
-                draw_segmented_bar(left + 76, right - 16, by, by + 8,
+                draw_segmented_bar(left + 76, right - 28, by, by + 12,
                                    bfrac, color=GOLD if selected else CYAN, segments=8, gap=2.0)
+                arcade.draw_text(f"{bval}", right - 10, by + 2, (*GREY, 200),
+                                 font_size=6, bold=True, anchor_x="right", font_name=FONT_TELEMETRY)
                 by -= 24
 
             if not unlocked:
                 # Lock indicator banner at bottom of card
                 arcade.draw_text(f"UNLOCK AT WAVE {sdata.get('unlock_wave', 0):02d}",
-                                 cx, bottom + 16, BRASS,
+                                 cx, bottom + 26, BRASS,
                                  font_size=8, bold=True, anchor_x="center", font_name=FONT_TELEMETRY)
+                unlock_w = sdata.get("unlock_wave", 0)
+                last_w = self._last_wave
+                progress = min(1.0, last_w / max(1, unlock_w))
+                arcade.draw_lrbt_rectangle_filled(cx - 50, cx + 50, bottom + 12, bottom + 16, SURFACE_HIGH)
+                arcade.draw_lrbt_rectangle_filled(cx - 50, cx - 50 + 100 * progress, bottom + 12, bottom + 16, BRASS)
+                arcade.draw_text(f"WAVE {last_w}/{unlock_w}", cx, bottom + 2, BRASS,
+                                 font_size=6, bold=True, anchor_x="center", font_name=FONT_TELEMETRY)
             elif selected:
                 arcade.draw_text("SELECTED VESSEL", cx, bottom + 16, GOLD,
                                  font_size=8, bold=True, anchor_x="center", font_name=FONT_TELEMETRY)
+
+        # Page indicator dots
+        total_pages = (len(_SHIPS) + _PAGE_SIZE - 1) // _PAGE_SIZE
+        current_page = self._selected // _PAGE_SIZE
+        dot_spacing = 20
+        dots_width = (total_pages - 1) * dot_spacing
+        dot_start_x = 560 - dots_width / 2
+        for p in range(total_pages):
+            dot_x = dot_start_x + p * dot_spacing
+            if p == current_page:
+                arcade.draw_text("●", dot_x, 195, GOLD, font_size=12, anchor_x="center", anchor_y="center")
+            else:
+                arcade.draw_text("○", dot_x, 195, MUTED, font_size=12, anchor_x="center", anchor_y="center")
 
         # ── Lower Focused Ship Dossier (x=240 to 880, y=42 to 180) ───────────
         draw_chamfered_panel(240, 880, 42, 180, GOLD, fill=SURFACE_LOW, alpha=235, cut=10.0)

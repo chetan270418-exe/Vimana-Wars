@@ -25,7 +25,8 @@ logging.basicConfig(
 logger = logging.getLogger("VimanaWarsBackend")
 
 app = Flask(__name__)
-
+from flask_socketio import SocketIO, join_room, leave_room, emit
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
 DB_PATH = Path(os.environ.get("DATABASE_PATH", "leaderboard.db"))
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 SESSION_TTL_SECONDS = 30 * 24 * 60 * 60
@@ -995,8 +996,103 @@ def get_stats():
         "registered_players": total_players,
     })
 
+_duel_state = {}
+_sid_to_player = {}
+
+@socketio.on("join_duel")
+def handle_join_duel(data):
+    token = data.get("token")
+    room_code = data.get("room_code")
+    game_id = data.get("game_id")
+    ship_class = data.get("ship_class", "pushpaka")
+
+    if not token or not room_code or not game_id:
+        emit("error", {"message": "Invalid join data"})
+        return
+
+    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    now = int(time.time())
+    with get_db() as conn:
+        row = conn.execute(
+            """
+            SELECT u.id, u.game_id
+            FROM sessions s JOIN users u ON u.id = s.user_id
+            WHERE s.token_hash = ? AND s.expires_at > ?
+            """, (token_hash, now)
+        ).fetchone()
+
+    if not row or row["game_id"] != game_id:
+        emit("error", {"message": "Unauthorized"})
+        return
+
+    join_room(room_code)
+    _sid_to_player[request.sid] = {"room_code": room_code, "game_id": game_id}
+
+    if room_code not in _duel_state:
+        _duel_state[room_code] = {}
+
+    _duel_state[room_code][game_id] = {
+        "game_id": game_id,
+        "hp": 100,
+        "max_hp": 100
+    }
+
+    emit("player_joined", {"game_id": game_id, "ship_class": ship_class}, to=room_code)
+
+
+@socketio.on("player_input")
+def handle_player_input(data):
+    player = _sid_to_player.get(request.sid)
+    if not player:
+        return
+    emit("opponent_state", data, to=player["room_code"], include_self=False)
+
+
+@socketio.on("hit_registered")
+def handle_hit_registered(data):
+    player = _sid_to_player.get(request.sid)
+    if not player:
+        return
+
+    room_code = player["room_code"]
+    target_id = data.get("target_game_id")
+    damage = min(50, max(0, int(data.get("damage", 0))))
+
+    room_state = _duel_state.get(room_code)
+    if not room_state or target_id not in room_state:
+        return
+
+    target = room_state[target_id]
+    target["hp"] = max(0, target["hp"] - damage)
+
+    players_list = [{"game_id": k, "hp": v["hp"], "max_hp": v["max_hp"]} for k, v in room_state.items()]
+    emit("hp_update", {"players": players_list}, to=room_code)
+
+    if target["hp"] == 0:
+        emit("duel_end", {"winner_game_id": player["game_id"]}, to=room_code)
+
+
+@socketio.on("disconnect")
+def handle_disconnect():
+    player = _sid_to_player.pop(request.sid, None)
+    if player:
+        room_code = player["room_code"]
+        game_id = player["game_id"]
+        emit("player_left", {"game_id": game_id}, to=room_code)
+        
+        room_state = _duel_state.get(room_code)
+        if room_state and game_id in room_state:
+            del room_state[game_id]
+            if not room_state:
+                del _duel_state[room_code]
+
+
+@socketio.on("duel_ping")
+def handle_duel_ping(data):
+    emit("duel_pong", data)
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     print(f"Starting Vimana Wars Leaderboard Server on port {port}...")
-    app.run(host="0.0.0.0", port=port, debug=False)
+    socketio.run(app, host="0.0.0.0", port=port, debug=False)
