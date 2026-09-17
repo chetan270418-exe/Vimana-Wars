@@ -5,6 +5,8 @@
 #include <iostream>
 #include <fstream>
 #include <filesystem>
+#include <ctime>
+#include <windows.h>
 #include "json.hpp"
 #include "core/types.hpp"
 #include "systems/http_client.hpp"
@@ -29,10 +31,11 @@ enum class CloudSyncStatus {
 };
 
 struct UserInfo {
-    std::string game_id = "VMN-7704";
-    std::string email = "";
-    std::string player_name = "Warrior";
-    bool email_verified = false;
+    std::string game_id      = "VMN-LOCAL";  // Overwritten by server on login/register
+    std::string email        = "";
+    std::string player_name  = "Warrior";
+    bool        email_verified = false;
+    std::vector<std::string> owned_ships;    // Cloud-synced ship roster
 };
 
 class AccountSystem {
@@ -50,6 +53,12 @@ public:
 
         // Read saved session token from save.json
         load_session_from_save();
+
+        // If no stored game_id yet, generate a local VMN-XXXX-XXXX identifier
+        if (m_user.game_id == "VMN-LOCAL" || m_user.game_id.empty()) {
+            m_user.game_id = generate_guest_game_id();
+            save_session_to_save();
+        }
 
         if (!m_auth_token.empty()) {
             std::cout << "[AccountSystem] Found saved session token. Attempting auto-login..." << std::endl;
@@ -542,6 +551,21 @@ private:
           m_sync_status(CloudSyncStatus::OFFLINE_LOCAL),
           m_sync_message("Local mode (Guest)") {}
     ~AccountSystem() = default;
+
+    // Generate a local VMN-XXXX-XXXX Game ID for offline/guest pilots
+    std::string generate_guest_game_id() {
+        // Seed with time + hash of USERPROFILE env to get a stable-ish unique ID
+        const char* up = std::getenv("USERPROFILE");
+        size_t seed = std::hash<std::string>{}(up ? up : "guest");
+        seed ^= static_cast<size_t>(std::time(nullptr));
+        seed ^= static_cast<size_t>(GetCurrentProcessId());
+        const char* hex = "0123456789ABCDEF";
+        std::string a, b;
+        for (int i = 0; i < 4; ++i) { a += hex[(seed >> (i * 4)) & 0xF]; }
+        seed = seed * 6364136223846793005ULL + 1442695040888963407ULL;
+        for (int i = 0; i < 4; ++i) { b += hex[(seed >> (i * 4)) & 0xF]; }
+        return "VMN-" + a + "-" + b;
+    }
 
     std::string get_save_path() const {
         const char* userprofile = std::getenv("USERPROFILE");

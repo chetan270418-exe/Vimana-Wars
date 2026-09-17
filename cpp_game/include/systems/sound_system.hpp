@@ -83,12 +83,33 @@ public:
     void play_transcendence() { play_sfx("victory.wav", 0.9f); }
     void play_boss_roar() { play_boss("boss_roar.wav", 1.0f); }
 
-    // ── MODERN PHASE 8/9 SCI-FI SFX ─────────────────────────────────────────
-    void play_heavy_laser() { play_sfx("phase8_laserLarge_000.ogg", 0.9f); }
-    void play_crunch_explosion() { play_sfx("phase8_explosionCrunch_001.ogg", 0.95f); }
-    void play_metal_impact() { play_sfx("phase8_impactMetal_001.ogg", 0.85f); }
-    void play_engine_boost() { play_sfx("phase8_engineCircular_001.ogg", 0.75f); }
-    void play_telemetry_chime() { play_ui("phase8_computerNoise_001.ogg", 0.7f); }
+    // ── MODERN PHASE 8/9 SCI-FI SFX (Kenney Sci-Fi Sounds Pack — CC0) ─────────
+    // Lasers
+    void play_heavy_laser()     { play_sfx("laserLarge_000.ogg",        0.90f); }
+    void play_retro_laser()     { play_sfx("laserRetro_000.ogg",        0.80f); }
+    void play_small_laser()     { play_sfx("laserSmall_000.ogg",        0.75f); }
+    // Explosions
+    void play_crunch_explosion(){ play_sfx("explosionCrunch_000.ogg",   0.95f); }
+    void play_low_explosion()   { play_sfx("lowFrequency_explosion_000.ogg", 1.0f); }
+    // Impacts
+    void play_metal_impact()    { play_sfx("impactMetal_000.ogg",       0.85f); }
+    void play_force_field()     { play_sfx("forceField_000.ogg",        0.80f); }
+    // Engines
+    void play_engine_boost()    { play_sfx("engineCircular_000.ogg",    0.70f); }
+    void play_engine_large()    { play_sfx("spaceEngineLarge_000.ogg",  0.70f); }
+    void play_engine_low()      { play_sfx("spaceEngineLow_000.ogg",    0.65f); }
+    void play_engine_small()    { play_sfx("spaceEngineSmall_000.ogg",  0.60f); }
+    void play_thruster()        { play_sfx("thrusterFire_000.ogg",      0.65f); }
+    // UI / Computer
+    void play_telemetry_chime() { play_ui("computerNoise_000.ogg",      0.70f); }
+    void play_door_open()       { play_ui("doorOpen_000.ogg",           0.60f); }
+    void play_door_close()      { play_ui("doorClose_000.ogg",          0.55f); }
+    // Legacy named aliases (keep compatibility with existing code)
+    void play_heavy_laser_legacy()     { play_sfx("phase8_laserLarge_000.ogg",        0.90f); }
+    void play_crunch_explosion_legacy(){ play_sfx("phase8_explosionCrunch_001.ogg",   0.95f); }
+    void play_metal_impact_legacy()    { play_sfx("phase8_impactMetal_001.ogg",       0.85f); }
+    void play_engine_boost_legacy()    { play_sfx("phase8_engineCircular_001.ogg",    0.75f); }
+    void play_telemetry_chime_legacy() { play_ui("phase8_computerNoise_001.ogg",      0.70f); }
 
     // ── VOLUME SETTERS & GETTERS ────────────────────────────────────────────
     void set_master_volume(float vol) {

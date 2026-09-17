@@ -1,0 +1,32 @@
+{
+  "pack": "phase9-expanded-fleet",
+  "policy": "additive-only",
+  "existing_files_overwritten": false,
+  "sources": [
+    {
+      "name": "Space Ships 3",
+      "url": "https://opengameart.org/content/space-ships-3-0",
+      "license": "CC0",
+      "curated_assets": "images/phase9_commander_ship_01-50.png"
+    },
+    {
+      "name": "3D Spaceships Pack",
+      "url": "https://opengameart.org/content/3d-spaceships-pack",
+      "license": "CC0",
+      "curated_assets": "models/phase9/commander_3d/"
+    },
+    {
+      "name": "3D LowPoly Spaceships and Components",
+      "url": "https://opengameart.org/content/3d-lowpoly-spaceships-and-components",
+      "license": "CC0",
+      "curated_assets": "models/phase9/majadroid/"
+    }
+  ],
+  "inventory": {
+    "new_2d_ships": 50,
+    "new_3d_ship_models": 12,
+    "new_3d_texture_maps": 4,
+    "full_source_archives": "online/phase9_sources/"
+  },
+  "integration_note": "The current C++ renderer remains unchanged. The 2D images are loadable by exact filename. OBJ/FBX/Blend files and texture maps are preserved for future 3D hangar/model-viewer work."
+}

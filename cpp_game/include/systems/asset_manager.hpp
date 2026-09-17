@@ -96,6 +96,8 @@ public:
             m_base_path + "/vfx/",
             m_base_path + "/online/phase8_sources/kenney_simple_space_2d/PNG/Default/",
             m_base_path + "/online/phase8_sources/kenney_simple_space_2d/PNG/Retina/",
+            m_base_path + "/online/phase9_sources/space_ships_pack3_2d/",
+            m_base_path + "/online/kenney_space_shooter_extension/PNG/",
             m_base_path + "/"
         };
 

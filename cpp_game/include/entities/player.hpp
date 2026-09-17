@@ -324,6 +324,7 @@ struct Player {
         dash_duration_timer = DASH_DURATION;
         invincibility_timer = DASH_DURATION + 0.1f;
         SoundSystem::instance().play_dash();
+        SoundSystem::instance().play_thruster();
     }
 
     void try_chakram(std::vector<Bullet>& out_bullets) {
@@ -384,6 +385,7 @@ struct Player {
             has_kavach_shield = false;
             invincibility_timer = 0.5f;
             SoundSystem::instance().play_sfx("online_impact_metal.ogg", 0.8f);
+            SoundSystem::instance().play_force_field();
             return;
         }
 
