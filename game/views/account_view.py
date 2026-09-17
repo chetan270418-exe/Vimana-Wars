@@ -68,46 +68,45 @@ class AccountView(arcade.View):
             anchor_x="center", anchor_y="center",
         )
 
-        self._field_rects = [
-            (320, 780, 330, 365),
-            (320, 780, 260, 295),
-            (320, 780, 190, 225),
-        ]
         self._buttons = self._build_buttons()
 
     def _build_buttons(self):
+        cx = (240 + WIDTH - 90) // 2  # 525
         if leaderboard_client.current_account():
-            data = [("SIGN OUT", "logout", RED_BRIGHT), ("BACK", "back", CYAN)]
+            data = [
+                ("SIGN OUT OF ASTRAL NETWORK", "logout", RED_BRIGHT, 300, 38, 145),
+                ("BACK TO COMMAND DECK", "back", CYAN, 240, 32, 100),
+            ]
         elif self._mode == "reset_request":
             data = [
-                ("SEND RESET CODE", "reset_request", GOLD),
-                ("SIGN IN", "login", CYAN),
-                ("CREATE ACCOUNT", "register", MUTED),
+                ("SEND RECOVERY TOKEN  ▶", "submit", GOLD, 290, 38, 140),
+                ("RETURN TO SIGN IN", "login", CYAN, 250, 32, 95),
             ]
         elif self._mode == "reset_password":
             data = [
-                ("SET NEW PASSWORD", "reset_password", GOLD),
-                ("RESET REQUEST", "reset_request", CYAN),
-                ("SIGN IN", "login", MUTED),
+                ("UPDATE PASSWORD  ▶", "submit", GOLD, 290, 38, 140),
+                ("RETURN TO SIGN IN", "login", CYAN, 250, 32, 95),
             ]
         elif self._mode == "verify":
             data = [
-                ("VERIFY EMAIL", "verify", CYAN),
-                ("SIGN IN", "login", MUTED),
+                ("CONFIRM VERIFICATION  ▶", "submit", CYAN, 290, 38, 140),
+                ("RETURN TO SIGN IN", "login", MUTED, 250, 32, 95),
             ]
-        else:
+        elif self._mode == "register":
             data = [
-                ("SIGN IN" if self._mode == "login" else "CREATE ACCOUNT", self._mode, GOLD),
-                ("CREATE ACCOUNT" if self._mode == "login" else "SIGN IN", "register" if self._mode == "login" else "login", CYAN),
-                ("RESET PASSWORD", "reset_request", MUTED),
+                ("CREATE ASTRAL IDENTITY  ▶", "submit", GOLD, 310, 38, 145),
+                ("ALREADY REGISTERED? SIGN IN", "login", CYAN, 280, 32, 100),
             ]
-        
-        y_values = (130, 95, 60, 25)
+        else:  # login
+            data = [
+                ("SIGN IN TO WARSHIP  ▶", "submit", GOLD, 290, 38, 145),
+                ("NEED AN ACCOUNT? CREATE ONE", "register", CYAN, 290, 32, 100),
+                ("FORGOT PASSWORD / RECOVERY", "reset_request", MUTED, 240, 26, 62),
+            ]
+
         buttons = []
-        for i, (label, action, color) in enumerate(data):
-            w = 260 if i == 0 else 220
-            h = 36 if i == 0 else 28
-            buttons.append((MenuButton(label, WIDTH // 2, y_values[i], w, h, color), action))
+        for label, action, color, w, h, y in data:
+            buttons.append((MenuButton(label, cx, y, w, h, color), action))
         return buttons
 
     def on_show_view(self) -> None:
@@ -196,27 +195,60 @@ class AccountView(arcade.View):
 
     def _draw_background(self) -> None:
         self.clear()
-        arcade.draw_lrbt_rectangle_filled(240, WIDTH - 90, 75, 490, (9, 14, 25, 235))
-        draw_chamfered_panel(240, WIDTH - 90, 75, 490, CYAN,
-                             fill=OBSIDIAN, alpha=235, border_width=1, cut=16)
-        draw_corner_etching(240, WIDTH - 90, 75, 490, GOLD, length=20, alpha=130)
+        arcade.draw_lrbt_rectangle_filled(240, WIDTH - 90, 50, 490, (9, 14, 25, 240))
+        draw_chamfered_panel(240, WIDTH - 90, 50, 490, CYAN,
+                             fill=OBSIDIAN, alpha=240, border_width=1, cut=16)
+        draw_corner_etching(240, WIDTH - 90, 50, 490, GOLD, length=20, alpha=130)
         # Slow scan line gives the account console a little life.
-        scan_y = 95 + ((self._pulse * 24) % 370)
-        arcade.draw_lrbt_rectangle_filled(265, WIDTH - 115, scan_y, scan_y + 1, (80, 210, 255, 35))
+        scan_y = 65 + ((self._pulse * 24) % 410)
+        arcade.draw_lrbt_rectangle_filled(265, WIDTH - 115, scan_y, scan_y + 1, (80, 210, 255, 30))
 
     def _draw_tabs(self) -> None:
-        tabs = [("LOGIN", "login"), ("CREATE", "register"), ("PROFILE", "profile")]
-        tab_start_x = WIDTH // 2 - 100
+        tabs = [("SIGN IN", "login"), ("CREATE ACCOUNT", "register"), ("RECOVERY", "reset_request"), ("PILOT CARD", "profile")]
+        cx = (240 + WIDTH - 90) // 2
+        tab_start_x = cx - 180
         for i, (t_label, t_mode) in enumerate(tabs):
-            tx = tab_start_x + i * 100
+            tx = tab_start_x + i * 120
             if leaderboard_client.current_account():
                 active = (t_mode == "profile")
             else:
-                active = (self._mode == t_mode or (t_mode == "login" and self._mode not in ("register", "profile")))
-            col = GOLD if active else MUTED
-            arcade.draw_text(t_label, tx, 445, col, font_size=11, bold=True, anchor_x="center")
+                active = (self._mode == t_mode or (t_mode == "login" and self._mode not in ("register", "reset_request", "reset_password", "verify", "profile")))
+            col = GOLD_BRIGHT if active else MUTED
+            arcade.draw_text(t_label, tx, 452, col, font_size=10, bold=True, anchor_x="center", font_name=FONT_INTERFACE)
             if active:
-                arcade.draw_line(tx - 25, 435, tx + 25, 435, GOLD, 2)
+                arcade.draw_line(tx - 35, 442, tx + 35, 442, GOLD, 2)
+
+    def _get_fields(self):
+        cx = (240 + WIDTH - 90) // 2  # 525
+        w = 420
+        left = cx - w // 2
+        right = cx + w // 2
+
+        if self._mode == "register":
+            return [
+                (0, "EMAIL ADDRESS", self._email, (left, right, 370, 404), False, "Used to link your permanent Game ID"),
+                (1, "PASSWORD (MIN 8 CHARS)", "•" * len(self._password) if self._password else "", (left, right, 305, 339), True, "Secured on celestial server"),
+                (2, "WARRIOR CALLSIGN", self._player_name, (left, right, 240, 274), False, "Displayed on the global leaderboard"),
+            ]
+        elif self._mode == "reset_request":
+            return [
+                (0, "EMAIL ADDRESS", self._email, (left, right, 340, 376), False, "A reset token will be delivered to your inbox"),
+            ]
+        elif self._mode == "reset_password":
+            return [
+                (0, "EMAIL ADDRESS", self._email, (left, right, 370, 404), False, "Registered email address"),
+                (1, "RESET TOKEN", self._reset_token, (left, right, 305, 339), False, "Paste token received in email"),
+                (2, "NEW PASSWORD", "•" * len(self._password) if self._password else "", (left, right, 240, 274), True, "Minimum 8 characters"),
+            ]
+        elif self._mode == "verify":
+            return [
+                (0, "VERIFICATION TOKEN", self._verify_token, (left, right, 340, 376), False, "Enter token delivered by email"),
+            ]
+        else:  # login
+            return [
+                (0, "EMAIL ADDRESS", self._email, (left, right, 350, 386), False, "Registered pilot email"),
+                (1, "PASSWORD", "•" * len(self._password) if self._password else "", (left, right, 270, 306), True, "Account password"),
+            ]
 
     def _draw_profile(self, account: dict) -> None:
         draw_chamfered_panel(540, 840, 160, 410, GOLD, fill=SURFACE_LOW, alpha=245, cut=9)
@@ -233,59 +265,22 @@ class AccountView(arcade.View):
         score = int(stats.get('best_score', 0))
         arcade.draw_text(f"TOTAL SCORE: {score:,}", 690, 190, GOLD, font_size=10, bold=True, anchor_x="center")
 
-        arcade.draw_text("ACCOUNT SECURED", 390, 300, CYAN_BRIGHT, font_size=14, bold=True, anchor_x="center")
+        arcade.draw_text("ASTRAL IDENTITY ACTIVE", 390, 300, CYAN_BRIGHT, font_size=14, bold=True, anchor_x="center")
 
     def _draw_form(self) -> None:
-        is_register = self._mode == "register"
-        if self._mode == "verify":
-            labels = ["VERIFICATION TOKEN", "", ""]
-            values = [self._verify_token, "", ""]
-        elif self._mode == "reset_request":
-            labels = ["EMAIL ADDRESS", "PASSWORD", "WARRIOR NAME"]
-            values = [self._email, "", ""]
-        elif self._mode == "reset_password":
-            labels = ["EMAIL ADDRESS", "RESET TOKEN", "NEW PASSWORD"]
-            values = [self._email, self._reset_token, "•" * len(self._password)]
-        else:
-            labels = ["EMAIL ADDRESS", "PASSWORD", "WARRIOR NAME"]
-            values = [self._email, "•" * len(self._password), self._player_name]
-        for i, ((left, right, bottom, top), label, value) in enumerate(
-                zip(self._field_rects, labels, values)):
-            visible = ((is_register or self._mode == "register") or
-                       (self._mode == "reset_password") or
-                       (self._mode == "verify" and i == 0) or
-                       (self._mode == "login" and i < 2) or
-                       (self._mode == "reset_request" and i == 0))
-            if not visible:
-                continue
+        fields = self._get_fields()
+        for i, label, value, (left, right, bottom, top), is_pwd, hint in fields:
             selected = self._selected_field == i
             accent = CYAN_BRIGHT if selected else (65, 90, 125)
             fill = SURFACE_HIGH if selected else SURFACE_LOW
-            arcade.draw_text(label, left, top + 6, accent, font_size=8, bold=True)
+            arcade.draw_text(label, left, top + 5, accent, font_size=8, bold=True)
             draw_chamfered_panel(left, right, bottom, top, accent,
                                  fill=fill, alpha=245, border_width=2 if selected else 1, cut=6)
             shown = value or "TYPE HERE"
             shown_color = PARCHMENT if value else MUTED
-            arcade.draw_text(shown, left + 14, bottom + 12, shown_color,
-                             font_size=12)
-
-        if self._mode == "verify":
-            arcade.draw_text("Use the one-time token from your verification email.",
-                             WIDTH // 2, 285, MUTED, font_size=9, anchor_x="center")
-        elif self._mode == "reset_request":
-            arcade.draw_text("A reset token will be delivered by the configured email provider.",
-                             WIDTH // 2, 285, MUTED, font_size=9, anchor_x="center")
-        elif self._mode == "reset_password":
-            arcade.draw_text("Paste the one-time token from your email, then choose a new password.",
-                             WIDTH // 2, 285, MUTED, font_size=9, anchor_x="center")
-        elif not is_register:
-            arcade.draw_text("Need an account? Choose CREATE ACCOUNT below.",
-                             WIDTH // 2, 285, MUTED, font_size=9,
-                             anchor_x="center")
-        else:
-            arcade.draw_text("Minimum 8 characters • Your password is never stored locally.",
-                             WIDTH // 2, 285, MUTED, font_size=9,
-                             anchor_x="center")
+            arcade.draw_text(shown, left + 14, bottom + 10, shown_color, font_size=11)
+            if selected and hint:
+                arcade.draw_text(hint, left, bottom - 14, (110, 135, 165), font_size=7)
 
     def on_draw(self) -> None:
         self._draw_background()
@@ -301,19 +296,18 @@ class AccountView(arcade.View):
             msg_lower = self._status_msg.lower()
             if "error" in msg_lower or "fail" in msg_lower or "required" in msg_lower:
                 pill_color = (220, 50, 50)
-            elif "success" in msg_lower or "registered" in msg_lower or "signed in" in msg_lower or "secured" in msg_lower or "linked" in msg_lower or "verified" in msg_lower:
+            elif "success" in msg_lower or "registered" in msg_lower or "signed in" in msg_lower or "secured" in msg_lower or "linked" in msg_lower or "verified" in msg_lower or "ready" in msg_lower:
                 pill_color = (50, 200, 100)
             else:
                 pill_color = (200, 180, 50)
             
             w = len(self._status_msg) * 6.5 + 40
-            cx, cy = WIDTH // 2, 170
-            if not account:
-                cy = 105
+            cx, cy = (240 + WIDTH - 90) // 2, 195
             draw_chamfered_panel(cx - w//2, cx + w//2, cy - 12, cy + 12, pill_color, fill=(*pill_color[:3], 40), alpha=255, cut=6)
             
             self._status_text.text = self._status_msg
             self._status_text.color = pill_color
+            self._status_text.x = cx
             self._status_text.y = cy
             self._status_text.draw()
         for button, _ in self._buttons:
@@ -389,33 +383,39 @@ class AccountView(arcade.View):
     def _activate(self, action: str) -> None:
         if action == "back":
             self._back()
-        elif action == "login":
+        elif action == "submit":
+            self._submit()
+        elif action in ("login", "switch_login"):
             self._mode = "login"
-            self._selected_field = min(self._selected_field, 1)
+            self._selected_field = 0
             self._status_msg = ""
-        elif action == "register":
+            self._buttons = self._build_buttons()
+        elif action in ("register", "switch_register"):
             self._mode = "register"
-            self._selected_field = min(self._selected_field, 2)
+            self._selected_field = 0
             self._status_msg = ""
-        elif action == "reset_request":
+            self._buttons = self._build_buttons()
+        elif action in ("reset_request", "switch_reset"):
             self._mode = "reset_request"
             self._selected_field = 0
             self._status_msg = ""
+            self._buttons = self._build_buttons()
         elif action == "reset_password":
             self._mode = "reset_password"
-            self._selected_field = 2
+            self._selected_field = 1
             self._status_msg = ""
+            self._buttons = self._build_buttons()
         elif action == "verify":
             self._mode = "verify"
             self._selected_field = 0
             self._status_msg = ""
+            self._buttons = self._build_buttons()
         elif action == "logout":
             self._submitting = True
             self._status_msg = "SIGNING OUT..."
             self._status_color = MUTED
 
             def on_done(error):
-                # Defer all view/UI mutation to on_update on the Arcade thread.
                 self._pending_logout = (error,)
 
             leaderboard_client.logout(on_done)
@@ -438,28 +438,26 @@ class AccountView(arcade.View):
         if nav:
             return
         
-        if 425 <= y <= 465:
-            tab_start_x = WIDTH // 2 - 100
-            for i, t_mode in enumerate(["login", "register", "profile"]):
-                if tab_start_x + i * 100 - 40 <= x <= tab_start_x + i * 100 + 40:
-                    if t_mode in ("login", "register"):
+        # Tab selection
+        if 430 <= y <= 475:
+            cx = (240 + WIDTH - 90) // 2
+            tab_start_x = cx - 180
+            for i, t_mode in enumerate(["login", "register", "reset_request", "profile"]):
+                tx = tab_start_x + i * 120
+                if tx - 55 <= x <= tx + 55:
+                    if t_mode in ("login", "register", "reset_request"):
                         self.sound_manager.play_ui_click()
                         self._activate(t_mode)
                     return
                     
         account = leaderboard_client.current_account()
         if not account:
-            for i, rect in enumerate(self._field_rects):
-                visible = (self._mode == "register" or self._mode == "reset_password" or
-                           self._mode == "verify" or
-                           (self._mode == "login" and i < 2) or
-                           (self._mode == "reset_request" and i == 0))
-                if not visible:
-                    continue
-                left, right, bottom, top = rect
+            for i, label, value, (left, right, bottom, top), is_pwd, hint in self._get_fields():
                 if left <= x <= right and bottom <= y <= top:
                     self._selected_field = i
+                    self.sound_manager.play_ui_click(volume=0.2)
                     return
+
         for i, (menu_button, action) in enumerate(self._buttons):
             if menu_button.contains(x, y):
                 self._hovered = i
@@ -467,21 +465,18 @@ class AccountView(arcade.View):
                 self._activate(action)
                 return
 
-
     def on_key_press(self, key, modifiers) -> None:
         if key == arcade.key.ESCAPE:
             self._back()
             return
         if self._submitting or leaderboard_client.current_account():
             return
-        if key in (arcade.key.TAB, arcade.key.DOWN, arcade.key.RIGHT):
-            max_field = (2 if self._mode in ("register", "reset_password") else
-                         0 if self._mode in ("reset_request", "verify") else 1)
-            self._selected_field = (self._selected_field + 1) % (max_field + 1)
-        elif key in (arcade.key.UP, arcade.key.LEFT):
-            max_field = (2 if self._mode in ("register", "reset_password") else
-                         0 if self._mode in ("reset_request", "verify") else 1)
-            self._selected_field = (self._selected_field - 1) % (max_field + 1)
+        fields = self._get_fields()
+        num_fields = len(fields) if fields else 1
+        if key in (arcade.key.TAB, arcade.key.DOWN):
+            self._selected_field = (self._selected_field + 1) % num_fields
+        elif key in (arcade.key.UP,):
+            self._selected_field = (self._selected_field - 1) % num_fields
         elif key in (arcade.key.ENTER, arcade.key.RETURN):
             self._submit()
         elif key == arcade.key.F1:
@@ -502,7 +497,7 @@ class AccountView(arcade.View):
                 self._reset_token = self._reset_token[:-1]
             else:
                 self._password = self._password[:-1]
-        else:
+        elif self._selected_field == 2:
             if self._mode == "reset_password":
                 self._password = self._password[:-1]
             else:

@@ -3,3 +3,4 @@ gunicorn==26.2.0
 psycopg[binary]==3.3.5
 flask-socketio>=5.3.6
 eventlet>=0.36.0
+firebase-admin>=6.5.0

@@ -1108,17 +1108,41 @@ class GameView(arcade.View):
     def _go_to_victory(self) -> None:
         SoundManager.stop_music()
         self.sound_manager.play_victory()
-        from game.views.name_entry_view import NameEntryView
-        transition_to(self.window, NameEntryView(
+        
+        # Save game progress
+        updated = save_system.update_after_game(
             score=self.score_system.score,
             wave=self.wave_manager.wave_number,
             kills=self.player.enemies_killed,
             highest_combo=self.score_system.highest_combo,
+            total_damage=self.combat_stats.get("total_damage", 0),
+            boons_claimed=self.combat_stats.get("boons_claimed", 0),
+            bosses_defeated=self.combat_stats.get("bosses_defeated", []),
+            ship_class=self._ship_class_id,
+            campaign_cleared=True,
+        )
+        
+        saved = save_system.load()
+        pilot_name = saved.get("player_name", "Warrior")
+        from game.systems.leaderboard_client import leaderboard_client
+        leaderboard_client.submit_score(
+            player_name=pilot_name,
+            score=self.score_system.score,
+            level_reached=self.wave_manager.wave_number,
             difficulty=self._difficulty,
             ship_class=self._ship_class_id,
-            start_wave=self.start_wave,
-            is_endless=self.is_endless,
-            is_victory=True,
+            stats={**self.combat_stats, "kills": self.player.enemies_killed},
+        )
+        leaderboard_client.push_profile()
+
+        from game.views.victory_view import VictoryView
+        transition_to(self.window, VictoryView(
+            score=self.score_system.score,
+            kills=self.player.enemies_killed,
+            highest_combo=self.score_system.highest_combo,
+            difficulty=self._difficulty,
+            ship_class=self._ship_class_id,
+            wave=self.wave_manager.wave_number,
             stats=self.combat_stats,
         ), duration=0.5, style="wipe")
 
@@ -1138,18 +1162,47 @@ class GameView(arcade.View):
             self._shake_intensity = 10.0
 
     def _finish_game_over(self) -> None:
-        """Called after death sequence completes — transition to game over screen."""
+        """Called after death sequence completes — transition directly to cinematic game over screen."""
         SoundManager.stop_music()
-        from game.views.name_entry_view import NameEntryView
-        self.window.show_view(NameEntryView(
+        
+        # Save game progress and update high score
+        updated = save_system.update_after_game(
             score=self.score_system.score,
             wave=self.wave_manager.wave_number,
             kills=self.player.enemies_killed,
             highest_combo=self.score_system.highest_combo,
+            total_damage=self.combat_stats.get("total_damage", 0),
+            boons_claimed=self.combat_stats.get("boons_claimed", 0),
+            bosses_defeated=self.combat_stats.get("bosses_defeated", []),
+            ship_class=self._ship_class_id,
+            campaign_cleared=False,
+        )
+        
+        # Submit score in background
+        saved = save_system.load()
+        pilot_name = saved.get("player_name", "Warrior")
+        from game.systems.leaderboard_client import leaderboard_client
+        leaderboard_client.submit_score(
+            player_name=pilot_name,
+            score=self.score_system.score,
+            level_reached=self.wave_manager.wave_number,
             difficulty=self._difficulty,
             ship_class=self._ship_class_id,
+            stats={**self.combat_stats, "kills": self.player.enemies_killed},
+        )
+        leaderboard_client.push_profile()
+
+        # Direct transition to cinematic GameOverView
+        from game.views.game_over_view import GameOverView
+        transition_to(self.window, GameOverView(
+            score=self.score_system.score,
+            wave=self.wave_manager.wave_number,
+            kills=self.player.enemies_killed,
+            highest_combo=self.score_system.highest_combo,
+            high_score=updated.get("high_score", self.score_system.score),
+            difficulty=self._difficulty,
+            ship_class=self._ship_class_id,
+            stats=self.combat_stats,
             start_wave=self.start_wave,
             is_endless=self.is_endless,
-            is_victory=False,
-            stats=self.combat_stats,
-        ))
+        ), duration=0.4, style="fade")

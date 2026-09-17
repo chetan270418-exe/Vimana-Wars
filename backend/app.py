@@ -27,6 +27,18 @@ logger = logging.getLogger("VimanaWarsBackend")
 app = Flask(__name__)
 from flask_socketio import SocketIO, join_room, leave_room, emit
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
+
+try:
+    from backend.firebase_service import (
+        save_user_to_firebase, save_score_to_firebase,
+        save_cloud_save_to_firebase, get_firebase_status,
+    )
+except ImportError:
+    from firebase_service import (
+        save_user_to_firebase, save_score_to_firebase,
+        save_cloud_save_to_firebase, get_firebase_status,
+    )
+
 DB_PATH = Path(os.environ.get("DATABASE_PATH", "leaderboard.db"))
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 SESSION_TTL_SECONDS = 30 * 24 * 60 * 60
@@ -234,7 +246,9 @@ def index():
     return jsonify({
         "game": "Vimana Wars API",
         "status": "online",
+        "firebase_gsa": get_firebase_status(),
         "endpoints": {
+            "GET /health": "Server health and database/GSA status",
             "GET /scores/top": "Get top leaderboard entries (?limit=10&difficulty=normal)",
             "POST /scores": "Submit a score (Bearer token optional for guest submissions)",
             "POST /auth/register": "Create an email account and receive a stable Game ID",
@@ -250,6 +264,17 @@ def index():
             "POST /multiplayer/lobbies": "Create a multiplayer lobby",
             "GET /scores/stats": "Global gameplay metrics",
         }
+    })
+
+
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({
+        "status": "healthy",
+        "service": "Vimana Wars Backend",
+        "database": "postgresql" if DATABASE_URL else "sqlite",
+        "firebase_gsa": get_firebase_status(),
+        "timestamp": time.time(),
     })
 
 
@@ -442,6 +467,13 @@ def register():
                 "SELECT game_id, email, player_name, email_verified FROM users WHERE id = ?", (user_id,)
             ).fetchone()
             conn.commit()
+            if row:
+                save_user_to_firebase({
+                    "game_id": row["game_id"],
+                    "email": row["email"],
+                    "player_name": row["player_name"],
+                    "email_verified": bool(row["email_verified"]),
+                })
         except Exception as exc:
             if not _is_integrity_error(exc):
                 raise
@@ -891,6 +923,15 @@ def submit_score():
         else:
             inserted_id = cursor.lastrowid
         conn.commit()
+        save_score_to_firebase({
+            "player_name": user["player_name"] if user else player_name,
+            "game_id": user["game_id"] if user else "",
+            "score": score,
+            "level_reached": level_reached,
+            "difficulty": difficulty,
+            "ship_class": ship_class,
+            "kills": kills,
+        })
 
     stored_name = user["player_name"] if user else player_name
     logger.info(

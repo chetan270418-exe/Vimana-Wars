@@ -4,10 +4,16 @@ Name Entry Screen displayed after game over or victory.
 Allows player to type their warrior name and submit to the online leaderboard.
 """
 import arcade
-from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_SCORE, COLOR_WAVE
+from constants import WIDTH, HEIGHT, COLOR_BG
 from game.systems import save_system
 from game.systems.leaderboard_client import leaderboard_client
 from game.ui.transitions import transition_to, TransitionOverlay
+from game.ui.vedic_theme import (
+    OBSIDIAN, SURFACE_LOW, SURFACE_HIGH, GOLD, GOLD_BRIGHT, CYAN,
+    CYAN_BRIGHT, PARCHMENT, STARLIGHT, MUTED, ASTRA_RED,
+    FONT_CEREMONIAL, FONT_INTERFACE, FONT_TELEMETRY,
+    draw_chamfered_panel, draw_corner_etching, draw_scanlines,
+)
 
 
 class NameEntryView(arcade.View):
@@ -34,34 +40,40 @@ class NameEntryView(arcade.View):
         self._status_msg = ""
 
         # UI Text Objects
-        header_str = "VICTORY ACHIEVED!" if is_victory else "VALIANT EFFORT!"
+        header_str = "CELESTIAL VICTORY" if is_victory else "DHARMIC REBIRTH"
         self._title = arcade.Text(
-            header_str, WIDTH // 2, int(HEIGHT * 0.80),
-            (255, 215, 0) if is_victory else (240, 70, 70),
-            font_size=34, bold=True, anchor_x="center", anchor_y="center"
+            header_str, WIDTH // 2, int(HEIGHT * 0.78),
+            GOLD_BRIGHT if is_victory else ASTRA_RED,
+            font_size=32, bold=True, font_name=FONT_CEREMONIAL[0],
+            anchor_x="center", anchor_y="center"
         )
         self._sub = arcade.Text(
-            f"Score: {score:,}  •  Wave: {wave}  •  Difficulty: {difficulty.upper()}",
+            f"SCORE: {score:,}   •   WAVE: {wave:02d}   •   DIFFICULTY: {difficulty.upper()}",
             WIDTH // 2, int(HEIGHT * 0.70),
-            COLOR_WAVE, font_size=14, anchor_x="center", anchor_y="center"
+            CYAN_BRIGHT, font_size=11, bold=True, font_name=FONT_TELEMETRY[0],
+            anchor_x="center", anchor_y="center"
         )
         self._prompt = arcade.Text(
-            "ENTER WARRIOR NAME FOR REALM ARCHIVES",
-            WIDTH // 2, int(HEIGHT * 0.56),
-            (200, 200, 220), font_size=12, bold=True, anchor_x="center", anchor_y="center"
+            "COMMISSION PILOT RECORD INTO AKASHIC ARCHIVES",
+            WIDTH // 2, int(HEIGHT * 0.58),
+            PARCHMENT, font_size=10, bold=True, font_name=FONT_INTERFACE[0],
+            anchor_x="center", anchor_y="center"
         )
         self._name_display = arcade.Text(
-            "", WIDTH // 2, int(HEIGHT * 0.44),
-            (255, 255, 255), font_size=26, bold=True, anchor_x="center", anchor_y="center"
+            "", WIDTH // 2, int(HEIGHT * 0.46),
+            GOLD_BRIGHT, font_size=24, bold=True, font_name=FONT_INTERFACE[0],
+            anchor_x="center", anchor_y="center"
         )
         self._status_text = arcade.Text(
-            "", WIDTH // 2, int(HEIGHT * 0.32),
-            COLOR_SCORE, font_size=12, anchor_x="center", anchor_y="center"
+            "", WIDTH // 2, int(HEIGHT * 0.34),
+            CYAN, font_size=11, bold=True, font_name=FONT_TELEMETRY[0],
+            anchor_x="center", anchor_y="center"
         )
         self._hint = arcade.Text(
-            "ENTER : Submit & Continue   •   ESC : Skip to Results",
-            WIDTH // 2, int(HEIGHT * 0.14),
-            (160, 160, 180), font_size=12, anchor_x="center"
+            "ENTER : TRANSMIT RECORD   •   ESC : SKIP TO DEBRIEF",
+            WIDTH // 2, int(HEIGHT * 0.16),
+            MUTED, font_size=10, bold=True, font_name=FONT_TELEMETRY[0],
+            anchor_x="center"
         )
 
     def on_show_view(self) -> None:
@@ -79,15 +91,21 @@ class NameEntryView(arcade.View):
 
     def on_draw(self) -> None:
         self.clear()
+        
+        # Backdrop console panel
+        draw_chamfered_panel(WIDTH // 2 - 260, WIDTH // 2 + 260, 60, HEIGHT - 60, CYAN,
+                             fill=OBSIDIAN, alpha=240, border_width=1, cut=16)
+        draw_corner_etching(WIDTH // 2 - 260, WIDTH // 2 + 260, 60, HEIGHT - 60, GOLD, length=18, alpha=140)
+        draw_scanlines(WIDTH // 2 - 250, WIDTH // 2 + 250, 70, HEIGHT - 70, CYAN, spacing=24, alpha=4)
 
         self._title.draw()
         self._sub.draw()
         self._prompt.draw()
 
-        # Input box
-        box_y = int(HEIGHT * 0.44)
-        arcade.draw_lrbt_rectangle_filled(WIDTH // 2 - 180, WIDTH // 2 + 180, box_y - 24, box_y + 24, (20, 25, 50))
-        arcade.draw_lrbt_rectangle_outline(WIDTH // 2 - 180, WIDTH // 2 + 180, box_y - 24, box_y + 24, COLOR_SCORE, 2)
+        # Input box with chamfered panel
+        box_y = int(HEIGHT * 0.46)
+        draw_chamfered_panel(WIDTH // 2 - 180, WIDTH // 2 + 180, box_y - 24, box_y + 24, CYAN_BRIGHT,
+                             fill=SURFACE_HIGH, alpha=245, border_width=2, cut=8)
 
         # Blinking cursor
         show_cursor = (int(self._cursor_timer * 2.5) % 2 == 0) and not self._submitting

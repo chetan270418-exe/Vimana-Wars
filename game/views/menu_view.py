@@ -19,7 +19,7 @@ from game.ui.menu_button import MenuButton
 from game.ui.transitions import transition_to, TransitionOverlay
 from game.ui.vedic_theme import (
     OBSIDIAN, SURFACE_LOW, GOLD, GOLD_BRIGHT,
-    CYAN, CYAN_BRIGHT, PARCHMENT, STARLIGHT, GREY, MUTED,
+    CYAN, CYAN_BRIGHT, PARCHMENT, STARLIGHT, GREY, MUTED, ASTRA_RED,
     FONT_INTERFACE, FONT_TELEMETRY,
     draw_chamfered_panel, draw_corner_etching, draw_segmented_bar,
     draw_scanlines, pulse_alpha, draw_state_badge,
@@ -76,9 +76,10 @@ class MenuView(arcade.View):
 
         # Mode row buttons (Metallic)
         self._mode_buttons = [
-            (MenuButton("CAMPAIGN MAP", 340, 102, 195, 34, accent=CYAN, variant="metallic"), "map"),
-            (MenuButton("ENDLESS MODE", 560, 102, 195, 34, accent=(180, 140, 255), variant="metallic"), "endless"),
-            (MenuButton("LEADERBOARDS", 780, 102, 195, 34, accent=GOLD, variant="metallic"), "leaderboard"),
+            (MenuButton("CAMPAIGN MAP", 320, 102, 145, 34, accent=CYAN, variant="metallic"), "map"),
+            (MenuButton("ENDLESS VOID", 480, 102, 145, 34, accent=(180, 140, 255), variant="metallic"), "endless"),
+            (MenuButton("MULTIPLAYER ⚔", 640, 102, 145, 34, accent=ASTRA_RED, variant="metallic"), "multiplayer"),
+            (MenuButton("LEADERBOARDS", 800, 102, 145, 34, accent=GOLD, variant="metallic"), "leaderboard"),
         ]
 
         self._hovered_mode = -1
