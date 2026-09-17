@@ -29,15 +29,21 @@ from flask_socketio import SocketIO, join_room, leave_room, emit
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
 
 try:
-    from backend.firebase_service import (
+    from python_game.backend.firebase_service import (
         save_user_to_firebase, save_score_to_firebase,
         save_cloud_save_to_firebase, get_firebase_status,
     )
 except ImportError:
-    from firebase_service import (
-        save_user_to_firebase, save_score_to_firebase,
-        save_cloud_save_to_firebase, get_firebase_status,
-    )
+    try:
+        from backend.firebase_service import (
+            save_user_to_firebase, save_score_to_firebase,
+            save_cloud_save_to_firebase, get_firebase_status,
+        )
+    except ImportError:
+        from firebase_service import (
+            save_user_to_firebase, save_score_to_firebase,
+            save_cloud_save_to_firebase, get_firebase_status,
+        )
 
 DB_PATH = Path(os.environ.get("DATABASE_PATH", "leaderboard.db"))
 if not DB_PATH.exists() and (Path(__file__).resolve().parent.parent / "leaderboard.db").exists():
@@ -46,7 +52,7 @@ elif not DB_PATH.exists() and (Path(__file__).resolve().parent.parent.parent / "
     DB_PATH = Path(__file__).resolve().parent.parent.parent / "leaderboard.db"
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql://postgres:CHetanamit37@db.wlergqltjdyzpqiucovr.supabase.co:5432/postgres"
+    "postgresql://postgres.wlergqltjdyzpqiucovr:CHetanamit37@aws-0-ap-southeast-2.pooler.supabase.com:6543/postgres"
 ).strip()
 SESSION_TTL_SECONDS = 30 * 24 * 60 * 60
 ACTION_TOKEN_TTL_SECONDS = 30 * 60
@@ -94,7 +100,19 @@ def get_db():
             from psycopg.rows import dict_row
         except ImportError as exc:
             raise RuntimeError("DATABASE_URL is set but psycopg is not installed") from exc
-        connection = psycopg.connect(DATABASE_URL, row_factory=dict_row)
+
+        target_url = DATABASE_URL
+        try:
+            connection = psycopg.connect(target_url, row_factory=dict_row)
+        except psycopg.OperationalError:
+            if "db.wlergqltjdyzpqiucovr.supabase.co" in target_url:
+                target_url = target_url.replace(
+                    "postgres:CHetanamit37@db.wlergqltjdyzpqiucovr.supabase.co:5432",
+                    "postgres.wlergqltjdyzpqiucovr:CHetanamit37@aws-0-ap-southeast-2.pooler.supabase.com:6543"
+                )
+                connection = psycopg.connect(target_url, row_factory=dict_row)
+            else:
+                raise
         return _PostgresConnection(connection)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
