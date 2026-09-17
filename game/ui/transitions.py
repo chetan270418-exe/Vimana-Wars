@@ -3,7 +3,6 @@ game/ui/transitions.py
 View-transition overlays — smooth crossfade between arcade Views.
 Supports fade-to-black, slide-up, and custom wipe patterns.
 """
-import math
 import arcade
 from constants import WIDTH, HEIGHT
 from game.ui.easing import ease_in_out_cubic, ease_out_cubic, clamp

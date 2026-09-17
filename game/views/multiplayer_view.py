@@ -9,7 +9,6 @@ import random
 import arcade
 
 from constants import WIDTH, HEIGHT, COLOR_BG
-from game.entities.ship_classes import SHIP_CLASSES
 from game.systems import save_system
 from game.systems.leaderboard_client import leaderboard_client
 from game.systems.asset_manager import AssetManager

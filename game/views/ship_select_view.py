@@ -17,10 +17,10 @@ from game.ui.nav_rail import NavRail
 from game.ui.menu_button import MenuButton
 from game.ui.transitions import transition_to, TransitionOverlay
 from game.ui.vedic_theme import (
-    VOID, OBSIDIAN, SURFACE_LOW, SURFACE_HIGH, GOLD, GOLD_BRIGHT,
-    CYAN, CYAN_BRIGHT, BRASS, ASTRA_RED, ASTRA_RED_BRIGHT, PARCHMENT,
+    OBSIDIAN, SURFACE_LOW, SURFACE_HIGH, GOLD, GOLD_BRIGHT,
+    CYAN, CYAN_BRIGHT, BRASS, PARCHMENT,
     STARLIGHT, GREY, MUTED, WELL,
-    FONT_CEREMONIAL, FONT_INTERFACE, FONT_TELEMETRY,
+    FONT_INTERFACE, FONT_TELEMETRY,
     draw_chamfered_panel, draw_corner_etching, draw_segmented_bar,
     draw_scanlines, pulse_alpha, draw_state_badge,
 )
@@ -115,11 +115,20 @@ class ShipSelectView(arcade.View):
             bottom = cy - card_h / 2
             top = cy + card_h / 2
 
-            # Card Container
-            accent_col = GOLD if selected else (CYAN if unlocked else BRASS)
-            fill_col = SURFACE_HIGH if selected else SURFACE_LOW
+            # Card Container — selected > hovered > default
+            if selected:
+                accent_col = GOLD
+            elif hovered and unlocked:
+                accent_col = CYAN_BRIGHT   # distinct hover: brighter than unselected
+            elif hovered:
+                accent_col = BRASS         # hover on locked card
+            elif unlocked:
+                accent_col = CYAN
+            else:
+                accent_col = BRASS
+            fill_col = SURFACE_HIGH if (selected or hovered) else SURFACE_LOW
             draw_chamfered_panel(left, right, bottom, top, accent_col,
-                                 fill=fill_col, alpha=235, border_width=2 if selected else 1,
+                                 fill=fill_col, alpha=235, border_width=2 if selected else (2 if hovered else 1),
                                  selected=selected, cut=10.0)
             if selected:
                 draw_corner_etching(left, right, bottom, top, GOLD, length=12.0, alpha=130)

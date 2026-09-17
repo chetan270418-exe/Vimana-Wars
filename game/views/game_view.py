@@ -27,12 +27,11 @@ from game.ui.boss_bar import BossBar
 from game.ui.parallax_bg import ParallaxBackground
 from game.ui.transitions import TransitionOverlay, transition_to
 from game.ui.vedic_theme import (
-    GOLD, GOLD_BRIGHT, CYAN, CYAN_BRIGHT, MUTED, ASTRA_RED_BRIGHT,
-    SURFACE_HIGH, FONT_INTERFACE, FONT_TELEMETRY,
+    GOLD, CYAN, CYAN_BRIGHT, MUTED, SURFACE_HIGH, FONT_INTERFACE, FONT_TELEMETRY,
     draw_chamfered_panel, draw_corner_etching,
 )
-from game.ui.tween import TweenManager, Tween
-from game.ui.easing import ease_out_cubic, ease_out_elastic, ease_out_back, ease_in_out_cubic, lerp, clamp
+from game.ui.tween import TweenManager
+from game.ui.easing import ease_out_cubic, ease_out_elastic, lerp, clamp
 
 
 class GameView(arcade.View):

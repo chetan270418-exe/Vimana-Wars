@@ -4,10 +4,10 @@ Standardized 220px left navigation rail for front-end console views.
 Follows the canonical Section 5 and Section 7.1 specification.
 """
 import arcade
-from constants import WIDTH, HEIGHT
+from constants import HEIGHT
 from game.ui.vedic_theme import (
-    VOID, OBSIDIAN, SURFACE_LOW, SURFACE_HIGH, GOLD, GOLD_BRIGHT,
-    CYAN, CYAN_BRIGHT, GREY, MUTED, FONT_INTERFACE, FONT_TELEMETRY,
+    OBSIDIAN, SURFACE_LOW, SURFACE_HIGH, GOLD, GOLD_BRIGHT,
+    CYAN, CYAN_BRIGHT, GREY, FONT_INTERFACE, FONT_TELEMETRY,
     draw_scanlines,
 )
 from game.ui.transitions import transition_to

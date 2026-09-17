@@ -12,7 +12,7 @@ FPS = 60
 # ── Backend & Network ─────────────────────────────────────────────────────────
 import os
 
-LEADERBOARD_API_URL = os.environ.get("VIMANA_API_URL", "http://127.0.0.1:5000").rstrip("/")
+LEADERBOARD_API_URL = os.environ.get("VIMANA_API_URL", "https://vimana-wars.onrender.com").rstrip("/")
 NETWORK_TIMEOUT = 2.5  # seconds before fallback to offline mode
 
 # ── Difficulty multipliers ────────────────────────────────────────────────────

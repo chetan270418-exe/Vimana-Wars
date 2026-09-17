@@ -7,12 +7,12 @@ telemetry after the automatic launch cinematic has finished.
 import math
 import arcade
 
-from constants import WIDTH, HEIGHT, COLOR_BG
+from constants import WIDTH, HEIGHT
 from game.systems.asset_manager import AssetManager
 from game.systems.sound_manager import SoundManager
 from game.ui.transitions import transition_to, TransitionOverlay
 from game.ui.vedic_theme import (
-    OBSIDIAN, SURFACE_LOW, GOLD, GOLD_BRIGHT, CYAN, CYAN_BRIGHT,
+    OBSIDIAN, GOLD, GOLD_BRIGHT, CYAN, CYAN_BRIGHT,
     PARCHMENT, MUTED, draw_chamfered_panel, draw_corner_etching,
     draw_segmented_bar, draw_scanlines, draw_telemetry_ticks, pulse_alpha,
     FONT_CEREMONIAL, FONT_TELEMETRY, FONT_INTERFACE

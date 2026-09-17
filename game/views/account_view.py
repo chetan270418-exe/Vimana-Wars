@@ -7,7 +7,7 @@ blocks while a server is unavailable.
 """
 import arcade
 
-from constants import WIDTH, HEIGHT, COLOR_BG
+from constants import WIDTH, COLOR_BG
 from game.systems import save_system
 from game.systems.leaderboard_client import leaderboard_client
 from game.systems.sound_manager import SoundManager

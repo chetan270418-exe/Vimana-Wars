@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import MainMenu from './components/MainMenu';
 import ShipSelect from './components/ShipSelect';
 import BoonSelect from './components/BoonSelect';
@@ -32,31 +32,34 @@ export default function App() {
   const [duelConfig, setDuelConfig] = useState<DuelConfig | null>(null);
   const [duelResult, setDuelResult] = useState<DuelResult | null>(null);
 
-  const navigate = (to: ScreenId | string) => {
-    if (to === screen) return;
+  const navigate = useCallback((to: ScreenId | string) => {
+    setScreen(prev => {
+      if (prev === (to as ScreenId)) return prev;
+      return prev; // handled via fading below
+    });
     setFading(true);
     setTimeout(() => {
       setScreen(to as ScreenId);
       setFading(false);
     }, 140);
-  };
+  }, []);
 
-  const handleStartRun = (config: RunConfig) => {
+  const handleStartRun = useCallback((config: RunConfig) => {
     setRunConfig(config);
     setActiveBoons([]);
     setCurrentWave(config.startWave || 1);
-  };
+  }, []);
 
-  const handleWaveComplete = (wave: number) => {
+  const handleWaveComplete = useCallback((wave: number) => {
     setCurrentWave(wave);
-    navigate('boon-select');
-  };
+    setScreen('boon-select');
+  }, []);
 
-  const handleClaimBoon = (boonId: string) => {
+  const handleClaimBoon = useCallback((boonId: string) => {
     setActiveBoons(prev => [...prev, boonId]);
-  };
+  }, []);
 
-  const handleSingleGameOver = (result: RunResult) => {
+  const handleSingleGameOver = useCallback((result: RunResult) => {
     setLastResult(result);
     // Update progression
     const current = getProgression();
@@ -79,10 +82,10 @@ export default function App() {
       /* offline or network error allowed */
     });
 
-    navigate('game-over');
-  };
+    setScreen('game-over');
+  }, []);
 
-  const handleSingleVictory = (result: RunResult) => {
+  const handleSingleVictory = useCallback((result: RunResult) => {
     setLastResult(result);
     const current = getProgression();
     saveProgression({
@@ -102,29 +105,30 @@ export default function App() {
       duration_seconds: result.durationSeconds,
     }).catch(() => {});
 
-    navigate('victory');
-  };
+    setScreen('victory');
+  }, []);
 
-  const handleStartDuel = (config: DuelConfig) => {
+  const handleStartDuel = useCallback((config: DuelConfig) => {
     setDuelConfig(config);
     setDuelResult(null);
-  };
+    setScreen('duel');
+  }, []);
 
-  const handleDuelOver = (res: DuelResult) => {
+  const handleDuelOver = useCallback((res: DuelResult) => {
     setDuelResult(res);
-  };
+  }, []);
 
-  const handleDuelRematch = () => {
+  const handleDuelRematch = useCallback(() => {
     setDuelResult(null);
-    if (duelConfig) {
-      // Re-trigger duel with fresh health
-      setDuelConfig({
-        ...duelConfig,
-        player1: { ...duelConfig.player1, health: 100 },
-        player2: { ...duelConfig.player2, health: 100 },
-      });
-    }
-  };
+    setDuelConfig(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        player1: { ...prev.player1, health: 100 },
+        player2: { ...prev.player2, health: 100 },
+      };
+    });
+  }, []);
 
   const props = { onNavigate: navigate };
 

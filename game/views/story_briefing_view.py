@@ -13,11 +13,10 @@ from game.systems.asset_manager import AssetManager
 from game.systems.sound_manager import SoundManager
 from game.ui.transitions import TransitionOverlay, transition_to
 from game.ui.vedic_theme import (
-    VOID, OBSIDIAN, SURFACE_LOW, SURFACE_HIGH, GOLD, GOLD_BRIGHT,
-    CYAN, CYAN_BRIGHT, ASTRA_RED, PARCHMENT, STARLIGHT, GREY, MUTED,
+    OBSIDIAN, SURFACE_HIGH, GOLD, GOLD_BRIGHT,
+    CYAN, CYAN_BRIGHT, ASTRA_RED, STARLIGHT, GREY, MUTED,
     FONT_CEREMONIAL, FONT_INTERFACE, FONT_TELEMETRY,
     draw_chamfered_panel, draw_corner_etching, draw_scanlines,
-    pulse_alpha,
 )
 
 

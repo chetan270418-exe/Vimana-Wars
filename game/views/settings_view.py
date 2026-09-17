@@ -5,7 +5,6 @@ Follows Section 7.11 and Section 9 of the authoritative specification.
 Features canonical 220px nav rail, tabbed sections (Audio, Display, Accessibility, Controls),
 diamond toggles, sliders with diamond thumbs, and conflict-safe keybind reference.
 """
-import math
 import arcade
 
 from constants import WIDTH, HEIGHT
@@ -14,12 +13,12 @@ from game.systems.sound_manager import SoundManager
 from game.ui.nav_rail import NavRail
 from game.ui.transitions import transition_to, TransitionOverlay
 from game.ui.vedic_theme import (
-    VOID, OBSIDIAN, SURFACE_LOW, SURFACE_HIGH, GOLD, GOLD_BRIGHT,
-    CYAN, CYAN_BRIGHT, BRASS, ASTRA_RED, ASTRA_RED_BRIGHT, PARCHMENT,
+    OBSIDIAN, SURFACE_LOW, SURFACE_HIGH, GOLD, GOLD_BRIGHT,
+    CYAN, CYAN_BRIGHT, BRASS, PARCHMENT,
     STARLIGHT, GREY, MUTED, WELL,
     FONT_INTERFACE, FONT_TELEMETRY,
     draw_chamfered_panel, draw_corner_etching, draw_scanlines,
-    pulse_alpha, draw_state_badge,
+    draw_state_badge,
 )
 
 

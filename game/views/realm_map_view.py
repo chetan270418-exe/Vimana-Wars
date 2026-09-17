@@ -13,15 +13,14 @@ import arcade
 from constants import WIDTH, HEIGHT, REALMS
 from game.systems import save_system
 from game.systems.sound_manager import SoundManager
-from game.systems.asset_manager import AssetManager
 from game.ui.nav_rail import NavRail
 from game.ui.menu_button import MenuButton
 from game.ui.transitions import transition_to, TransitionOverlay
 from game.ui.vedic_theme import (
-    VOID, OBSIDIAN, SURFACE_LOW, SURFACE_HIGH, GOLD, GOLD_BRIGHT,
+    OBSIDIAN, SURFACE_LOW, GOLD, GOLD_BRIGHT,
     CYAN, CYAN_BRIGHT, BRASS, ASTRA_RED, ASTRA_RED_BRIGHT, PARCHMENT,
     STARLIGHT, GREY, MUTED, WELL,
-    FONT_CEREMONIAL, FONT_INTERFACE, FONT_TELEMETRY,
+    FONT_INTERFACE, FONT_TELEMETRY,
     draw_chamfered_panel, draw_corner_etching, draw_scanlines,
     pulse_alpha, draw_state_badge,
 )
@@ -144,6 +143,9 @@ class RealmMapView(arcade.View):
             hovered = (realm_id == self._hovered)
 
             node_radius = 24.0 if not selected else 28.0
+            # Expand radius slightly on hover for feedback
+            if hovered and not selected:
+                node_radius += 3.0
 
             # Background well
             arcade.draw_circle_filled(x, y, node_radius, (*WELL, 240))
@@ -169,14 +171,18 @@ class RealmMapView(arcade.View):
                 arcade.draw_text("⊘", x, y, GREY, font_size=14, bold=True,
                                  anchor_x="center", anchor_y="center")
 
+            # Hover ring — drawn on top of node outline for clear feedback
+            if hovered and not selected:
+                arcade.draw_circle_outline(x, y, node_radius + 5, (*STARLIGHT, 160), 1)
+
             # Boss chevron indicator
             if realm_id in BOSS_REALMS:
                 arcade.draw_text("▲", x, y + node_radius + 6, ASTRA_RED, font_size=10, bold=True,
                                  anchor_x="center", anchor_y="center")
 
-            # Node label underneath
+            # Node label underneath — brighten on hover
             realm_info = REALMS.get(realm_id, {})
-            name_col = GOLD_BRIGHT if selected else (STARLIGHT if unlocked else GREY)
+            name_col = GOLD_BRIGHT if selected else (STARLIGHT if (hovered or unlocked) else GREY)
             arcade.draw_text(realm_info.get("name", "").upper(), x, y - node_radius - 14,
                              name_col, font_size=8, bold=True, anchor_x="center",
                              font_name=FONT_INTERFACE)

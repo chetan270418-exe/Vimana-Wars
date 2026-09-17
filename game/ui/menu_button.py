@@ -3,7 +3,6 @@ game/ui/menu_button.py
 Canonical Vedic-Punk Button Component with Celestial, Metallic, and Danger variants.
 Supports smooth 120ms ease-out hover scale (+3.5%), breathing glow, and font fallbacks.
 """
-import math
 import arcade
 from game.ui.vedic_theme import (
     GOLD, GOLD_BRIGHT, CYAN, CYAN_BRIGHT, GREY, OBSIDIAN, SURFACE_LOW,

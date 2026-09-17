@@ -3,11 +3,10 @@ game/ui/radial_gauge.py
 Circular cooldown and readiness dial for Dash, Chakram, and Brahmastra.
 Renders an authentic 32px diameter gauge with sweep indicator, readiness pulse, and keybind tag.
 """
-import math
 import arcade
 from game.ui.vedic_theme import (
-    CYAN, CYAN_BRIGHT, GOLD, GOLD_BRIGHT, WELL, GREY,
-    FONT_TELEMETRY, FONT_INTERFACE, draw_state_badge,
+    CYAN, GOLD, GOLD_BRIGHT, WELL, GREY,
+    FONT_TELEMETRY, draw_state_badge,
 )
 
 

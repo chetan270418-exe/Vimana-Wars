@@ -8,8 +8,7 @@ from game.ui.tween import TweenManager
 from game.ui.transitions import transition_to, TransitionOverlay
 from game.ui.vedic_theme import (
     draw_menu_backdrop, draw_focus_panel,
-    GOLD, GOLD_BRIGHT, CYAN, CYAN_BRIGHT, OBSIDIAN, ASTRA_RED,
-    PARCHMENT, STARLIGHT, GREY,
+    GOLD, CYAN, CYAN_BRIGHT, STARLIGHT, GREY,
     FONT_CEREMONIAL, FONT_INTERFACE,
 )
 try:

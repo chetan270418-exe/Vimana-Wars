@@ -3,19 +3,16 @@ game/views/game_over_view.py
 Game-over screen — shows stats, high score, and difficulty played.
 Uses arcade.Text objects (no draw_text calls).
 """
-import math
 import random
 import arcade
 from constants import WIDTH, HEIGHT, COLOR_SCORE, COLOR_WHITE
 from game.systems import save_system
 from game.ui.easing import ease_out_cubic, ease_in_out_cubic, clamp
-from game.ui.tween import TweenManager, Tween
+from game.ui.tween import TweenManager
 from game.ui.transitions import transition_to, TransitionOverlay
 from game.ui.vedic_theme import (
     draw_menu_backdrop, draw_focus_panel,
-    ASTRA_RED, ASTRA_RED_BRIGHT, CYAN, CYAN_BRIGHT,
-    GOLD, STARLIGHT, GREY, MUTED, PARCHMENT,
-    FONT_CEREMONIAL, FONT_INTERFACE,
+    ASTRA_RED, ASTRA_RED_BRIGHT, STARLIGHT, GREY, FONT_CEREMONIAL, FONT_INTERFACE,
 )
 
 

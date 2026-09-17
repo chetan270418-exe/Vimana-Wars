@@ -31,6 +31,24 @@ export default function PlayableArena({
   const engineRef = useRef<CombatEngine | null>(null);
   const [paused, setPaused] = useState(false);
 
+  // Store all callbacks in refs so the engine useEffect doesn't need them as deps.
+  // The engine reads .current at call time, so it always gets the latest version.
+  const onNavigateRef = useRef(onNavigate);
+  const onWaveCompleteRef = useRef(onWaveComplete);
+  const onGameOverRef = useRef(onGameOver);
+  const onVictoryRef = useRef(onVictory);
+  const onDuelOverRef = useRef(onDuelOver);
+  const activeBoonRef = useRef(activeBoons);
+
+  // Keep refs in sync on every render (no re-mount cost)
+  onNavigateRef.current = onNavigate;
+  onWaveCompleteRef.current = onWaveComplete;
+  onGameOverRef.current = onGameOver;
+  onVictoryRef.current = onVictory;
+  onDuelOverRef.current = onDuelOver;
+  activeBoonRef.current = activeBoons;
+
+  // Only re-create the engine when the game session itself changes
   useEffect(() => {
     if (!canvasRef.current) return;
 
@@ -39,11 +57,11 @@ export default function PlayableArena({
       mode,
       runConfig,
       duelConfig,
-      activeBoons,
-      onWaveComplete,
-      onGameOver,
-      onVictory,
-      onDuelOver,
+      activeBoons: activeBoonRef.current,
+      onWaveComplete: (wave) => onWaveCompleteRef.current?.(wave),
+      onGameOver: (result) => onGameOverRef.current?.(result),
+      onVictory: (result) => onVictoryRef.current?.(result),
+      onDuelOver: (result) => onDuelOverRef.current?.(result),
       onPauseToggle: (isPaused) => setPaused(isPaused),
     });
 
@@ -53,7 +71,8 @@ export default function PlayableArena({
       engine.destroy();
       engineRef.current = null;
     };
-  }, [mode, runConfig, duelConfig, activeBoons, onWaveComplete, onGameOver, onVictory, onDuelOver]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, runConfig, duelConfig]);
 
   const handleResume = () => {
     engineRef.current?.resume();
@@ -62,7 +81,7 @@ export default function PlayableArena({
 
   const handleAbandon = () => {
     engineRef.current?.destroy();
-    onNavigate('main-menu');
+    onNavigateRef.current('main-menu');
   };
 
   return (

@@ -7,8 +7,7 @@ import math
 import arcade
 from constants import WIDTH, COLOR_WHITE
 from game.ui.vedic_theme import (
-    RED, RED_BRIGHT, ASTRA_RED, ASTRA_RED_BRIGHT,
-    GOLD, MUTED, draw_chamfered_panel, draw_telemetry_ticks, draw_segmented_bar,
+    RED, RED_BRIGHT, GOLD, MUTED, draw_chamfered_panel, draw_telemetry_ticks, draw_segmented_bar,
 )
 
 

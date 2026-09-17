@@ -6,10 +6,9 @@ Used for Pause & Abandon Sortie confirmation per Section 5 and Section 7.8.
 import arcade
 from constants import WIDTH, HEIGHT
 from game.ui.vedic_theme import (
-    OBSIDIAN, SURFACE_HIGH, GOLD, GOLD_BRIGHT, CYAN, CYAN_BRIGHT,
-    ASTRA_RED, ASTRA_RED_BRIGHT, GREY, PARCHMENT,
-    FONT_INTERFACE, FONT_TELEMETRY, FONT_CEREMONIAL,
-    draw_chamfered_panel, draw_corner_etching,
+    SURFACE_HIGH, GOLD, CYAN_BRIGHT,
+    ASTRA_RED, GREY, PARCHMENT,
+    FONT_INTERFACE, FONT_TELEMETRY, draw_chamfered_panel, draw_corner_etching,
 )
 from game.ui.menu_button import MenuButton
 

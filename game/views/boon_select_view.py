@@ -6,13 +6,13 @@ Presented during wave transitions so the player can choose an astral upgrade.
 import math
 import random
 import arcade
-from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_SCORE, COLOR_WAVE, COLOR_WHITE
+from constants import WIDTH, HEIGHT, COLOR_BG, COLOR_SCORE, COLOR_WAVE
 from game.ui.easing import ease_out_back, ease_out_cubic, lerp, clamp
-from game.ui.tween import TweenManager, Tween
-from game.ui.transitions import transition_to, TransitionOverlay
+from game.ui.tween import TweenManager
+from game.ui.transitions import TransitionOverlay
 from game.systems.sound_manager import SoundManager
 from game.ui.vedic_theme import draw_chamfered_panel, draw_corner_etching
-from arcade import draw_rect_filled, draw_rect_outline, LRBT
+from arcade import draw_rect_filled, LRBT
 
 
 class CardState:

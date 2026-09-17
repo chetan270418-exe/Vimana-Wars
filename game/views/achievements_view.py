@@ -55,7 +55,6 @@ class AchievementsView(arcade.View):
             # Shift columns right by 170px to clear the 220px nav rail
             cx = 420 + col * 400
             cy = 430 - row * 88
-            absolute_index = start + index
             is_unlocked = achievement["id"] in self._unlocked
             is_selected = index == self._selected
             accent = COLOR_SCORE if is_unlocked else (85, 95, 125)

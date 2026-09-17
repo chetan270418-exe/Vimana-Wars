@@ -5,7 +5,7 @@ Controls wave progression, 3-2-1 countdowns, wave objectives, and diverse enemy 
 import random
 from constants import (
     WAVE_CLEAR_DELAY,
-    BOSS_WAVE_NUMBER, CAMPAIGN_FINAL_WAVE, CAMPAIGN_BOSS_WAVES,
+    CAMPAIGN_FINAL_WAVE, CAMPAIGN_BOSS_WAVES,
     CAMPAIGN_MINI_BOSS_WAVES, POWERUP_SPAWN_EVERY_N_WAVES,
     MAX_POWERUPS_ACTIVE, get_realm_for_wave,
 )

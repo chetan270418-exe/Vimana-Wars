@@ -18,11 +18,11 @@ from game.ui.nav_rail import NavRail
 from game.ui.menu_button import MenuButton
 from game.ui.transitions import transition_to, TransitionOverlay
 from game.ui.vedic_theme import (
-    VOID, OBSIDIAN, SURFACE_LOW, SURFACE_HIGH, GOLD, GOLD_BRIGHT,
-    CYAN, CYAN_BRIGHT, ASTRA_RED, PARCHMENT, STARLIGHT, GREY, MUTED,
-    FONT_CEREMONIAL, FONT_INTERFACE, FONT_TELEMETRY,
+    OBSIDIAN, SURFACE_LOW, GOLD, GOLD_BRIGHT,
+    CYAN, CYAN_BRIGHT, PARCHMENT, STARLIGHT, GREY, MUTED,
+    FONT_INTERFACE, FONT_TELEMETRY,
     draw_chamfered_panel, draw_corner_etching, draw_segmented_bar,
-    draw_scanlines, draw_telemetry_ticks, pulse_alpha, draw_state_badge,
+    draw_scanlines, pulse_alpha, draw_state_badge,
 )
 
 

@@ -1,12 +1,10 @@
 import { useEffect, useState } from 'react';
 import { LEADERBOARD } from '../data/gameData';
 import type { LeaderboardEntry } from '../data/gameData';
-import { getTopScores } from '../lib/api';
+import { getTopScores, getSession } from '../lib/api';
 import Panel from './ui/Panel';
 import StarField from './ui/StarField';
 import VedicButton from './ui/VedicButton';
-
-type Tab = 'global' | 'weekly' | 'monthly';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
@@ -17,11 +15,14 @@ function formatScore(n: number) {
 type Props = { onNavigate: (s: string) => void };
 
 export default function Leaderboard({ onNavigate }: Props) {
-  const [tab, setTab] = useState<Tab>('global');
   const [remoteEntries, setRemoteEntries] = useState<LeaderboardEntry[] | null>(null);
+  const [apiOnline, setApiOnline] = useState<boolean | null>(null); // null = loading
+
+  const session = getSession();
 
   useEffect(() => {
     const controller = new AbortController();
+    setApiOnline(null);
     getTopScores(10, controller.signal).then(payload => {
       const mapped = (payload.leaderboard ?? []).map((row, index) => ({
         rank: index + 1,
@@ -30,19 +31,27 @@ export default function Leaderboard({ onNavigate }: Props) {
         realmReached: `Wave ${Number(row.level_reached ?? 0)}`,
         ship: String(row.ship_class ?? 'pushpaka'),
         date: String(row.created_at ?? '').slice(0, 10) || '—',
-        isCurrentPlayer: false,
+        game_id: String(row.game_id ?? ''),
+        isCurrentPlayer: session?.user.game_id
+          ? String(row.game_id) === session.user.game_id
+          : false,
       }));
-      if (mapped.length > 0) setRemoteEntries(mapped);
+      if (mapped.length > 0) {
+        setRemoteEntries(mapped);
+        setApiOnline(true);
+      } else {
+        setApiOnline(false);
+      }
     }).catch(() => {
-      // Keep the local preview records visible when the hosted API is asleep
-      // or the player is offline.
+      setApiOnline(false);
     });
     return () => controller.abort();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const usingFallback = apiOnline === false || remoteEntries === null;
   const entries = (remoteEntries ?? LEADERBOARD).map((e, i) => ({
     ...e,
-    score: tab === 'weekly' ? Math.floor(e.score * 0.62) : tab === 'monthly' ? Math.floor(e.score * 0.88) : e.score,
     rank: i + 1,
   }));
 
@@ -64,49 +73,93 @@ export default function Leaderboard({ onNavigate }: Props) {
         </button>
         <div className="h-4 w-px" style={{ background: 'rgba(233,196,0,0.2)' }} />
         <span className="text-sm tracking-[0.3em]" style={{ fontFamily: '"Cinzel", serif', color: '#FFF6DF' }}>
-          SANGHA NETWORK
+          VIMANA RANKINGS
         </span>
-        <div
-          className="ml-2 px-2 py-0.5 text-[9px] tracking-wider"
-          style={{ fontFamily: '"JetBrains Mono", monospace', color: '#40E090', background: 'rgba(64,224,144,0.1)', border: '1px solid rgba(64,224,144,0.3)' }}
-        >
-          ● ONLINE
-        </div>
+
+        {/* Live API status badge — reflects actual connectivity */}
+        {apiOnline === null && (
+          <div
+            className="ml-2 px-2 py-0.5 text-[9px] tracking-wider"
+            style={{ fontFamily: '"JetBrains Mono", monospace', color: '#8F98A8', background: 'rgba(143,152,168,0.1)', border: '1px solid rgba(143,152,168,0.3)' }}
+          >
+            ○ CONNECTING…
+          </div>
+        )}
+        {apiOnline === true && (
+          <div
+            className="ml-2 px-2 py-0.5 text-[9px] tracking-wider"
+            style={{ fontFamily: '"JetBrains Mono", monospace', color: '#40E090', background: 'rgba(64,224,144,0.1)', border: '1px solid rgba(64,224,144,0.3)' }}
+          >
+            ● LIVE
+          </div>
+        )}
+        {apiOnline === false && (
+          <div
+            className="ml-2 px-2 py-0.5 text-[9px] tracking-wider"
+            style={{ fontFamily: '"JetBrains Mono", monospace', color: '#FF6B72', background: 'rgba(255,107,114,0.1)', border: '1px solid rgba(255,107,114,0.3)' }}
+          >
+            ○ OFFLINE
+          </div>
+        )}
+
         <div className="ml-auto text-[10px] tracking-wider" style={{ fontFamily: '"JetBrains Mono", monospace', color: '#8F98A8' }}>
-          1,847 PILOTS RANKED
+          {apiOnline === true ? `${entries.length} PILOTS RANKED` : ''}
         </div>
       </div>
 
       {/* Main content */}
       <div className="absolute inset-0 z-10 flex flex-col" style={{ top: 52, bottom: 40, padding: '20px 24px', gap: 16 }}>
 
-        {/* Tabs */}
+        {/* Tab row — only Global is real data; Weekly/Monthly are coming soon */}
         <div className="flex gap-2 items-center">
-          {(['global', 'weekly', 'monthly'] as Tab[]).map(t => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className="px-4 py-1.5 text-xs tracking-[0.25em] transition-all duration-150"
+          <button
+            className="px-4 py-1.5 text-xs tracking-[0.25em] transition-all duration-150"
+            style={{
+              fontFamily: '"Cinzel", serif',
+              color: '#FFF6DF',
+              background: 'rgba(233,196,0,0.1)',
+              border: '1px solid rgba(233,196,0,0.45)',
+              clipPath: 'polygon(5px 0%,calc(100% - 5px) 0%,100% 5px,100% 100%,0% 100%,0% 5px)',
+            }}
+          >
+            GLOBAL
+          </button>
+          {(['WEEKLY', 'MONTHLY'] as const).map(label => (
+            <span
+              key={label}
+              className="px-4 py-1.5 text-xs tracking-[0.25em]"
+              title="Coming soon — requires server-side windowing"
               style={{
                 fontFamily: '"Cinzel", serif',
-                color: tab === t ? '#FFF6DF' : '#8F98A8',
-                background: tab === t ? 'rgba(233,196,0,0.1)' : 'transparent',
-                border: `1px solid ${tab === t ? 'rgba(233,196,0,0.45)' : 'rgba(143,152,168,0.2)'}`,
+                color: '#4A5060',
+                background: 'transparent',
+                border: '1px solid rgba(74,80,96,0.35)',
                 clipPath: 'polygon(5px 0%,calc(100% - 5px) 0%,100% 5px,100% 100%,0% 100%,0% 5px)',
+                cursor: 'default',
               }}
             >
-              {t.toUpperCase()}
-            </button>
+              {label} · COMING SOON
+            </span>
           ))}
           <div className="ml-auto text-[10px] tracking-wider" style={{ fontFamily: '"JetBrains Mono", monospace', color: '#8F98A8' }}>
             COSMIC RECORDS
           </div>
         </div>
 
+        {/* Offline / demo-data notice */}
+        {usingFallback && (
+          <div
+            className="px-3 py-2 text-[10px] tracking-wider"
+            style={{ fontFamily: '"JetBrains Mono", monospace', color: '#FF6B72', background: 'rgba(255,107,114,0.07)', border: '1px solid rgba(255,107,114,0.25)' }}
+          >
+            ⚠ DEMO DATA — API UNREACHABLE · Scores shown are preview placeholders, not real pilot records.
+          </div>
+        )}
+
         {/* Top 3 spotlight */}
         <div className="grid grid-cols-3 gap-3" style={{ maxWidth: 640 }}>
           {entries.slice(0, 3).map((entry, i) => (
-            <Panel key={entry.player} variant={i === 0 ? 'selected' : 'default'} cut={10}>
+            <Panel key={`${entry.rank}-${entry.player}`} variant={i === 0 ? 'selected' : 'default'} cut={10}>
               <div className="p-3 text-center flex flex-col gap-1">
                 <div className="text-2xl">{MEDALS[i]}</div>
                 <div
@@ -152,7 +205,7 @@ export default function Leaderboard({ onNavigate }: Props) {
             <div className="overflow-y-auto flex-1">
               {entries.slice(3).map(entry => (
                 <div
-                  key={entry.player}
+                  key={`${entry.rank}-${entry.player}`}
                   className="grid px-4 py-2.5 text-xs transition-colors hover:bg-white/[0.02]"
                   style={{
                     borderBottom: '1px solid rgba(255,255,255,0.04)',
@@ -194,10 +247,19 @@ export default function Leaderboard({ onNavigate }: Props) {
           </div>
         </Panel>
 
-        {/* Footer row */}
+        {/* Footer row — only shows real rank if signed in and API is live */}
         <div className="flex items-center justify-between shrink-0">
           <div className="text-[10px] tracking-wider" style={{ fontFamily: '"JetBrains Mono", monospace', color: '#8F98A8' }}>
-            YOUR RANK: #10 · SCORE: 2,344,100 · REALM: KSHIRA SAGARA
+            {session && apiOnline === true
+              ? (() => {
+                  const myEntry = entries.find(e => e.isCurrentPlayer);
+                  return myEntry
+                    ? `YOUR RANK: #${myEntry.rank} · SCORE: ${formatScore(myEntry.score)}`
+                    : 'YOUR SCORE NOT YET RANKED — PLAY A RUN TO SUBMIT';
+                })()
+              : session
+                ? 'SIGN IN AND CONNECT TO SEE YOUR RANK'
+                : 'SIGN IN TO TRACK YOUR STANDING'}
           </div>
           <VedicButton variant="primary" onClick={() => onNavigate('ship-select')}>
             CLIMB THE RANKS ▶
