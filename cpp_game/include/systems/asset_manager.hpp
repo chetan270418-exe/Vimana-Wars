@@ -94,6 +94,8 @@ public:
             m_base_path + "/ui/",
             m_base_path + "/ui/icons/",
             m_base_path + "/vfx/",
+            m_base_path + "/online/phase8_sources/kenney_simple_space_2d/PNG/Default/",
+            m_base_path + "/online/phase8_sources/kenney_simple_space_2d/PNG/Retina/",
             m_base_path + "/"
         };
 
@@ -120,6 +122,7 @@ public:
         std::vector<std::string> search_dirs = {
             m_base_path + "/sounds/",
             m_base_path + "/online/kenney_sci-fi_sounds/Audio/",
+            m_base_path + "/online/phase8_sources/kenney_sci_fi_sounds_2/Audio/",
             m_base_path + "/"
         };
 

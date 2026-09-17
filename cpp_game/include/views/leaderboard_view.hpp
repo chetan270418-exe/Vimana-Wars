@@ -17,11 +17,11 @@ class LeaderboardView : public IView {
 public:
     LeaderboardView()
         : m_next_view(ViewType::LEADERBOARD),
-          m_cloud_mode(false),
+          m_cloud_mode(true),
           m_diff_filter_idx(0),
           m_is_loading(false),
           m_status_text(""),
-          m_btn_mode({ 450, 28, 200, 34 }, "MODE: LOCAL ARCHIVE", COLOR_CYAN_BRIGHT),
+          m_btn_mode({ 450, 28, 200, 34 }, "MODE: POSTGRESQL CLOUD", COLOR_GOLD_BRIGHT),
           m_btn_diff({ 660, 28, 200, 34 }, "DIFF: ALL TIERS", COLOR_GOLD_BRIGHT),
           m_btn_back({ 40, 520, 110, 36 }, "BACK", COLOR_MUTED),
           m_btn_refresh({ SCREEN_WIDTH - 200, 520, 160, 36 }, "REFRESH", COLOR_CYAN_BRIGHT)
@@ -85,7 +85,7 @@ public:
         // Toggle Cloud / Local mode
         if (m_btn_mode.update(mouse_pos)) {
             m_cloud_mode = !m_cloud_mode;
-            m_btn_mode.set_label(m_cloud_mode ? "MODE: SANGHA CLOUD" : "MODE: LOCAL ARCHIVE");
+            m_btn_mode.set_label(m_cloud_mode ? "MODE: POSTGRESQL CLOUD" : "MODE: LOCAL BACKUP");
             m_btn_mode.set_color(m_cloud_mode ? COLOR_GOLD_BRIGHT : COLOR_CYAN_BRIGHT);
             refresh_scores();
         }

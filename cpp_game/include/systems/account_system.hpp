@@ -222,11 +222,17 @@ public:
                     return;
                 } else {
                     std::string err = j.value("error", "Registration rejected by server.");
+                    if (err.find("already exists") != std::string::npos) {
+                        err = "Email already registered! Tap '1. SIGN IN' tab to sign in.";
+                    }
                     if (callback) callback(false, err, false);
                     return;
                 }
             } catch (...) {
-                if (callback) callback(false, "Network error during registration.", false);
+                std::string fallback_err = resp.body.empty() 
+                    ? "Cannot reach server. Ensure backend is running."
+                    : "Registration failed: " + resp.body;
+                if (callback) callback(false, fallback_err, false);
             }
         });
     }

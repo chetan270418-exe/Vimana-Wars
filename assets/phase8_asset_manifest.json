@@ -1,0 +1,34 @@
+{
+  "pack": "phase8-online-fleet",
+  "policy": "additive-only",
+  "existing_files_overwritten": false,
+  "sources": [
+    {
+      "name": "Kenney Simple Space",
+      "url": "https://kenney.nl/assets/simple-space",
+      "license": "CC0",
+      "full_archive": "online/phase8_sources/kenney_simple_space_2d"
+    },
+    {
+      "name": "Wisedawn 200+ CC0 Spaceship Sprites",
+      "url": "https://opengameart.org/content/200-cc0-spaceship-sprites",
+      "license": "CC0 / public domain",
+      "full_archive": "online/phase8_sources/wisedawn_200_starships"
+    },
+    {
+      "name": "Kenney Space Kit",
+      "url": "https://kenney.nl/assets/space-kit",
+      "license": "CC0",
+      "full_archive": "online/phase8_sources/kenney_space_kit_3d"
+    }
+  ],
+  "curated_runtime_assets": {
+    "ships_2d": "images/phase8_ship_A-L.png",
+    "wisedawn_ships_2d": "images/phase8_wisedawn_*.png",
+    "backgrounds": "images/phase8_bg_*.png",
+    "textures": "images/phase8_texture_*.png",
+    "models_3d": "models/phase8/*.glb",
+    "sound_variants": "sounds/phase8_*.ogg"
+  },
+  "integration_note": "The current C++ renderer remains unchanged. PNG and OGG files are loadable by exact filename; GLB files are stored for a future 3D renderer or export workflow."
+}

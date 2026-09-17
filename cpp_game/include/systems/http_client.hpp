@@ -110,8 +110,8 @@ public:
             return resp;
         }
 
-        // Fast timeouts (3.0s connect/send/receive) to avoid long stalls
-        WinHttpSetTimeouts(hRequest, 3000, 3000, 3000, 3000);
+        // Resilient timeouts (10s resolve/connect, 15s receive) for cloud database operations
+        WinHttpSetTimeouts(hRequest, 10000, 10000, 10000, 15000);
 
         std::wstring headers = L"Content-Type: application/json\r\nAccept: application/json\r\n";
         if (!auth_bearer.empty()) {

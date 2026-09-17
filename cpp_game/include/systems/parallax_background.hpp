@@ -57,16 +57,16 @@ public:
         if (m_active_realm_id == realm.id) return;
         m_active_realm_id = realm.id;
 
-        // Map realm to image
+        // Map realm to image and deep cosmic nebula
         switch (realm.id) {
-            case 1: m_texture_key = "realm_swarga.png"; break;
-            case 2: m_texture_key = "realm_kshira_sagara.png"; break;
-            case 3: m_texture_key = "realm_dandaka_void.png"; break;
-            case 4: m_texture_key = "realm_lanka_approach.png"; break;
-            case 5: m_texture_key = "realm_setu_expanse.png"; break;
-            case 6: m_texture_key = "realm_naraka_forge.png"; break;
-            case 7: m_texture_key = "realm_mahayuddha_citadel.png"; break;
-            default: m_texture_key = "realm_swarga.png"; break;
+            case 1: m_texture_key = "realm_swarga.png"; m_nebula_key = "phase8_bg_blue_nebula_01.png"; break;
+            case 2: m_texture_key = "realm_kshira_sagara.png"; m_nebula_key = "phase8_bg_blue_nebula_01.png"; break;
+            case 3: m_texture_key = "realm_dandaka_void.png"; m_nebula_key = "phase8_bg_purple_nebula_01.png"; break;
+            case 4: m_texture_key = "realm_lanka_approach.png"; m_nebula_key = "phase8_bg_purple_nebula_01.png"; break;
+            case 5: m_texture_key = "realm_setu_expanse.png"; m_nebula_key = "phase8_bg_green_nebula_01.png"; break;
+            case 6: m_texture_key = "realm_naraka_forge.png"; m_nebula_key = "phase8_bg_purple_nebula_01.png"; break;
+            case 7: m_texture_key = "realm_mahayuddha_citadel.png"; m_nebula_key = "phase8_bg_starfield_01.png"; break;
+            default: m_texture_key = "realm_swarga.png"; m_nebula_key = "phase8_bg_blue_nebula_01.png"; break;
         }
         m_realm_color = realm.accent_color;
     }
@@ -103,6 +103,16 @@ public:
     }
 
     void draw() const {
+        // Layer 0: Deep Cosmic Nebula Backdrop (VFX from phase 8/9 pack)
+        Texture2D neb = AssetManager::instance().get_texture(m_nebula_key);
+        if (neb.id > 0) {
+            Rectangle n_src = { 0, 0, static_cast<float>(neb.width), static_cast<float>(neb.height) };
+            Rectangle n_dest = { 0, 0, static_cast<float>(SCREEN_WIDTH), static_cast<float>(SCREEN_HEIGHT) };
+            DrawTexturePro(neb, n_src, n_dest, { 0, 0 }, 0.0f, ColorAlpha(WHITE, 0.40f));
+        } else {
+            ClearBackground(COLOR_OBSIDIAN);
+        }
+
         // Layer 1: Realm Background Texture (Rendered with vertical wrap)
         Texture2D tex = AssetManager::instance().get_texture(m_texture_key);
         if (tex.id > 0) {
@@ -113,10 +123,8 @@ public:
             Rectangle dest1 = { 0, y1, static_cast<float>(SCREEN_WIDTH), static_cast<float>(SCREEN_HEIGHT) };
             Rectangle dest2 = { 0, y2, static_cast<float>(SCREEN_WIDTH), static_cast<float>(SCREEN_HEIGHT) };
 
-            DrawTexturePro(tex, src, dest1, { 0, 0 }, 0.0f, WHITE);
-            DrawTexturePro(tex, src, dest2, { 0, 0 }, 0.0f, WHITE);
-        } else {
-            ClearBackground(COLOR_OBSIDIAN);
+            DrawTexturePro(tex, src, dest1, { 0, 0 }, 0.0f, ColorAlpha(WHITE, 0.85f));
+            DrawTexturePro(tex, src, dest2, { 0, 0 }, 0.0f, ColorAlpha(WHITE, 0.85f));
         }
 
         // Layer 2: Far Stars
@@ -157,6 +165,7 @@ private:
     std::vector<Debris> m_debris;
 
     std::string m_texture_key = "realm_swarga.png";
+    std::string m_nebula_key = "phase8_bg_blue_nebula_01.png";
     Color m_realm_color = COLOR_GOLD_BRIGHT;
     int m_active_realm_id = -1;
     float m_bg_offset_y = 0.0f;

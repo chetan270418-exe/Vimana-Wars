@@ -83,6 +83,13 @@ public:
     void play_transcendence() { play_sfx("victory.wav", 0.9f); }
     void play_boss_roar() { play_boss("boss_roar.wav", 1.0f); }
 
+    // ── MODERN PHASE 8/9 SCI-FI SFX ─────────────────────────────────────────
+    void play_heavy_laser() { play_sfx("phase8_laserLarge_000.ogg", 0.9f); }
+    void play_crunch_explosion() { play_sfx("phase8_explosionCrunch_001.ogg", 0.95f); }
+    void play_metal_impact() { play_sfx("phase8_impactMetal_001.ogg", 0.85f); }
+    void play_engine_boost() { play_sfx("phase8_engineCircular_001.ogg", 0.75f); }
+    void play_telemetry_chime() { play_ui("phase8_computerNoise_001.ogg", 0.7f); }
+
     // ── VOLUME SETTERS & GETTERS ────────────────────────────────────────────
     void set_master_volume(float vol) {
         m_master_volume = std::clamp(vol, 0.0f, 1.0f);

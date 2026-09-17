@@ -26,7 +26,7 @@ logger = logging.getLogger("VimanaWarsBackend")
 
 app = Flask(__name__)
 from flask_socketio import SocketIO, join_room, leave_room, emit
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
 try:
     from python_game.backend.firebase_service import (
@@ -50,10 +50,8 @@ if not DB_PATH.exists() and (Path(__file__).resolve().parent.parent / "leaderboa
     DB_PATH = Path(__file__).resolve().parent.parent / "leaderboard.db"
 elif not DB_PATH.exists() and (Path(__file__).resolve().parent.parent.parent / "leaderboard.db").exists():
     DB_PATH = Path(__file__).resolve().parent.parent.parent / "leaderboard.db"
-DATABASE_URL = os.environ.get(
-    "DATABASE_URL",
-    "postgresql://postgres.wlergqltjdyzpqiucovr:CHetanamit37@aws-0-ap-southeast-2.pooler.supabase.com:6543/postgres"
-).strip()
+DEFAULT_POSTGRES_URL = "postgresql://postgres.wlergqltjdyzpqiucovr:CHetanamit37@aws-0-ap-southeast-2.pooler.supabase.com:6543/postgres"
+DATABASE_URL = os.environ.get("DATABASE_URL", DEFAULT_POSTGRES_URL).strip() or DEFAULT_POSTGRES_URL
 SESSION_TTL_SECONDS = 30 * 24 * 60 * 60
 ACTION_TOKEN_TTL_SECONDS = 30 * 60
 REQUIRE_EMAIL_VERIFICATION = os.environ.get("REQUIRE_EMAIL_VERIFICATION", "0").lower() in ("1", "true", "yes")
@@ -94,29 +92,25 @@ _PROFILE_KEYS = {
 
 
 def get_db():
-    if DATABASE_URL:
-        try:
-            import psycopg
-            from psycopg.rows import dict_row
-        except ImportError as exc:
-            raise RuntimeError("DATABASE_URL is set but psycopg is not installed") from exc
+    try:
+        import psycopg
+        from psycopg.rows import dict_row
+    except ImportError as exc:
+        raise RuntimeError("psycopg is required for PostgreSQL operation") from exc
 
-        target_url = DATABASE_URL
-        try:
+    target_url = DATABASE_URL or DEFAULT_POSTGRES_URL
+    try:
+        connection = psycopg.connect(target_url, row_factory=dict_row)
+    except psycopg.OperationalError:
+        if "db.wlergqltjdyzpqiucovr.supabase.co" in target_url:
+            target_url = target_url.replace(
+                "postgres:CHetanamit37@db.wlergqltjdyzpqiucovr.supabase.co:5432",
+                "postgres.wlergqltjdyzpqiucovr:CHetanamit37@aws-0-ap-southeast-2.pooler.supabase.com:6543"
+            )
             connection = psycopg.connect(target_url, row_factory=dict_row)
-        except psycopg.OperationalError:
-            if "db.wlergqltjdyzpqiucovr.supabase.co" in target_url:
-                target_url = target_url.replace(
-                    "postgres:CHetanamit37@db.wlergqltjdyzpqiucovr.supabase.co:5432",
-                    "postgres.wlergqltjdyzpqiucovr:CHetanamit37@aws-0-ap-southeast-2.pooler.supabase.com:6543"
-                )
-                connection = psycopg.connect(target_url, row_factory=dict_row)
-            else:
-                raise
-        return _PostgresConnection(connection)
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+        else:
+            raise
+    return _PostgresConnection(connection)
 
 
 class _PostgresConnection:
