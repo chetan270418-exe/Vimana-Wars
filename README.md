@@ -1,6 +1,32 @@
-# 🛸 Vimana Wars
+# 🛸 Vimana Wars // Dual-Engine Celestial Combat
 
-> **Vimana Wars** is an arcade-style, mythological space shooter built with [Python Arcade](https://arcade.academy/). Pilot celestial Vimanas against demonic Asura armadas, summon Divine Astras, earn blessings from the Devas, and vanquish the Ten-Headed Demon King Ravana!
+> **Vimana Wars** is an arcade mythological space shooter set in the Vedic cosmos. Available in two full implementations:
+> 1. ⚡ **C++ Engine (`cpp_game/`)**: High-performance native C++20 / Raylib 6.0 desktop build running at 60 FPS with custom DSA, 12 ships, 30 waves, 4-player co-op squad room, and SQLite3 persistence.
+> 2. 🐍 **Python Edition (`python_game/`)**: Original Python Arcade edition, featuring the full modular game, backend REST/Socket.IO services, and **`vimana_wars_python_all_in_one.py`** (all 77 source modules in one single file).
+
+---
+
+## 📂 Repository Structure
+```
+Vimana-Wars/
+├── cpp_game/                       # ⚡ Native C++20 Desktop Game (Raylib 6.0 + SQLite3)
+│   ├── bin/VimanaWars.exe          # Compiled 64-bit Windows Binary
+│   ├── include/                    # Core headers, entities, views, and DSA
+│   ├── src/main.cpp                # Master game loop & FSM
+│   └── build.bat                   # 1-click C++ compilation script
+├── python_game/                    # 🐍 Python Arcade Edition
+│   ├── game/                       # Modular Python packages (entities, systems, UI, views)
+│   ├── backend/                    # Flask REST API & Socket.IO server
+│   ├── tests/                      # Automated unit tests
+│   ├── main.py                     # Entry point (python main.py)
+│   ├── vimana_wars_python_all_in_one.py # Complete 77-file consolidated Python archive
+│   └── start_python_game.bat       # 1-click Python batch launcher
+├── assets/                         # Shared images, audio, and font assets
+├── vimana_wars_python_all_in_one.py # Root copy of consolidated Python archive
+├── start.bat                       # Interactive launcher (C++ or Python)
+├── start_cpp_game.bat              # Direct C++ launcher
+└── start_python_game.bat           # Direct Python launcher
+```
 
 ---
 
