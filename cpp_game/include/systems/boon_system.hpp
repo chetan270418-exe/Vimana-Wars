@@ -27,12 +27,18 @@ inline const std::vector<BoonInfo> ALL_BOONS = {
     { BoonType::SURYA_RADIANT_PIERCE, "Surya's Radiant Pierce", "Deity: Surya", "Every 7th shot unleashes a golden piercing solar slug.", COLOR_ORANGE_BRIGHT }
 };
 
+inline const std::vector<BoonSynergy> ALL_SYNERGIES = {
+    { "solar_inferno", "Solar Inferno", "Agni + Surya", "Slain foes detonate in radiant solar flames piercing nearby armadas.", BoonType::AGNI_SOLAR_FURY, BoonType::SURYA_RADIANT_PIERCE, COLOR_ORANGE_BRIGHT },
+    { "tempest_drive", "Tempest Drive", "Vayu + Garuda", "Vayu Dash leaves a crushing vacuum vortex pulling and shredding enemies.", BoonType::VAYU_GALE_TEMPEST, BoonType::GARUDA_CELESTIAL_MAGNET, COLOR_GREEN_BRIGHT },
+    { "reaper_chakram", "Reaper Chakram", "Yama + Sudarshana", "Spinning blade instantly decapitates any Asura below 35% HP.", BoonType::YAMA_FATAL_DECREE, BoonType::SUDARSHANA_KEEN_EDGE, COLOR_PURPLE_BRIGHT },
+    { "oceanic_burn", "Oceanic Firestorm", "Varuna + Agni", "Passive hull regeneration speed doubled and emits fiery shockwaves.", BoonType::VARUNA_OCEANIC_WARD, BoonType::AGNI_SOLAR_FURY, { 80, 240, 220, 255 } }
+};
+
 class BoonSystem {
 public:
     static std::vector<BoonInfo> generate_draft(const std::vector<BoonType>& current_boons) {
         std::vector<BoonInfo> available;
         for (const auto& b : ALL_BOONS) {
-            // Can offer upgrades or new boons
             available.push_back(b);
         }
 
@@ -45,6 +51,30 @@ public:
             draft.push_back(available[i]);
         }
         return draft;
+    }
+
+    static bool check_synergy_unlocked(const std::vector<BoonType>& boons, BoonType newly_added, BoonSynergy& out_synergy) {
+        for (const auto& syn : ALL_SYNERGIES) {
+            if (syn.req1 == newly_added || syn.req2 == newly_added) {
+                BoonType other = (syn.req1 == newly_added) ? syn.req2 : syn.req1;
+                if (std::find(boons.begin(), boons.end(), other) != boons.end()) {
+                    out_synergy = syn;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    static bool has_synergy(const std::vector<BoonType>& boons, const std::string& syn_id) {
+        for (const auto& syn : ALL_SYNERGIES) {
+            if (syn.id == syn_id) {
+                bool has1 = (std::find(boons.begin(), boons.end(), syn.req1) != boons.end());
+                bool has2 = (std::find(boons.begin(), boons.end(), syn.req2) != boons.end());
+                return (has1 && has2);
+            }
+        }
+        return false;
     }
 };
 

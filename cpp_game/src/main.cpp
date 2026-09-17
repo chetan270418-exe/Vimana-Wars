@@ -8,9 +8,13 @@
 #include "systems/sound_system.hpp"
 #include "systems/db_system.hpp"
 #include "views/menu_view.hpp"
+#include "views/campaign_map_view.hpp"
+#include "views/loadout_view.hpp"
 #include "views/ship_select_view.hpp"
 #include "views/difficulty_view.hpp"
 #include "views/game_view.hpp"
+#include "views/wave_clear_view.hpp"
+#include "views/codex_view.hpp"
 #include "views/duel_view.hpp"
 #include "views/boon_select_view.hpp"
 #include "views/leaderboard_view.hpp"
@@ -37,9 +41,13 @@ int main() {
 
     // 4. Instantiate Views
     auto menu_view = std::make_unique<MenuView>();
+    auto campaign_map_view = std::make_unique<CampaignMapView>();
+    auto loadout_view = std::make_unique<LoadoutView>();
     auto ship_select_view = std::make_unique<ShipSelectView>();
     auto difficulty_view = std::make_unique<DifficultyView>();
     auto game_view = std::make_unique<GameView>();
+    auto wave_clear_view = std::make_unique<WaveClearView>();
+    auto codex_view = std::make_unique<CodexView>();
     auto duel_view = std::make_unique<DuelView>();
     auto boon_view = std::make_unique<BoonSelectView>();
     auto leaderboard_view = std::make_unique<LeaderboardView>();
@@ -50,9 +58,9 @@ int main() {
     ViewType current_view_type = ViewType::MENU;
     IView* current_view = menu_view.get();
 
-    std::cout << "[VimanaWars] C++ Engine Running at 60 FPS." << std::endl;
+    std::cout << "[VimanaWars] C++ Master Engine Initialized. Running at 60 FPS." << std::endl;
 
-    // 5. Main Game Loop
+    // 5. Master Game Loop
     while (!WindowShouldClose()) {
         float dt = GetFrameTime();
         if (dt > 0.1f) dt = 0.1f; // Cap delta time against hitches
@@ -65,7 +73,7 @@ int main() {
         float offset_x = (GetScreenWidth() - (SCREEN_WIDTH * scale)) * 0.5f;
         float offset_y = (GetScreenHeight() - (SCREEN_HEIGHT * scale)) * 0.5f;
 
-        // Virtual mouse position inside 900x600 canvas
+        // Virtual mouse position inside 900x600 logical canvas
         Vector2 mouse = GetMousePosition();
         Vector2 virtual_mouse = {
             (mouse.x - offset_x) / scale,
@@ -83,25 +91,48 @@ int main() {
                 if (next == ViewType::MENU) {
                     menu_view->init();
                     current_view = menu_view.get();
+                } else if (next == ViewType::CAMPAIGN_MAP) {
+                    campaign_map_view->init();
+                    current_view = campaign_map_view.get();
+                } else if (next == ViewType::LOADOUT) {
+                    if (current_view_type == ViewType::CAMPAIGN_MAP) {
+                        loadout_view->set_mission_target(campaign_map_view->starting_wave(), &ship_select_view->selected_ship(), ship_select_view->consumables());
+                    } else if (current_view_type == ViewType::SHIP_SELECT) {
+                        loadout_view->set_mission_target(loadout_view->starting_wave(), &ship_select_view->selected_ship(), ship_select_view->consumables());
+                    }
+                    loadout_view->init();
+                    current_view = loadout_view.get();
                 } else if (next == ViewType::SHIP_SELECT) {
+                    ship_select_view->set_return_view(current_view_type == ViewType::LOADOUT ? ViewType::LOADOUT : ViewType::MENU);
                     ship_select_view->init();
                     current_view = ship_select_view.get();
+                } else if (next == ViewType::CODEX) {
+                    codex_view->init();
+                    current_view = codex_view.get();
                 } else if (next == ViewType::DIFFICULTY_SELECT) {
                     difficulty_view->init();
                     current_view = difficulty_view.get();
                 } else if (next == ViewType::GAMEPLAY) {
-                    if (current_view_type == ViewType::SHIP_SELECT) {
-                        game_view->start_with_ship(&ship_select_view->selected_ship(), ship_select_view->consumables());
+                    if (current_view_type == ViewType::LOADOUT) {
+                        game_view->start_with_ship(&loadout_view->selected_ship(), loadout_view->inventory(), loadout_view->starting_wave());
+                    } else if (current_view_type == ViewType::SHIP_SELECT) {
+                        game_view->start_with_ship(&ship_select_view->selected_ship(), ship_select_view->consumables(), 1);
                     } else if (current_view_type == ViewType::BOON_SELECT) {
                         game_view->apply_boon_and_resume(boon_view->chosen_boon());
                     }
                     current_view = game_view.get();
+                } else if (next == ViewType::WAVE_CLEAR) {
+                    bool is_final = (game_view->current_wave() >= 30);
+                    wave_clear_view->set_results(game_view->latest_wave_result(), is_final);
+                    wave_clear_view->init();
+                    current_view = wave_clear_view.get();
+                } else if (next == ViewType::BOON_SELECT) {
+                    boon_view->set_player_boons(game_view->player().boons);
+                    boon_view->init();
+                    current_view = boon_view.get();
                 } else if (next == ViewType::DUEL) {
                     duel_view->init();
                     current_view = duel_view.get();
-                } else if (next == ViewType::BOON_SELECT) {
-                    boon_view->init();
-                    current_view = boon_view.get();
                 } else if (next == ViewType::LEADERBOARD) {
                     leaderboard_view->init();
                     current_view = leaderboard_view.get();
@@ -122,14 +153,14 @@ int main() {
             }
         }
 
-        // Render to virtual canvas
+        // Render to 900x600 virtual canvas
         BeginTextureMode(target);
         if (current_view) {
             current_view->draw();
         }
         EndTextureMode();
 
-        // Render virtual canvas scaled to physical window
+        // Render virtual canvas scaled to physical display with letterboxing
         BeginDrawing();
         ClearBackground(BLACK);
         Rectangle src_rec = { 0.0f, 0.0f, static_cast<float>(target.texture.width), -static_cast<float>(target.texture.height) };

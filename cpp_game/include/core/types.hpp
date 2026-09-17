@@ -29,16 +29,69 @@ inline float Vector2AngleDeg(Vector2 from, Vector2 to) {
 // ── Enums ───────────────────────────────────────────────────────────────────
 enum class ViewType {
     MENU,
+    CAMPAIGN_MAP,
     SHIP_SELECT,
+    LOADOUT,
     DIFFICULTY_SELECT,
     GAMEPLAY,
+    WAVE_CLEAR,
     DUEL,
     BOON_SELECT,
     LEADERBOARD,
     MULTIPLAYER_LOBBY,
+    CODEX,
     SETTINGS,
     VICTORY,
     GAME_OVER
+};
+
+enum class PerformanceRank {
+    S_RANK,
+    A_RANK,
+    B_RANK,
+    C_RANK
+};
+
+struct WaveResult {
+    int wave_num = 1;
+    int enemies_destroyed = 0;
+    int damage_taken = 0;
+    int max_combo = 1;
+    int accuracy_pct = 88;
+    int score_earned = 0;
+    int prana_earned = 50;
+    bool no_damage = false;
+    bool perfect_wave = false;
+    PerformanceRank rank = PerformanceRank::A_RANK;
+};
+
+enum class BoonType {
+    AGNI_SOLAR_FURY,        // Burning dot & explosive death
+    INDRA_VAJRA_THUNDER,    // Chain lightning on hit
+    VAYU_GALE_TEMPEST,      // Dash cdr & cyclone wakes
+    GARUDA_CELESTIAL_MAGNET,// Magnetic pickup radius
+    VARUNA_OCEANIC_WARD,    // Max HP + passive regeneration
+    SUDARSHANA_KEEN_EDGE,   // Larger Chakram + reduced cooldown
+    YAMA_FATAL_DECREE,      // Execute bonus on weakened targets
+    SURYA_RADIANT_PIERCE,   // 7th shot piercing golden slug
+    NARASIMHA_BERSERK_MIGHT // Low HP massive damage amplification
+};
+
+struct BoonSynergy {
+    std::string id;
+    std::string name;
+    std::string formula;
+    std::string description;
+    BoonType req1;
+    BoonType req2;
+    Color color;
+};
+
+struct ShipMastery {
+    int kills = 0;
+    int waves_cleared = 0;
+    int bosses_defeated = 0;
+    int mastery_level = 1;
 };
 
 enum class GameMode {
@@ -81,18 +134,6 @@ enum class PowerupType {
     AMRITA_HEAL,        // Instant HP recovery
     BRAHMASTRA_BOMB,    // Celestial nuke item
     ASTRA_OVERDRIVE     // Hyper rapid fire
-};
-
-enum class BoonType {
-    AGNI_SOLAR_FURY,        // Burning dot & explosive death
-    INDRA_VAJRA_THUNDER,    // Chain lightning on hit
-    VAYU_GALE_TEMPEST,      // Dash cdr & cyclone wakes
-    GARUDA_CELESTIAL_MAGNET,// Magnetic pickup radius
-    VARUNA_OCEANIC_WARD,    // Max HP + passive regeneration
-    SUDARSHANA_KEEN_EDGE,   // Larger Chakram + reduced cooldown
-    YAMA_FATAL_DECREE,      // Execute bonus on weakened targets
-    SURYA_RADIANT_PIERCE,   // 7th shot piercing golden slug
-    NARASIMHA_BERSERK_MIGHT // Low HP massive damage amplification
 };
 
 // ── Player Consumables & Currency ───────────────────────────────────────────

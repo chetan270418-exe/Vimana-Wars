@@ -18,8 +18,13 @@ constexpr float PLAYER_BOOSTED_SPEED = 480.0f;
 constexpr float PLAYER_SHOOT_COOLDOWN = 0.15f;
 constexpr int PLAYER_DEFAULT_MAX_HP = 100;
 constexpr float PLAYER_DEFAULT_RADIUS = 20.0f;
+constexpr float PLAYER_GRAZE_RADIUS = 36.0f;
 constexpr float PLAYER_INVINCIBILITY_TIME = 0.6f;
 constexpr int PLAYER_CONTACT_DAMAGE = 15;
+
+constexpr int SCORE_NEAR_MISS = 25;
+constexpr int BONUS_NO_DEATH = 100;
+constexpr int BONUS_PERFECT_WAVE = 75;
 
 constexpr float DASH_SPEED_BURST = 750.0f;
 constexpr float DASH_DURATION = 0.22f;
@@ -42,6 +47,7 @@ constexpr float CHAKRAM_COOLDOWN = 6.0f;
 // ── Vedic Cyberpunk Color Palette ───────────────────────────────────────────
 inline const Color COLOR_OBSIDIAN     = { 5, 8, 16, 255 };
 inline const Color COLOR_SURFACE_LOW  = { 12, 18, 30, 240 };
+inline const Color COLOR_SURFACE_MID  = { 16, 24, 38, 245 };
 inline const Color COLOR_SURFACE_HIGH = { 20, 28, 48, 255 };
 inline const Color COLOR_GOLD         = { 220, 180, 50, 255 };
 inline const Color COLOR_GOLD_BRIGHT  = { 255, 225, 90, 255 };

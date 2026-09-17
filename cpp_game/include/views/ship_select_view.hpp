@@ -48,7 +48,7 @@ public:
         }
 
         if (m_btn_back.update(mouse_pos) || IsKeyPressed(KEY_ESCAPE)) {
-            m_next_view = ViewType::MENU;
+            m_next_view = m_return_view;
         }
 
         if (!is_unlocked) {
@@ -59,7 +59,7 @@ public:
             }
         } else {
             if (m_btn_launch.update(mouse_pos) || IsKeyPressed(KEY_ENTER)) {
-                m_next_view = ViewType::GAMEPLAY;
+                m_next_view = (m_return_view == ViewType::LOADOUT) ? ViewType::LOADOUT : ViewType::GAMEPLAY;
             }
         }
 
@@ -160,12 +160,14 @@ public:
 
     ViewType next_view() const override { return m_next_view; }
     void reset_next_view() override { m_next_view = ViewType::SHIP_SELECT; }
+    void set_return_view(ViewType v) { m_return_view = v; }
     const ShipArchetype& selected_ship() const { return SHIP_FLEET[m_selected_idx]; }
     const ConsumableInventory& consumables() const { return m_temp_inv; }
 
 private:
     size_t m_selected_idx;
     ViewType m_next_view;
+    ViewType m_return_view = ViewType::MENU;
     UI::Button m_btn_prev;
     UI::Button m_btn_next;
     UI::Button m_btn_launch;

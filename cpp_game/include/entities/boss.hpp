@@ -37,6 +37,10 @@ struct Boss {
     bool is_invincible = false;
     float invincibility_timer = 0.0f;
     std::string attack_name = "SEISMIC SHOCKWAVE";
+    bool is_telegraphing = false;
+    float telegraph_timer = 0.0f;
+    Vector2 telegraph_target = { 0, 0 };
+    std::string telegraph_warning = "";
     std::string sprite_key = "boss_kumbhakarna.png";
     Color theme_color = COLOR_ORANGE_BRIGHT;
 
@@ -153,6 +157,15 @@ struct Boss {
         // Attack patterns
         attack_timer -= dt;
         special_timer -= dt;
+
+        if (special_timer <= 1.2f && special_timer > 0.0f) {
+            is_telegraphing = true;
+            telegraph_timer = special_timer;
+            telegraph_target = player_pos;
+            telegraph_warning = attack_name;
+        } else {
+            is_telegraphing = false;
+        }
 
         if (attack_timer <= 0) {
             execute_basic_attack(out_bullets, player_pos);
@@ -285,6 +298,15 @@ struct Boss {
         if (is_invincible) {
             DrawCircleLines(static_cast<int>(pos.x), static_cast<int>(pos.y), radius * 1.35f, COLOR_GOLD_BRIGHT);
             DrawCircle(static_cast<int>(pos.x), static_cast<int>(pos.y), radius * 1.3f, ColorAlpha(COLOR_GOLD, 0.25f));
+        }
+
+        // Telegraph laser line to target
+        if (is_telegraphing) {
+            float pulse = 0.5f + 0.5f * std::sin(GetTime() * 16.0f);
+            Color beam_col = ColorAlpha(COLOR_RED_BRIGHT, 0.4f + 0.4f * pulse);
+            DrawLineEx(pos, telegraph_target, 2.5f, beam_col);
+            DrawCircleLines(static_cast<int>(telegraph_target.x), static_cast<int>(telegraph_target.y), 16.0f * (1.0f + 0.3f * pulse), COLOR_RED_BRIGHT);
+            DrawCircle(static_cast<int>(telegraph_target.x), static_cast<int>(telegraph_target.y), 5.0f, COLOR_RED_BRIGHT);
         }
 
         Color tint = (hit_flash > 0) ? WHITE : COLOR_PARCHMENT;

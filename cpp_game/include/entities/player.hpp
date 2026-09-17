@@ -58,6 +58,7 @@ struct Player {
     // Statistics for current run
     int score = 0;
     int combo = 1;
+    int max_combo = 1;
     float combo_timer = 0.0f;
     int kills = 0;
     int total_damage_dealt = 0;
@@ -362,8 +363,9 @@ struct Player {
     }
 
     void add_combo() {
-        combo = std::min(25, combo + 1);
+        combo = std::min(50, combo + 1);
         combo_timer = 2.8f;
+        if (combo > max_combo) max_combo = combo;
     }
 
     void draw(Texture2D tex) const {

@@ -12,6 +12,7 @@ struct Bullet {
     float radius = 5.0f;
     int damage = 25;
     bool is_enemy = false;
+    bool grazed = false;
     BulletType type = BulletType::PLAYER_BASIC;
     int pierce_remaining = 0;
     float lifetime = 0.0f;
