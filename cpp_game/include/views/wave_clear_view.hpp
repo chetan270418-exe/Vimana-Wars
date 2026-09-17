@@ -64,19 +64,20 @@ public:
 
     void draw() override {
         ClearBackground(COLOR_OBSIDIAN);
-        Font font = AssetManager::instance().font();
+        Font title_font = AssetManager::instance().title_font();
+        Font body_font = AssetManager::instance().body_font();
 
         // Banner Title
         std::string title = "WAVE " + std::to_string(m_result.wave_num) + " CLEARED // SECTOR CONQUERED";
-        Vector2 t_sz = MeasureTextEx(font, title.c_str(), 24, 1.0f);
-        DrawTextEx(font, title.c_str(), { (SCREEN_WIDTH - t_sz.x) / 2.0f, 40 }, 24, 1.0f, COLOR_GOLD_BRIGHT);
+        Vector2 t_sz = MeasureTextEx(title_font, title.c_str(), 22, 1.0f);
+        DrawTextEx(title_font, title.c_str(), { (SCREEN_WIDTH - t_sz.x) / 2.0f, 38 }, 22, 1.0f, COLOR_GOLD_BRIGHT);
 
-        const char* sub = "ASTRAL TELEMETRY BREAKDOWN • COMBAT COMMENDATIONS";
-        Vector2 s_sz = MeasureTextEx(font, sub, 12, 1.0f);
-        DrawTextEx(font, sub, { (SCREEN_WIDTH - s_sz.x) / 2.0f, 72 }, 12, 1.0f, COLOR_CYAN_BRIGHT);
+        const char* sub = "ASTRAL TELEMETRY BREAKDOWN - COMBAT COMMENDATIONS";
+        Vector2 s_sz = MeasureTextEx(body_font, sub, 11, 1.0f);
+        DrawTextEx(body_font, sub, { (SCREEN_WIDTH - s_sz.x) / 2.0f, 68 }, 11, 1.0f, COLOR_CYAN_BRIGHT);
 
         // Main Performance Card
-        Rectangle panel = { SCREEN_WIDTH / 2.0f - 300, 110, 600, 360 };
+        Rectangle panel = { SCREEN_WIDTH / 2.0f - 300, 105, 600, 365 };
         UI::DrawChamferedPanel(panel, COLOR_GOLD, COLOR_SURFACE_LOW, 8.0f);
 
         // Rank Badge on Right
@@ -104,14 +105,14 @@ public:
         }
 
         UI::DrawChamferedPanel(rank_box, rank_color, COLOR_SURFACE_MID, 6.0f);
-        DrawTextEx(font, "PERFORMANCE", { rank_box.x + 32, rank_box.y + 14 }, 12, 1.0f, COLOR_MUTED);
+        DrawTextEx(body_font, "PERFORMANCE", { rank_box.x + 38, rank_box.y + 14 }, 11, 1.0f, COLOR_MUTED);
 
         // Big Rank Letter
-        Vector2 letter_sz = MeasureTextEx(font, rank_letter, 72, 2.0f);
-        DrawTextEx(font, rank_letter, { rank_box.x + (rank_box.width - letter_sz.x) / 2.0f, rank_box.y + 35 }, 72, 2.0f, rank_color);
+        Vector2 letter_sz = MeasureTextEx(title_font, rank_letter, 64, 2.0f);
+        DrawTextEx(title_font, rank_letter, { rank_box.x + (rank_box.width - letter_sz.x) / 2.0f, rank_box.y + 38 }, 64, 2.0f, rank_color);
 
-        Vector2 rt_sz = MeasureTextEx(font, rank_title, 11, 1.0f);
-        DrawTextEx(font, rank_title, { rank_box.x + (rank_box.width - rt_sz.x) / 2.0f, rank_box.y + 130 }, 11, 1.0f, rank_color);
+        Vector2 rt_sz = MeasureTextEx(title_font, rank_title, 11, 1.0f);
+        DrawTextEx(title_font, rank_title, { rank_box.x + (rank_box.width - rt_sz.x) / 2.0f, rank_box.y + 130 }, 11, 1.0f, rank_color);
 
         // Metrics breakdown roll-up animation
         float roll = std::min(1.0f, m_timer / 0.5f);
@@ -119,8 +120,8 @@ public:
         float px = panel.x + 30;
 
         auto draw_row = [&](const char* label, const std::string& val, Color val_col) {
-            DrawText(label, static_cast<int>(px), static_cast<int>(py), 13, COLOR_PARCHMENT);
-            DrawText(val.c_str(), static_cast<int>(px + 230), static_cast<int>(py), 13, val_col);
+            DrawTextEx(body_font, label, { px, py }, 12, 1.0f, COLOR_PARCHMENT);
+            DrawTextEx(title_font, val.c_str(), { px + 225, py - 1 }, 13, 1.0f, val_col);
             py += 32;
         };
 
@@ -144,18 +145,18 @@ public:
 
         // Bottom Totals
         int display_score = static_cast<int>(m_result.score_earned * roll);
-        DrawText("SECTOR SCORE BOUNTY:", static_cast<int>(px), static_cast<int>(py), 15, COLOR_GOLD);
-        DrawText(("+" + std::to_string(display_score)).c_str(), static_cast<int>(px + 230), static_cast<int>(py), 16, COLOR_GOLD_BRIGHT);
+        DrawTextEx(body_font, "SECTOR SCORE BOUNTY:", { px, py }, 13, 1.0f, COLOR_GOLD);
+        DrawTextEx(title_font, ("+" + std::to_string(display_score)).c_str(), { px + 225, py - 1 }, 15, 1.0f, COLOR_GOLD_BRIGHT);
         py += 32;
 
         int display_prana = static_cast<int>(m_result.prana_earned * roll);
-        DrawText("PRANA SHARDS HARVESTED:", static_cast<int>(px), static_cast<int>(py), 15, COLOR_CYAN_BRIGHT);
-        DrawText(("+" + std::to_string(display_prana) + " SHARDS").c_str(), static_cast<int>(px + 230), static_cast<int>(py), 16, COLOR_CYAN_BRIGHT);
+        DrawTextEx(body_font, "PRANA SHARDS HARVESTED:", { px, py }, 13, 1.0f, COLOR_CYAN_BRIGHT);
+        DrawTextEx(title_font, ("+" + std::to_string(display_prana) + " SHARDS").c_str(), { px + 225, py - 1 }, 15, 1.0f, COLOR_CYAN_BRIGHT);
 
         // Action button
-        m_btn_continue.draw(font);
+        m_btn_continue.draw(title_font);
 
-        UI::DrawScanlines();
+        if (g_scanlines_enabled) UI::DrawScanlines();
     }
 
     ViewType next_view() const override { return m_next_view; }

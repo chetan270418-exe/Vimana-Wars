@@ -164,6 +164,7 @@ public:
     Boss& get_boss() { return m_current_boss; }
     const Boss& get_boss() const { return m_current_boss; }
     float banner_timer() const { return m_banner_timer; }
+    const CampaignRealm& get_realm_data() const { return GetCampaignRealmForWave(m_current_wave); }
 
     std::string get_story_transmission() const {
         if (m_current_wave == 11) {

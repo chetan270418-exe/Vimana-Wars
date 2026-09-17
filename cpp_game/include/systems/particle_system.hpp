@@ -64,6 +64,103 @@ struct FloatingText {
     }
 };
 
+struct DashGhost {
+    bool active = false;
+    Vector2 pos = { 0, 0 };
+    std::string sprite_key = "";
+    float rotation = 0.0f;
+    Color color = COLOR_CYAN_BRIGHT;
+    float lifetime = 0.0f;
+    float max_lifetime = 0.22f;
+
+    void update(float dt) {
+        if (!active) return;
+        lifetime += dt;
+        if (lifetime >= max_lifetime) active = false;
+    }
+
+    void draw() const {
+        if (!active) return;
+        float progress = lifetime / max_lifetime;
+        Color c = color;
+        c.a = static_cast<unsigned char>((1.0f - progress) * 160);
+
+        Texture2D tex = AssetManager::instance().get_texture(sprite_key);
+        if (tex.id > 0) {
+            Rectangle src = { 0, 0, static_cast<float>(tex.width), static_cast<float>(tex.height) };
+            Rectangle dest = { pos.x, pos.y, 48.0f, 48.0f };
+            Vector2 origin = { 24.0f, 24.0f };
+            DrawTexturePro(tex, src, dest, origin, rotation, c);
+        }
+    }
+};
+
+struct ShieldRipple {
+    bool active = false;
+    Vector2 pos = { 0, 0 };
+    float current_r = 10.0f;
+    float max_r = 50.0f;
+    Color color = COLOR_CYAN_BRIGHT;
+    float lifetime = 0.0f;
+    float max_lifetime = 0.35f;
+
+    void update(float dt) {
+        if (!active) return;
+        lifetime += dt;
+        current_r = 10.0f + (max_r - 10.0f) * (lifetime / max_lifetime);
+        if (lifetime >= max_lifetime) active = false;
+    }
+
+    void draw() const {
+        if (!active) return;
+        float progress = lifetime / max_lifetime;
+        Color c = color;
+        c.a = static_cast<unsigned char>((1.0f - progress) * 200);
+        DrawCircleLines(static_cast<int>(pos.x), static_cast<int>(pos.y), current_r, c);
+        c.a = static_cast<unsigned char>((1.0f - progress) * 80);
+        DrawCircleLines(static_cast<int>(pos.x), static_cast<int>(pos.y), current_r * 0.8f, c);
+    }
+};
+
+struct CoopAstraVFX {
+    bool active = false;
+    Vector2 p1 = { 0, 0 };
+    Vector2 p2 = { 0, 0 };
+    Color col1 = COLOR_GOLD_BRIGHT;
+    Color col2 = COLOR_CYAN_BRIGHT;
+    float timer = 0.0f;
+    float duration = 1.2f;
+
+    void update(float dt) {
+        if (!active) return;
+        timer += dt;
+        if (timer >= duration) active = false;
+    }
+
+    void draw() const {
+        if (!active) return;
+        float progress = timer / duration;
+        Vector2 center = { SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f };
+
+        // Dual energy conduit beams from ships to center
+        if (progress < 0.6f) {
+            float beam_a = (1.0f - (progress / 0.6f)) * 255.0f;
+            DrawLineEx(p1, center, 4.0f, ColorAlpha(col1, beam_a / 255.0f));
+            DrawLineEx(p2, center, 4.0f, ColorAlpha(col2, beam_a / 255.0f));
+        }
+
+        // Expanding Celestial Yantra Mandala Shockwave
+        float ring_r = progress * (SCREEN_WIDTH * 0.7f);
+        float ring_a = (1.0f - progress) * 240.0f;
+        Color mand_col = COLOR_GOLD_BRIGHT;
+        mand_col.a = static_cast<unsigned char>(ring_a);
+
+        DrawCircleLines(static_cast<int>(center.x), static_cast<int>(center.y), ring_r, mand_col);
+        mand_col.a = static_cast<unsigned char>(ring_a * 0.5f);
+        DrawCircleLines(static_cast<int>(center.x), static_cast<int>(center.y), ring_r * 0.75f, mand_col);
+    }
+};
+
 class ParticleSystem {
 public:
     ParticleSystem() = default;
@@ -96,6 +193,68 @@ public:
         p->size = 2.5f;
         p->lifetime = 0.0f;
         p->max_lifetime = 0.22f;
+    }
+
+    void emit_muzzle_flash(Vector2 pos, Vector2 direction, Color color) {
+        for (int i = 0; i < 6; ++i) {
+            Particle* p = m_particle_pool.acquire();
+            if (!p) break;
+            p->active = true;
+            p->pos = pos;
+            float angle = std::atan2(direction.y, direction.x) + ((std::rand() % 30) - 15) * (3.14159f / 180.0f);
+            float spd = 180.0f + (std::rand() % 100);
+            p->vel = { std::cos(angle) * spd, std::sin(angle) * spd };
+            p->color = color;
+            p->size = 3.0f;
+            p->lifetime = 0.0f;
+            p->max_lifetime = 0.12f;
+        }
+    }
+
+    void emit_dash_ghost(Vector2 pos, const std::string& sprite_key, float rot, Color color) {
+        for (auto& g : m_dash_ghosts) {
+            if (!g.active) {
+                g.active = true;
+                g.pos = pos;
+                g.sprite_key = sprite_key;
+                g.rotation = rot;
+                g.color = color;
+                g.lifetime = 0.0f;
+                g.max_lifetime = 0.20f;
+                break;
+            }
+        }
+    }
+
+    void emit_shield_ripple(Vector2 pos, float max_r, Color color) {
+        for (auto& r : m_shield_ripples) {
+            if (!r.active) {
+                r.active = true;
+                r.pos = pos;
+                r.current_r = 10.0f;
+                r.max_r = max_r;
+                r.color = color;
+                r.lifetime = 0.0f;
+                r.max_lifetime = 0.30f;
+                break;
+            }
+        }
+    }
+
+    void emit_crit_hit(Vector2 pos, int damage) {
+        emit_explosion(pos, COLOR_GOLD_BRIGHT, 18, 160.0f);
+        add_floating_text(pos, "CRIT! " + std::to_string(damage), COLOR_GOLD_BRIGHT);
+    }
+
+    void emit_coop_astra_sequence(Vector2 p1, Vector2 p2, Color col1, Color col2) {
+        m_coop_astra.active = true;
+        m_coop_astra.p1 = p1;
+        m_coop_astra.p2 = p2;
+        m_coop_astra.col1 = col1;
+        m_coop_astra.col2 = col2;
+        m_coop_astra.timer = 0.0f;
+        m_coop_astra.duration = 1.2f;
+        trigger_screen_shake(9.0f, 0.6f);
     }
 
     void add_floating_text(Vector2 pos, const std::string& text, Color color) {
@@ -139,6 +298,18 @@ public:
             }
         }
 
+        for (auto& g : m_dash_ghosts) {
+            if (g.active) g.update(dt);
+        }
+
+        for (auto& r : m_shield_ripples) {
+            if (r.active) r.update(dt);
+        }
+
+        if (m_coop_astra.active) {
+            m_coop_astra.update(dt);
+        }
+
         for (size_t i = 0; i < m_text_buffer.size(); ++i) {
             if (m_text_buffer[i].active) {
                 m_text_buffer[i].update(dt);
@@ -147,6 +318,22 @@ public:
     }
 
     void draw() const {
+        // Draw ghosts
+        for (const auto& g : m_dash_ghosts) {
+            if (g.active) g.draw();
+        }
+
+        // Draw shield ripples
+        for (const auto& r : m_shield_ripples) {
+            if (r.active) r.draw();
+        }
+
+        // Draw Coop Astra
+        if (m_coop_astra.active) {
+            m_coop_astra.draw();
+        }
+
+        // Draw particles
         const auto& pool = m_particle_pool.raw_storage();
         for (const auto& p : pool) {
             if (p.active) p.draw();
@@ -160,6 +347,9 @@ public:
 private:
     DSA::ObjectPool<Particle, 1024> m_particle_pool;
     DSA::RingBuffer<FloatingText, 64> m_text_buffer;
+    std::array<DashGhost, 16> m_dash_ghosts;
+    std::array<ShieldRipple, 16> m_shield_ripples;
+    CoopAstraVFX m_coop_astra;
     float m_shake_intensity = 0.0f;
     float m_shake_duration = 0.0f;
     float m_shake_timer = 0.0f;

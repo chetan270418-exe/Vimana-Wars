@@ -323,6 +323,7 @@ struct Player {
         is_dashing = true;
         dash_duration_timer = DASH_DURATION;
         invincibility_timer = DASH_DURATION + 0.1f;
+        SoundSystem::instance().play_dash();
     }
 
     void try_chakram(std::vector<Bullet>& out_bullets) {
@@ -343,6 +344,7 @@ struct Player {
         b.owner_player_id = player_id;
         b.is_player_owned = true;
         out_bullets.push_back(b);
+        SoundSystem::instance().play_sfx("online_laser_small.ogg", 0.7f);
     }
 
     void use_soma_vial() {
@@ -355,6 +357,7 @@ struct Player {
     void use_vajra_flare(std::vector<Bullet>& out_bullets) {
         if (inventory.vajra_flares > 0) {
             inventory.vajra_flares--;
+            SoundSystem::instance().play_sfx("online_explosion_crunch.ogg", 0.9f);
             shots_fired += 24;
             // Spawn 24 outward pulse blades
             for (int i = 0; i < 24; ++i) {
@@ -380,6 +383,7 @@ struct Player {
         if (has_kavach_shield) {
             has_kavach_shield = false;
             invincibility_timer = 0.5f;
+            SoundSystem::instance().play_sfx("online_impact_metal.ogg", 0.8f);
             return;
         }
 
@@ -390,11 +394,13 @@ struct Player {
             has_kavach_shield = true;
             kavach_timer = 3.0f;
             invincibility_timer = 1.0f;
+            SoundSystem::instance().play_sfx("synergy.wav", 1.0f);
             return;
         }
 
         hp -= amount;
         invincibility_timer = PLAYER_INVINCIBILITY_TIME;
+        SoundSystem::instance().play_hit();
         if (hp < 0) hp = 0;
     }
 

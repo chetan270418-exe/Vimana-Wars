@@ -26,6 +26,7 @@
 #include "systems/co_op_astra_system.hpp"
 #include "systems/ai_threat_table.hpp"
 #include "systems/network_manager.hpp"
+#include "systems/parallax_background.hpp"
 #include "ui/hud.hpp"
 #include "ui/button.hpp"
 #include "ui/vedic_theme.hpp"
@@ -76,16 +77,7 @@ public:
         m_milestone_timer = 0.0f;
         m_last_milestone = 0;
         CoOpAstraSystem::instance().reset();
-
-        // Ambient stars
-        m_stars.clear();
-        for (int i = 0; i < 120; ++i) {
-            m_stars.push_back({
-                static_cast<float>(std::rand() % SCREEN_WIDTH),
-                static_cast<float>(std::rand() % SCREEN_HEIGHT),
-                0.5f + (std::rand() % 20) / 10.0f
-            });
-        }
+        ParallaxBackground::instance().init();
 
         SoundSystem::instance().play_music("combat_loop.mp3");
     }
@@ -142,6 +134,7 @@ public:
         m_enemies.clear();
         m_powerups.clear();
         m_wave_mgr.start_campaign(starting_wave, diff, num_players);
+        ParallaxBackground::instance().set_realm(m_wave_mgr.get_realm_data());
 
         // Scale boss HP if starting on boss wave
         if (m_wave_mgr.is_boss_wave() && m_wave_mgr.get_boss().active) {
@@ -222,6 +215,21 @@ public:
         if (m_team_transcendence_timer > 0) m_team_transcendence_timer -= dt;
 
         Boss* boss_ptr = m_wave_mgr.is_boss_wave() ? &m_wave_mgr.get_boss() : nullptr;
+
+        // Update Parallax Background responding to flagship movement
+        ParallaxBackground::instance().update(dt, m_squad.empty() ? Vector2{ 0, 0 } : m_squad[0].vel);
+
+        // Dynamic Boss Music Escalation
+        if (boss_ptr && boss_ptr->active) {
+            SoundSystem::instance().set_boss_phase(boss_ptr->phase);
+        }
+
+        // Emit Dash Ghost silhouettes
+        for (const auto& p : m_squad) {
+            if (p.is_dashing) {
+                m_particles.emit_dash_ghost(p.pos, p.archetype ? p.archetype->sprite_file : "pushpaka.png", p.angle + 90.0f, p.archetype ? p.archetype->accent_color : COLOR_CYAN_BRIGHT);
+            }
+        }
 
         // -- 1. Brahmastra / Co-op Dual Astra (F Key) ----------------------------
         if (IsKeyPressed(KEY_F) && m_squad[0].brahmastra_bombs > 0) {
@@ -445,12 +453,9 @@ public:
 
     void draw() override {
         const auto& realm = GetRealmForWave(m_wave_mgr.current_wave());
-        ClearBackground(COLOR_OBSIDIAN);
 
-        // Parallax stars
-        for (const auto& s : m_stars) {
-            DrawCircle(static_cast<int>(s.x), static_cast<int>(s.y), s.z, realm.accent_color);
-        }
+        // 5-Layer Layered Parallax Background
+        ParallaxBackground::instance().draw();
 
         // Screen Shake offset (respects accessibility setting)
         Vector2 shake = g_screen_shake_enabled ? m_particles.get_shake_offset() : Vector2{ 0.0f, 0.0f };
@@ -486,64 +491,43 @@ public:
 
         EndMode2D();
 
-        Font font = AssetManager::instance().font();
+        Font title_f = AssetManager::instance().title_font();
+        Font body_f = AssetManager::instance().body_font();
 
-        // Cockpit HUD
+        // Cockpit HUD (Squadron status, boss bar, combo meter, instruments, radar)
         Boss* boss_ptr = m_wave_mgr.is_boss_wave() ? &m_wave_mgr.get_boss() : nullptr;
-        UI::HUD::draw(m_squad[0], m_wave_mgr.current_wave(), realm, boss_ptr, m_enemies, font);
-
-        // -- Co-op Squadron Wingman Status Widget (Top Right) --------------------
-        if (m_is_coop_mode && m_squad.size() > 1) {
-            float sx = SCREEN_WIDTH - 230.0f;
-            float sy = 70.0f;
-            for (size_t i = 1; i < m_squad.size(); ++i) {
-                const auto& mate = m_squad[i];
-                Rectangle mate_bar = { sx, sy, 210, 26 };
-                UI::DrawChamferedPanel(mate_bar, mate.is_downed ? COLOR_RED_BRIGHT : COLOR_SURFACE_HIGH, COLOR_SURFACE_LOW, 3.0f);
-
-                DrawText(mate.callsign.c_str(), static_cast<int>(sx + 6), static_cast<int>(sy + 4), 10, COLOR_PARCHMENT);
-                if (mate.is_downed) {
-                    DrawText("? DOWNED", static_cast<int>(sx + 130), static_cast<int>(sy + 4), 10, COLOR_RED_BRIGHT);
-                } else {
-                    float hp_pct = std::clamp((float)mate.hp / mate.max_hp, 0.0f, 1.0f);
-                    Rectangle hp_f = { sx + 100, sy + 6, 95 * hp_pct, 12 };
-                    DrawRectangleRec(hp_f, COLOR_GREEN_BRIGHT);
-                    DrawRectangleLinesEx({ sx + 100, sy + 6, 95, 12 }, 1.0f, COLOR_SURFACE_HIGH);
-                }
-                sy += 30.0f;
-            }
-        }
+        UI::HUD::draw(m_squad, m_wave_mgr.current_wave(), realm, boss_ptr, m_enemies, m_team_combo, m_team_transcendence_timer, title_f, body_f);
 
         // -- Boss Attack Telegraph Warning Banner -------------------------------
         if (boss_ptr && boss_ptr->active && boss_ptr->is_telegraphing) {
             float pulse = 0.5f + 0.5f * std::sin(GetTime() * 18.0f);
             Rectangle warn_bar = { SCREEN_WIDTH / 2.0f - 240, 110, 480, 36 };
             UI::DrawChamferedPanel(warn_bar, COLOR_RED_BRIGHT, ColorAlpha(COLOR_RED_BRIGHT, 0.25f + 0.3f * pulse), 4.0f);
-            std::string warn_msg = "? WARNING: TITAN CHARGING [" + boss_ptr->telegraph_warning + "] ?";
-            Vector2 w_sz = MeasureTextEx(font, warn_msg.c_str(), 13, 1.0f);
-            DrawTextEx(font, warn_msg.c_str(), { (SCREEN_WIDTH - w_sz.x) / 2.0f, warn_bar.y + 10 }, 13, 1.0f, WHITE);
+            std::string warn_msg = "[!] WARNING: TITAN CHARGING [" + boss_ptr->telegraph_warning + "] [!]";
+            Vector2 w_sz = MeasureTextEx(title_f, warn_msg.c_str(), 13, 1.0f);
+            DrawTextEx(title_f, warn_msg.c_str(), { (SCREEN_WIDTH - w_sz.x) / 2.0f, warn_bar.y + 10 }, 13, 1.0f, WHITE);
         }
 
         // -- Combo Milestone Banner ----------------------------------------------
         if (m_milestone_timer > 0) {
             float m_alpha = std::min(1.0f, m_milestone_timer / 0.4f);
-            Vector2 m_sz = MeasureTextEx(font, m_milestone_text.c_str(), 20, 1.0f);
+            Vector2 m_sz = MeasureTextEx(title_f, m_milestone_text.c_str(), 18, 1.0f);
             Rectangle m_box = { (SCREEN_WIDTH - m_sz.x) / 2.0f - 20, 155, m_sz.x + 40, 38 };
-            UI::DrawChamferedPanel(m_box, COLOR_GOLD_BRIGHT, ColorAlpha(COLOR_SURFACE_HIGH, 0.9f * m_alpha), 5.0f);
-            DrawTextEx(font, m_milestone_text.c_str(), { (SCREEN_WIDTH - m_sz.x) / 2.0f, m_box.y + 9 }, 20, 1.0f, ColorAlpha(COLOR_GOLD_BRIGHT, m_alpha));
+            UI::DrawYantraPanel(m_box, COLOR_GOLD_BRIGHT, ColorAlpha(COLOR_SURFACE_HIGH, 0.9f * m_alpha), 5.0f, true);
+            DrawTextEx(title_f, m_milestone_text.c_str(), { (SCREEN_WIDTH - m_sz.x) / 2.0f, m_box.y + 9 }, 18, 1.0f, ColorAlpha(COLOR_GOLD_BRIGHT, m_alpha));
         }
 
         // -- Team Transcendence Banner -------------------------------------------
         if (m_team_transcendence_timer > 0) {
             float t_pulse = 0.5f + 0.5f * std::sin(GetTime() * 12.0f);
-            DrawText("? TEAM TRANSCENDENCE ACTIVE: +20% DMG, +10% SPD ?", SCREEN_WIDTH / 2 - 200, 52, 12, ColorAlpha(COLOR_GOLD_BRIGHT, 0.7f + 0.3f * t_pulse));
+            DrawText("TEAM TRANSCENDENCE ACTIVE: +20% DMG, +10% SPD", SCREEN_WIDTH / 2 - 180, 52, 12, ColorAlpha(COLOR_GOLD_BRIGHT, 0.7f + 0.3f * t_pulse));
         }
 
         // -- Low-HP Vignette & Critical Warning ----------------------------------
         if (m_squad[0].hp <= 35 && !m_squad[0].is_downed) {
             float pulse = 0.5f + 0.5f * std::sin(GetTime() * 10.0f);
             DrawRectangleLinesEx({ 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT }, 10.0f, ColorAlpha(COLOR_RED_BRIGHT, 0.2f + 0.4f * pulse));
-            DrawText("? HULL INTEGRITY CRITICAL // USE SOMA [C] ?", SCREEN_WIDTH / 2 - 170, SCREEN_HEIGHT - 45, 12, ColorAlpha(COLOR_RED_BRIGHT, 0.8f + 0.2f * pulse));
+            DrawText("[!] HULL INTEGRITY CRITICAL // USE SOMA [C] [!]", SCREEN_WIDTH / 2 - 170, SCREEN_HEIGHT - 45, 12, ColorAlpha(COLOR_RED_BRIGHT, 0.8f + 0.2f * pulse));
         }
 
         // Story Transmission
@@ -561,17 +545,17 @@ public:
             Rectangle pause_box = { SCREEN_WIDTH / 2.0f - 220, 150, 440, 310 };
             UI::DrawChamferedPanel(pause_box, COLOR_GOLD, COLOR_SURFACE_HIGH, 8.0f);
 
-            DrawTextEx(font, "COMBAT SUSPENDED // PAUSE", { SCREEN_WIDTH / 2.0f - 120, pause_box.y + 20 }, 18, 1.0f, COLOR_GOLD_BRIGHT);
+            DrawTextEx(title_f, "COMBAT SUSPENDED // PAUSE", { SCREEN_WIDTH / 2.0f - 120, pause_box.y + 20 }, 18, 1.0f, COLOR_GOLD_BRIGHT);
 
             Rectangle info_rec = { pause_box.x + 20, pause_box.y + 55, pause_box.width - 40, 75 };
             UI::DrawChamferedPanel(info_rec, COLOR_MUTED, COLOR_SURFACE_MID, 4.0f);
-            DrawText("PILOT FLIGHT CONTROLS:", static_cast<int>(info_rec.x + 10), static_cast<int>(info_rec.y + 8), 10, COLOR_MUTED);
-            DrawText("[WASD] Movement  •  [L-Click] Fire  •  [SPACE] Warp Dash", static_cast<int>(info_rec.x + 10), static_cast<int>(info_rec.y + 24), 11, COLOR_GOLD_BRIGHT);
-            DrawText("[Q/E] Chakram  •  [F] Brahmastra / Astra  •  [C] Soma  •  [V] Vajra", static_cast<int>(info_rec.x + 10), static_cast<int>(info_rec.y + 42), 11, COLOR_CYAN_BRIGHT);
+            DrawTextEx(body_f, "PILOT FLIGHT CONTROLS:", { info_rec.x + 10, info_rec.y + 8 }, 10, 1.0f, COLOR_MUTED);
+            DrawTextEx(body_f, "[WASD] Movement  -  [L-Click] Fire  -  [SPACE] Warp Dash", { info_rec.x + 10, info_rec.y + 26 }, 11, 1.0f, COLOR_GOLD_BRIGHT);
+            DrawTextEx(body_f, "[Q/E] Chakram  -  [F] Brahmastra  -  [C] Soma  -  [V] Vajra", { info_rec.x + 10, info_rec.y + 44 }, 11, 1.0f, COLOR_CYAN_BRIGHT);
 
-            m_btn_resume.draw(font);
-            m_btn_restart_wave.draw(font);
-            m_btn_exit.draw(font);
+            m_btn_resume.draw(title_f);
+            m_btn_restart_wave.draw(title_f);
+            m_btn_exit.draw(title_f);
         }
 
         if (g_scanlines_enabled) UI::DrawScanlines();

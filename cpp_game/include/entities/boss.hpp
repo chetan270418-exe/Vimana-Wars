@@ -95,7 +95,7 @@ struct Boss {
                 radius = 50.0f;
                 speed = 120.0f;
                 attack_name = "MIRAGE CLOAK & SERPENT ARROW";
-                sprite_key = "vajra.png";
+                sprite_key = "boss_indrajit.png";
                 theme_color = COLOR_PURPLE_BRIGHT;
                 break;
 
@@ -106,7 +106,7 @@ struct Boss {
                 radius = 65.0f;
                 speed = 85.0f;
                 attack_name = "WRATH OF THE TYRANT";
-                sprite_key = "boss_mahishasura.png";
+                sprite_key = "boss_hiranyakashipu.png";
                 theme_color = COLOR_GOLD_BRIGHT;
                 break;
         }

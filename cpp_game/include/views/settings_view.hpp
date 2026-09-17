@@ -27,16 +27,22 @@ public:
         m_next_view = ViewType::SETTINGS;
 
         float cx = SCREEN_WIDTH / 2.0f;
-        m_btn_vol_down = UI::Button({ cx - 110, 180, 40, 34 }, "-", COLOR_GOLD);
-        m_btn_vol_up = UI::Button({ cx + 70, 180, 40, 34 }, "+", COLOR_GOLD);
+        m_btn_vol_down = UI::Button({ cx - 110, 160, 40, 30 }, "-", COLOR_GOLD);
+        m_btn_vol_up = UI::Button({ cx + 70, 160, 40, 30 }, "+", COLOR_GOLD);
 
-        m_btn_sfx_down = UI::Button({ cx - 110, 235, 40, 34 }, "-", COLOR_GOLD);
-        m_btn_sfx_up = UI::Button({ cx + 70, 235, 40, 34 }, "+", COLOR_GOLD);
+        m_btn_sfx_down = UI::Button({ cx - 110, 205, 40, 30 }, "-", COLOR_GOLD);
+        m_btn_sfx_up = UI::Button({ cx + 70, 205, 40, 30 }, "+", COLOR_GOLD);
 
-        m_btn_music_down = UI::Button({ cx - 110, 290, 40, 34 }, "-", COLOR_GOLD);
-        m_btn_music_up = UI::Button({ cx + 70, 290, 40, 34 }, "+", COLOR_GOLD);
+        m_btn_music_down = UI::Button({ cx - 110, 250, 40, 30 }, "-", COLOR_GOLD);
+        m_btn_music_up = UI::Button({ cx + 70, 250, 40, 30 }, "+", COLOR_GOLD);
 
-        m_btn_fullscreen = UI::Button({ cx - 110, 350, 220, 36 }, "TOGGLE FULLSCREEN", COLOR_CYAN_BRIGHT);
+        m_btn_ui_down = UI::Button({ cx - 110, 295, 40, 30 }, "-", COLOR_GOLD);
+        m_btn_ui_up = UI::Button({ cx + 70, 295, 40, 30 }, "+", COLOR_GOLD);
+
+        m_btn_boss_down = UI::Button({ cx - 110, 340, 40, 30 }, "-", COLOR_GOLD);
+        m_btn_boss_up = UI::Button({ cx + 70, 340, 40, 30 }, "+", COLOR_GOLD);
+
+        m_btn_fullscreen = UI::Button({ cx - 110, 395, 220, 36 }, "TOGGLE FULLSCREEN", COLOR_CYAN_BRIGHT);
         m_btn_colorblind = UI::Button({ cx + 20, 160, 190, 34 }, "TOGGLE PALETTE", COLOR_GREEN_BRIGHT);
         m_btn_shake = UI::Button({ cx + 20, 245, 190, 34 }, "TOGGLE SHAKE", COLOR_CYAN_BRIGHT);
         m_btn_scanlines = UI::Button({ cx + 20, 330, 190, 34 }, "TOGGLE SCANLINES", COLOR_GOLD_BRIGHT);
@@ -80,6 +86,22 @@ public:
                 SoundSystem::instance().set_music_volume(SoundSystem::instance().music_volume() + 0.1f);
             }
 
+            // UI Audio Volume
+            if (m_btn_ui_down.update(mouse_pos)) {
+                SoundSystem::instance().set_ui_volume(SoundSystem::instance().ui_volume() - 0.1f);
+            }
+            if (m_btn_ui_up.update(mouse_pos)) {
+                SoundSystem::instance().set_ui_volume(SoundSystem::instance().ui_volume() + 0.1f);
+            }
+
+            // Boss Audio Volume
+            if (m_btn_boss_down.update(mouse_pos)) {
+                SoundSystem::instance().set_boss_volume(SoundSystem::instance().boss_volume() - 0.1f);
+            }
+            if (m_btn_boss_up.update(mouse_pos)) {
+                SoundSystem::instance().set_boss_volume(SoundSystem::instance().boss_volume() + 0.1f);
+            }
+
             // Fullscreen Toggle
             if (m_btn_fullscreen.update(mouse_pos)) {
                 ToggleFullscreen();
@@ -99,16 +121,17 @@ public:
 
     void draw() override {
         ClearBackground(COLOR_OBSIDIAN);
-        Font font = AssetManager::instance().font();
+        Font title_font = AssetManager::instance().title_font();
+        Font body_font = AssetManager::instance().body_font();
 
         // Header
         UI::DrawChamferedPanel({ 30, 20, 840, 50 }, COLOR_GOLD, COLOR_SURFACE_LOW, 6.0f);
-        DrawTextEx(font, "ASTRAL SYSTEM SETTINGS & TELEMETRY", { 45, 30 }, 22, 1.0f, COLOR_GOLD_BRIGHT);
+        DrawTextEx(title_font, "ASTRAL SYSTEM SETTINGS & TELEMETRY", { 45, 30 }, 20, 1.0f, COLOR_GOLD_BRIGHT);
 
         // Tab Navigation
-        m_tab_audio.draw(font);
-        m_tab_controls.draw(font);
-        m_tab_access.draw(font);
+        m_tab_audio.draw(title_font);
+        m_tab_controls.draw(title_font);
+        m_tab_access.draw(title_font);
 
         // Content Area
         Rectangle content_box = { 30, 135, 840, 365 };
@@ -118,38 +141,50 @@ public:
 
         if (m_active_tab == 0) {
             // ── AUDIO TAB ──
-            DrawText("MASTER AUDIO VOLUME", cx - 200, 190, 13, COLOR_PARCHMENT);
-            m_btn_vol_down.draw(font);
+            DrawTextEx(body_font, "MASTER AUDIO VOLUME", { cx - 220, 166 }, 13, 1.0f, COLOR_PARCHMENT);
+            m_btn_vol_down.draw(title_font);
             int vol_pct = static_cast<int>(SoundSystem::instance().master_volume() * 100);
-            DrawText((std::to_string(vol_pct) + "%").c_str(), cx - 35, 190, 15, COLOR_GOLD_BRIGHT);
-            m_btn_vol_up.draw(font);
+            DrawTextEx(title_font, (std::to_string(vol_pct) + "%").c_str(), { cx - 35, 166 }, 14, 1.0f, COLOR_GOLD_BRIGHT);
+            m_btn_vol_up.draw(title_font);
 
-            DrawText("SOUND EFFECTS (SFX)", cx - 200, 245, 13, COLOR_PARCHMENT);
-            m_btn_sfx_down.draw(font);
+            DrawTextEx(body_font, "SOUND EFFECTS (SFX)", { cx - 220, 211 }, 13, 1.0f, COLOR_PARCHMENT);
+            m_btn_sfx_down.draw(title_font);
             int sfx_pct = static_cast<int>(SoundSystem::instance().sfx_volume() * 100);
-            DrawText((std::to_string(sfx_pct) + "%").c_str(), cx - 35, 245, 15, COLOR_CYAN_BRIGHT);
-            m_btn_sfx_up.draw(font);
+            DrawTextEx(title_font, (std::to_string(sfx_pct) + "%").c_str(), { cx - 35, 211 }, 14, 1.0f, COLOR_CYAN_BRIGHT);
+            m_btn_sfx_up.draw(title_font);
 
-            DrawText("CELESTIAL SOUNDTRACK", cx - 200, 300, 13, COLOR_PARCHMENT);
-            m_btn_music_down.draw(font);
+            DrawTextEx(body_font, "CELESTIAL SOUNDTRACK", { cx - 220, 256 }, 13, 1.0f, COLOR_PARCHMENT);
+            m_btn_music_down.draw(title_font);
             int mus_pct = static_cast<int>(SoundSystem::instance().music_volume() * 100);
-            DrawText((std::to_string(mus_pct) + "%").c_str(), cx - 35, 300, 15, COLOR_GREEN_BRIGHT);
-            m_btn_music_up.draw(font);
+            DrawTextEx(title_font, (std::to_string(mus_pct) + "%").c_str(), { cx - 35, 256 }, 14, 1.0f, COLOR_GREEN_BRIGHT);
+            m_btn_music_up.draw(title_font);
 
-            m_btn_fullscreen.draw(font);
+            DrawTextEx(body_font, "TACTICAL UI AUDIO", { cx - 220, 301 }, 13, 1.0f, COLOR_PARCHMENT);
+            m_btn_ui_down.draw(title_font);
+            int ui_pct = static_cast<int>(SoundSystem::instance().ui_volume() * 100);
+            DrawTextEx(title_font, (std::to_string(ui_pct) + "%").c_str(), { cx - 35, 301 }, 14, 1.0f, COLOR_PURPLE_BRIGHT);
+            m_btn_ui_up.draw(title_font);
+
+            DrawTextEx(body_font, "BOSS COMBAT DYNAMICS", { cx - 220, 346 }, 13, 1.0f, COLOR_PARCHMENT);
+            m_btn_boss_down.draw(title_font);
+            int boss_pct = static_cast<int>(SoundSystem::instance().boss_volume() * 100);
+            DrawTextEx(title_font, (std::to_string(boss_pct) + "%").c_str(), { cx - 35, 346 }, 14, 1.0f, COLOR_RED_BRIGHT);
+            m_btn_boss_up.draw(title_font);
+
+            m_btn_fullscreen.draw(title_font);
 
         } else if (m_active_tab == 1) {
             // ── CONTROLS TAB ──
             float lx = 80.0f;
             float ly = 160.0f;
 
-            DrawTextEx(font, "FLIGHT CONTROLS & WEAPON SYSTEMS", { lx, ly }, 16, 1.0f, COLOR_GOLD_BRIGHT);
-            DrawLine(lx, ly + 22, lx + 700, ly + 22, COLOR_SURFACE_MID);
+            DrawTextEx(title_font, "FLIGHT CONTROLS & WEAPON SYSTEMS", { lx, ly }, 16, 1.0f, COLOR_GOLD_BRIGHT);
+            DrawLine(static_cast<int>(lx), static_cast<int>(ly + 22), static_cast<int>(lx + 700), static_cast<int>(ly + 22), COLOR_SURFACE_MID);
 
             ly += 35.0f;
             auto draw_binding = [&](const char* action, const char* key, Color col) {
-                DrawText(action, lx + 20, ly, 13, COLOR_PARCHMENT);
-                DrawText(key, lx + 360, ly, 13, col);
+                DrawTextEx(body_font, action, { lx + 20, ly }, 13, 1.0f, COLOR_PARCHMENT);
+                DrawTextEx(title_font, key, { lx + 360, ly - 1 }, 12, 1.0f, col);
                 ly += 26.0f;
             };
 
@@ -164,23 +199,23 @@ public:
 
         } else if (m_active_tab == 2) {
             // ── ACCESSIBILITY TAB ──
-            DrawText("HIGH-CONTRAST / COLORBLIND MODE", cx - 220, 160, 13, COLOR_PARCHMENT);
+            DrawTextEx(body_font, "HIGH-CONTRAST / COLORBLIND MODE", { cx - 220, 160 }, 13, 1.0f, COLOR_PARCHMENT);
             std::string cb_status = g_colorblind_mode ? "ACTIVE // HIGH-CONTRAST PALETTE" : "OFF // STANDARD VEDIC PALETTE";
-            DrawText(cb_status.c_str(), cx - 220, 180, 11, g_colorblind_mode ? COLOR_GREEN_BRIGHT : COLOR_MUTED);
-            m_btn_colorblind.draw(font);
+            DrawTextEx(body_font, cb_status.c_str(), { cx - 220, 180 }, 11, 1.0f, g_colorblind_mode ? COLOR_GREEN_BRIGHT : COLOR_MUTED);
+            m_btn_colorblind.draw(title_font);
 
-            DrawText("SCREEN SHAKE INTENSITY", cx - 220, 245, 13, COLOR_PARCHMENT);
+            DrawTextEx(body_font, "SCREEN SHAKE INTENSITY", { cx - 220, 245 }, 13, 1.0f, COLOR_PARCHMENT);
             std::string shake_status = g_screen_shake_enabled ? "ENABLED // FULL IMPACT FEEDBACK" : "DISABLED // STATIC CAMERA";
-            DrawText(shake_status.c_str(), cx - 220, 265, 11, g_screen_shake_enabled ? COLOR_CYAN_BRIGHT : COLOR_MUTED);
-            m_btn_shake.draw(font);
+            DrawTextEx(body_font, shake_status.c_str(), { cx - 220, 265 }, 11, 1.0f, g_screen_shake_enabled ? COLOR_CYAN_BRIGHT : COLOR_MUTED);
+            m_btn_shake.draw(title_font);
 
-            DrawText("CRT SCANLINE OVERLAY", cx - 220, 330, 13, COLOR_PARCHMENT);
+            DrawTextEx(body_font, "CRT SCANLINE OVERLAY", { cx - 220, 330 }, 13, 1.0f, COLOR_PARCHMENT);
             std::string scan_status = g_scanlines_enabled ? "ENABLED // RETRO WAR CONSOLE" : "DISABLED // CRISP HI-DEF";
-            DrawText(scan_status.c_str(), cx - 220, 350, 11, g_scanlines_enabled ? COLOR_GOLD_BRIGHT : COLOR_MUTED);
-            m_btn_scanlines.draw(font);
+            DrawTextEx(body_font, scan_status.c_str(), { cx - 220, 350 }, 11, 1.0f, g_scanlines_enabled ? COLOR_GOLD_BRIGHT : COLOR_MUTED);
+            m_btn_scanlines.draw(title_font);
         }
 
-        m_btn_back.draw(font);
+        m_btn_back.draw(title_font);
         if (g_scanlines_enabled) UI::DrawScanlines();
     }
 
@@ -201,6 +236,10 @@ private:
     UI::Button m_btn_sfx_up;
     UI::Button m_btn_music_down;
     UI::Button m_btn_music_up;
+    UI::Button m_btn_ui_down;
+    UI::Button m_btn_ui_up;
+    UI::Button m_btn_boss_down;
+    UI::Button m_btn_boss_up;
     UI::Button m_btn_fullscreen;
     UI::Button m_btn_colorblind;
     UI::Button m_btn_shake;

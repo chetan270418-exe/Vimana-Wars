@@ -35,9 +35,9 @@ inline const std::array<ShipArchetype, 12> SHIP_FLEET = {{
     { "kubera", "Kubera Galleon", "Treasury Citadel", "Wealth & Armor", 140, 250.0f, 0.19f, 34, 1, 2.0f, 16, 600, "kubera.png", COLOR_GOLD_BRIGHT },
     { "surya", "Surya Flare", "Solar Vanguard", "Radiant Beam", 105, 330.0f, 0.14f, 30, 2, 1.5f, 20, 700, "surya.png", COLOR_GOLD_BRIGHT },
     // ── NEW SHIPS ───────────────────────────────────────────────────────────
-    { "airavata", "Airavata", "Indra's Celestial Elephant", "Tank Bastion", 300, 200.0f, 0.22f, 48, 1, 2.8f, 22, 750, "tripura.png", { 180, 210, 255, 255 } },
-    { "kamadhenu", "Kamadhenu", "Divine Sustenance Vessel", "Support / Sustain", 130, 290.0f, 0.17f, 22, 2, 1.6f, 26, 800, "soma.png", { 130, 255, 190, 255 } },
-    { "narasimha", "Narasimha", "Avatar of Ferocious Righteousness", "Ultimate Berserker", 150, 360.0f, 0.09f, 55, 3, 0.9f, 30, 1200, "garuda.png", { 255, 90, 30, 255 } }
+    { "airavata", "Airavata", "Indra's Celestial Elephant", "Tank Bastion", 300, 200.0f, 0.22f, 48, 1, 2.8f, 22, 750, "airavata.png", { 180, 210, 255, 255 } },
+    { "kamadhenu", "Kamadhenu", "Divine Sustenance Vessel", "Support / Sustain", 130, 290.0f, 0.17f, 22, 2, 1.6f, 26, 800, "kamadhenu.png", { 130, 255, 190, 255 } },
+    { "narasimha", "Narasimha", "Avatar of Ferocious Righteousness", "Ultimate Berserker", 150, 360.0f, 0.09f, 55, 3, 0.9f, 30, 1200, "narasimha.png", { 255, 90, 30, 255 } }
 }};
 
 inline const ShipArchetype* GetShipArchetype(const std::string& id) {

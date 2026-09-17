@@ -30,10 +30,10 @@ public:
         if (m_squad_stats.empty()) {
             // Default squad breakdown if not set by match
             m_squad_stats = {
-                { DBSystem::instance().player_name(), "GARUDA (SPEED)", 148500, 192, 28, 2, "DAMAGE MASTER ★" },
-                { "ROHAN", "TRIPURA (TANK)", 92400, 114, 45, 4, "SANJEEVANI ACE ★" },
-                { "ARYA", "VAJRA (DPS)", 116200, 142, 31, 1, "ASURA SLAYER ★" },
-                { "DEV", "KAMADHENU (SUPPORT)", 48000, 68, 62, 3, "IMMORTAL SHIELD ★" }
+                { DBSystem::instance().player_name(), "GARUDA (SPEED)", 148500, 192, 28, 2, "DAMAGE MASTER" },
+                { "ROHAN", "TRIPURA (TANK)", 92400, 114, 45, 4, "SANJEEVANI ACE" },
+                { "ARYA", "VAJRA (DPS)", 116200, 142, 31, 1, "ASURA SLAYER" },
+                { "DEV", "KAMADHENU (SUPPORT)", 48000, 68, 62, 3, "IMMORTAL SHIELD" }
             };
         }
     }
@@ -70,15 +70,15 @@ public:
             stat.revives = p.revives_given;
 
             if (static_cast<int>(i) == max_dmg_idx) {
-                stat.citation = "DAMAGE MASTER ★";
+                stat.citation = "DAMAGE MASTER";
             } else if (static_cast<int>(i) == max_kills_idx) {
-                stat.citation = "ASURA SLAYER ★";
+                stat.citation = "ASURA SLAYER";
             } else if (static_cast<int>(i) == max_revives_idx && p.revives_given > 0) {
-                stat.citation = "SANJEEVANI ACE ★";
+                stat.citation = "SANJEEVANI ACE";
             } else if (static_cast<int>(i) == min_downs_idx) {
-                stat.citation = "IMMORTAL SHIELD ★";
+                stat.citation = "IMMORTAL SHIELD";
             } else {
-                stat.citation = "BRAVE WINGMAN ★";
+                stat.citation = "BRAVE WINGMAN";
             }
             m_squad_stats.push_back(stat);
         }
@@ -96,17 +96,18 @@ public:
 
     void draw() override {
         ClearBackground(COLOR_OBSIDIAN);
-        Font font = AssetManager::instance().font();
+        Font title_font = AssetManager::instance().title_font();
+        Font body_font = AssetManager::instance().body_font();
 
         // Header Panel
         UI::DrawChamferedPanel({ 30, 20, 840, 55 }, m_is_victory ? COLOR_GOLD_BRIGHT : COLOR_RED_BRIGHT, COLOR_SURFACE_LOW, 6.0f);
         const char* hdr_text = m_is_victory ? "SANGHA SQUADRON DEBRIEFING // VICTORY ACHIEVED" : "SANGHA SQUADRON DEBRIEFING // SQUADRON DOWNED";
-        DrawTextEx(font, hdr_text, { 45, 28 }, 20, 1.0f, m_is_victory ? COLOR_GOLD_BRIGHT : COLOR_RED_BRIGHT);
+        DrawTextEx(title_font, hdr_text, { 45, 26 }, 18, 1.0f, m_is_victory ? COLOR_GOLD_BRIGHT : COLOR_RED_BRIGHT);
 
-        std::string sub_text = m_is_victory ? "ALL OBJECTIVES SECURED • CELESTIAL ORDER RESTORED" : "TACTICAL RETREAT INITIATED • SQUADRON REGROUP REQUIRED";
-        DrawText(sub_text.c_str(), 45, 52, 10, COLOR_CYAN_BRIGHT);
+        std::string sub_text = m_is_victory ? "ALL OBJECTIVES SECURED - CELESTIAL ORDER RESTORED" : "TACTICAL RETREAT INITIATED - SQUADRON REGROUP REQUIRED";
+        DrawTextEx(body_font, sub_text.c_str(), { 45, 50 }, 10, 1.0f, COLOR_CYAN_BRIGHT);
         std::string score_str = "TEAM SCORE: " + std::to_string(m_team_score);
-        DrawText(score_str.c_str(), SCREEN_WIDTH - 250, 36, 16, COLOR_GOLD_BRIGHT);
+        DrawTextEx(title_font, score_str.c_str(), { static_cast<float>(SCREEN_WIDTH - 250), 34.0f }, 15, 1.0f, COLOR_GOLD_BRIGHT);
 
         // Squad Performance Cards (4 columns)
         float start_x = 35.0f;
@@ -126,43 +127,44 @@ public:
             float cy = card.y + 16.0f;
 
             // Callsign & Role
-            DrawTextEx(font, stat.name.c_str(), { cx, cy }, 16, 1.0f, (i == 0) ? COLOR_GOLD_BRIGHT : COLOR_PARCHMENT);
+            DrawTextEx(title_font, stat.name.c_str(), { cx, cy }, 15, 1.0f, (i == 0) ? COLOR_GOLD_BRIGHT : COLOR_PARCHMENT);
             cy += 22.0f;
-            DrawText(stat.role.c_str(), cx, cy, 9, COLOR_CYAN_BRIGHT);
+            DrawTextEx(body_font, stat.role.c_str(), { cx, cy }, 10, 1.0f, COLOR_CYAN_BRIGHT);
 
-            DrawLine(cx, cy + 18, card.x + card.width - 12, cy + 18, COLOR_SURFACE_HIGH);
+            DrawLine(static_cast<int>(cx), static_cast<int>(cy + 18), static_cast<int>(card.x + card.width - 12), static_cast<int>(cy + 18), COLOR_SURFACE_HIGH);
 
             // Metrics
             cy += 30.0f;
-            DrawText("COMBAT METRICS:", cx, cy, 10, COLOR_MUTED);
+            DrawTextEx(body_font, "COMBAT METRICS:", { cx, cy }, 10, 1.0f, COLOR_MUTED);
 
             cy += 20.0f;
-            DrawText("TOTAL DAMAGE :", cx, cy, 11, COLOR_PARCHMENT);
-            DrawText(std::to_string(stat.damage).c_str(), cx + 105, cy, 12, COLOR_GOLD_BRIGHT);
+            DrawTextEx(body_font, "TOTAL DAMAGE :", { cx, cy }, 11, 1.0f, COLOR_PARCHMENT);
+            DrawTextEx(title_font, std::to_string(stat.damage).c_str(), { cx + 105, cy - 1 }, 13, 1.0f, COLOR_GOLD_BRIGHT);
 
             cy += 22.0f;
-            DrawText("ASURA KILLS  :", cx, cy, 11, COLOR_PARCHMENT);
-            DrawText(std::to_string(stat.kills).c_str(), cx + 105, cy, 12, COLOR_RED_BRIGHT);
+            DrawTextEx(body_font, "ASURA KILLS  :", { cx, cy }, 11, 1.0f, COLOR_PARCHMENT);
+            DrawTextEx(title_font, std::to_string(stat.kills).c_str(), { cx + 105, cy - 1 }, 13, 1.0f, COLOR_RED_BRIGHT);
 
             cy += 22.0f;
-            DrawText("TEAM ASSISTS :", cx, cy, 11, COLOR_PARCHMENT);
-            DrawText(std::to_string(stat.assists).c_str(), cx + 105, cy, 12, COLOR_CYAN_BRIGHT);
+            DrawTextEx(body_font, "TEAM ASSISTS :", { cx, cy }, 11, 1.0f, COLOR_PARCHMENT);
+            DrawTextEx(title_font, std::to_string(stat.assists).c_str(), { cx + 105, cy - 1 }, 13, 1.0f, COLOR_CYAN_BRIGHT);
 
             cy += 22.0f;
-            DrawText("REVIVES DONE :", cx, cy, 11, COLOR_PARCHMENT);
-            DrawText(std::to_string(stat.revives).c_str(), cx + 105, cy, 12, COLOR_GREEN_BRIGHT);
+            DrawTextEx(body_font, "REVIVES DONE :", { cx, cy }, 11, 1.0f, COLOR_PARCHMENT);
+            DrawTextEx(title_font, std::to_string(stat.revives).c_str(), { cx + 105, cy - 1 }, 13, 1.0f, COLOR_GREEN_BRIGHT);
 
             // Honors Badge
             cy += 40.0f;
-            Rectangle badge_box = { card.x + 10, cy, card.width - 20, 48 };
+            Rectangle badge_box = { card.x + 10, cy, card.width - 20, 52 };
             UI::DrawChamferedPanel(badge_box, COLOR_GOLD, COLOR_SURFACE_MID, 4.0f);
-            DrawText("SQUAD CITATION AWARD", badge_box.x + 8, badge_box.y + 6, 8, COLOR_MUTED);
-            DrawTextEx(font, stat.citation.c_str(), { badge_box.x + 8, badge_box.y + 20 }, 12, 1.0f, COLOR_GOLD_BRIGHT);
+            DrawTextEx(body_font, "SQUAD CITATION AWARD", { badge_box.x + 8, badge_box.y + 6 }, 8, 1.0f, COLOR_MUTED);
+            DrawTextEx(title_font, stat.citation.c_str(), { badge_box.x + 8, badge_box.y + 22 }, 11, 1.0f, COLOR_GOLD_BRIGHT);
+            UI::DrawStarIcon({ badge_box.x + badge_box.width - 18, badge_box.y + 26 }, 7.0f, COLOR_GOLD_BRIGHT);
         }
 
-        m_btn_rematch.draw(font);
-        m_btn_lobby.draw(font);
-        m_btn_menu.draw(font);
+        m_btn_rematch.draw(title_font);
+        m_btn_lobby.draw(title_font);
+        m_btn_menu.draw(title_font);
 
         if (g_scanlines_enabled) UI::DrawScanlines();
     }

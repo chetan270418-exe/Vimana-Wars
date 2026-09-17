@@ -108,11 +108,13 @@ public:
         Texture2D s_tex = AssetManager::instance().get_texture(m_selected_ship->sprite_file);
         Vector2 s_center = { ship_box.x + 135, ship_box.y + 115 };
         DrawCircleLinesV(s_center, 44.0f, Color{ 80, 200, 255, 70 });
+        DrawCircleLinesV(s_center, 52.0f, ColorAlpha(COLOR_GOLD, 0.35f));
+
         if (s_tex.id > 0) {
             float s_scale = 1.3f;
             Rectangle src = { 0, 0, static_cast<float>(s_tex.width), static_cast<float>(s_tex.height) };
             Rectangle dest = { s_center.x, s_center.y, s_tex.width * s_scale, s_tex.height * s_scale };
-            DrawTexturePro(s_tex, src, dest, { dest.width / 2.0f, dest.height / 2.0f }, -90.0f, WHITE);
+            DrawTexturePro(s_tex, src, dest, { dest.width / 2.0f, dest.height / 2.0f }, 0.0f, WHITE);
         } else {
             DrawCircleV(s_center, 28.0f, COLOR_CYAN_BRIGHT);
         }
@@ -130,7 +132,7 @@ public:
             bar_y += 20;
         };
 
-        draw_stat("HULL ARMOR", static_cast<float>(m_selected_ship->max_hp), 220.0f, COLOR_GREEN_BRIGHT);
+        draw_stat("HULL ARMOR", static_cast<float>(m_selected_ship->max_hp), 300.0f, COLOR_GREEN_BRIGHT);
         draw_stat("SUB-LIGHT SPD", m_selected_ship->speed, 420.0f, COLOR_CYAN_BRIGHT);
         draw_stat("FIRING RATE", 1.0f / m_selected_ship->shoot_cooldown, 15.0f, COLOR_GOLD_BRIGHT);
         draw_stat("DASH RECHARGE", 3.0f - m_selected_ship->dash_cooldown, 3.0f, COLOR_PURPLE_BRIGHT);
@@ -139,7 +141,7 @@ public:
 
         // ── RIGHT PANEL: CONSUMABLES & PREPARATION DEPOT ─────────────────────────
         Rectangle depot_box = { 350, 100, 500, 350 };
-        UI::DrawChamferedPanel(depot_box, COLOR_GOLD, COLOR_SURFACE_LOW, 6.0f);
+        UI::DrawYantraPanel(depot_box, COLOR_GOLD, COLOR_SURFACE_LOW, 6.0f, true);
 
         DrawTextEx(font, "TACTICAL CONSUMABLES DEPOT", { depot_box.x + 20, depot_box.y + 18 }, 16, 1.0f, COLOR_GOLD_BRIGHT);
         DrawText("EQUIP EXPENDABLE DEFENSES FOR THIS EXPEDITION", static_cast<int>(depot_box.x + 20), static_cast<int>(depot_box.y + 42), 11, COLOR_MUTED);
@@ -147,28 +149,34 @@ public:
         // 1. Kavach Shield
         Rectangle k_rec = { depot_box.x + 20, depot_box.y + 75, depot_box.width - 40, 58 };
         UI::DrawChamferedPanel(k_rec, COLOR_GOLD, COLOR_SURFACE_MID, 4.0f);
-        DrawText("KAVACH DEATH-DEFIANCE BARRIER", static_cast<int>(k_rec.x + 15), static_cast<int>(k_rec.y + 12), 12, COLOR_GOLD_BRIGHT);
-        DrawText("Auto-triggers upon lethal damage. Absorbs fatal hit & grants 3s shield.", static_cast<int>(k_rec.x + 15), static_cast<int>(k_rec.y + 32), 10, COLOR_PARCHMENT);
+        Texture2D ic_k = AssetManager::instance().get_texture("icon_kavach.png");
+        if (ic_k.id > 0) DrawTexturePro(ic_k, { 0, 0, 64, 64 }, { k_rec.x + 10, k_rec.y + 9, 40, 40 }, { 0, 0 }, 0.0f, WHITE);
+        DrawText("KAVACH DEATH-DEFIANCE BARRIER", static_cast<int>(k_rec.x + 58), static_cast<int>(k_rec.y + 12), 12, COLOR_GOLD_BRIGHT);
+        DrawText("Auto-triggers upon lethal damage. Absorbs fatal hit & grants 3s shield.", static_cast<int>(k_rec.x + 58), static_cast<int>(k_rec.y + 32), 10, COLOR_PARCHMENT);
         std::string k_cnt = "CARRIED: " + std::to_string(m_inventory.kavach_charges) + " / 3";
-        DrawText(k_cnt.c_str(), static_cast<int>(k_rec.x + 200), static_cast<int>(k_rec.y + 12), 11, COLOR_CYAN_BRIGHT);
+        DrawText(k_cnt.c_str(), static_cast<int>(k_rec.x + 280), static_cast<int>(k_rec.y + 12), 11, COLOR_CYAN_BRIGHT);
         m_btn_buy_kavach.draw(font);
 
         // 2. Soma Vial
         Rectangle s_rec = { depot_box.x + 20, depot_box.y + 140, depot_box.width - 40, 58 };
         UI::DrawChamferedPanel(s_rec, COLOR_GREEN_BRIGHT, COLOR_SURFACE_MID, 4.0f);
-        DrawText("SOMA RESTORATIVE AMPOULE", static_cast<int>(s_rec.x + 15), static_cast<int>(s_rec.y + 12), 12, COLOR_GREEN_BRIGHT);
-        DrawText("Instantly recovers +40 Hull HP in combat. Activated via [C] key.", static_cast<int>(s_rec.x + 15), static_cast<int>(s_rec.y + 32), 10, COLOR_PARCHMENT);
+        Texture2D ic_s = AssetManager::instance().get_texture("icon_soma.png");
+        if (ic_s.id > 0) DrawTexturePro(ic_s, { 0, 0, 64, 64 }, { s_rec.x + 10, s_rec.y + 9, 40, 40 }, { 0, 0 }, 0.0f, WHITE);
+        DrawText("SOMA RESTORATIVE AMPOULE", static_cast<int>(s_rec.x + 58), static_cast<int>(s_rec.y + 12), 12, COLOR_GREEN_BRIGHT);
+        DrawText("Instantly recovers +40 Hull HP in combat. Activated via [C] key.", static_cast<int>(s_rec.x + 58), static_cast<int>(s_rec.y + 32), 10, COLOR_PARCHMENT);
         std::string s_cnt = "CARRIED: " + std::to_string(m_inventory.soma_vials) + " / 5";
-        DrawText(s_cnt.c_str(), static_cast<int>(s_rec.x + 200), static_cast<int>(s_rec.y + 12), 11, COLOR_CYAN_BRIGHT);
+        DrawText(s_cnt.c_str(), static_cast<int>(s_rec.x + 280), static_cast<int>(s_rec.y + 12), 11, COLOR_CYAN_BRIGHT);
         m_btn_buy_soma.draw(font);
 
         // 3. Vajra EMP Flare
         Rectangle v_rec = { depot_box.x + 20, depot_box.y + 205, depot_box.width - 40, 58 };
         UI::DrawChamferedPanel(v_rec, COLOR_CYAN_BRIGHT, COLOR_SURFACE_MID, 4.0f);
-        DrawText("VAJRA CELESTIAL FLARE", static_cast<int>(v_rec.x + 15), static_cast<int>(v_rec.y + 12), 12, COLOR_CYAN_BRIGHT);
-        DrawText("Discharges electrical pulse neutralizing all hostile bullets. Key [V].", static_cast<int>(v_rec.x + 15), static_cast<int>(v_rec.y + 32), 10, COLOR_PARCHMENT);
+        Texture2D ic_v = AssetManager::instance().get_texture("icon_vajra_flare.png");
+        if (ic_v.id > 0) DrawTexturePro(ic_v, { 0, 0, 64, 64 }, { v_rec.x + 10, v_rec.y + 9, 40, 40 }, { 0, 0 }, 0.0f, WHITE);
+        DrawText("VAJRA CELESTIAL FLARE", static_cast<int>(v_rec.x + 58), static_cast<int>(v_rec.y + 12), 12, COLOR_CYAN_BRIGHT);
+        DrawText("Discharges electrical pulse neutralizing all hostile bullets. Key [V].", static_cast<int>(v_rec.x + 58), static_cast<int>(v_rec.y + 32), 10, COLOR_PARCHMENT);
         std::string v_cnt = "CARRIED: " + std::to_string(m_inventory.vajra_flares) + " / 5";
-        DrawText(v_cnt.c_str(), static_cast<int>(v_rec.x + 200), static_cast<int>(v_rec.y + 12), 11, COLOR_CYAN_BRIGHT);
+        DrawText(v_cnt.c_str(), static_cast<int>(v_rec.x + 280), static_cast<int>(v_rec.y + 12), 11, COLOR_CYAN_BRIGHT);
         m_btn_buy_vajra.draw(font);
 
         // Mission Controls Quick Ref
@@ -182,7 +190,7 @@ public:
         m_btn_launch.draw(font);
         m_btn_back.draw(font);
 
-        UI::DrawScanlines();
+        if (g_scanlines_enabled) UI::DrawScanlines();
     }
 
     ViewType next_view() const override { return m_next_view; }

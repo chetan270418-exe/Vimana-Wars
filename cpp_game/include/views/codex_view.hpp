@@ -75,17 +75,18 @@ public:
 
     void draw() override {
         ClearBackground(COLOR_OBSIDIAN);
-        Font font = AssetManager::instance().font();
+        Font title_font = AssetManager::instance().title_font();
+        Font body_font = AssetManager::instance().body_font();
 
         // Header
         const char* title = "ASTRAL CODEX // CELESTIAL REPOSITORY & BESTIARY";
-        DrawTextEx(font, title, { 40, 25 }, 24, 1.0f, COLOR_GOLD_BRIGHT);
-        DrawText("STRATEGIC INTEL • ASURA THREAT ASSESSMENTS • DIVINE WEAPON BLUEPRINTS", 42, 54, 11, COLOR_CYAN_BRIGHT);
+        DrawTextEx(title_font, title, { 40, 24 }, 22, 1.0f, COLOR_GOLD_BRIGHT);
+        DrawTextEx(body_font, "STRATEGIC INTEL - ASURA THREAT ASSESSMENTS - DIVINE WEAPON BLUEPRINTS", { 42, 52 }, 11, 1.0f, COLOR_CYAN_BRIGHT);
 
         // Draw Tab Buttons
         for (size_t i = 0; i < m_tab_buttons.size(); ++i) {
             bool is_active = (m_active_tab == static_cast<CodexTab>(i));
-            m_tab_buttons[i].draw(font);
+            m_tab_buttons[i].draw(title_font);
             if (is_active) {
                 const auto& r = m_tab_buttons[i].rect();
                 DrawRectangle(static_cast<int>(r.x), static_cast<int>(r.y + r.height), static_cast<int>(r.width), 3, COLOR_GOLD_BRIGHT);
@@ -100,10 +101,10 @@ public:
         Rectangle detail_box = { 330, 125, 530, 395 };
         UI::DrawChamferedPanel(detail_box, COLOR_GOLD, COLOR_SURFACE_MID, 6.0f);
 
-        draw_tab_content(font, list_box, detail_box);
+        draw_tab_content(title_font, list_box, detail_box);
 
-        m_btn_back.draw(font);
-        UI::DrawScanlines();
+        m_btn_back.draw(title_font);
+        if (g_scanlines_enabled) UI::DrawScanlines();
     }
 
     ViewType next_view() const override { return m_next_view; }
@@ -115,76 +116,103 @@ private:
             case CodexTab::REALMS: return 7;
             case CodexTab::VIMANAS: return static_cast<int>(SHIP_FLEET.size());
             case CodexTab::ASURAS: return 5;
-            case CodexTab::BOSSES: return 4;
+            case CodexTab::BOSSES: return 5;
             case CodexTab::SYNERGIES: return static_cast<int>(ALL_SYNERGIES.size());
         }
         return 0;
     }
 
     void draw_tab_content(Font font, Rectangle list_box, Rectangle detail_box) {
+        Font title_font = AssetManager::instance().title_font();
+        Font body_font = AssetManager::instance().body_font();
+
         if (m_active_tab == CodexTab::REALMS) {
             struct RInfo { const char* name; const char* waves; const char* boss; const char* lore; const char* tactic; };
             static const RInfo realms[] = {
                 { "Swarga Outpost", "Waves 1-3", "None", "Indra's orbital gate protecting the higher planes. Scouting waves test perimeter defenses.", "High agility skiffs. Focus on keeping combos active." },
                 { "Kshira Sagara", "Waves 4-6", "Makara Leviathan", "The celestial Ocean of Milk. Glowing tides of stellar dust and ancient relics.", "Flank Makara when he coils to discharge vortex orbs." },
-                { "Dandaka Void", "Waves 7-10", "None", "Dark nebulas filled with asteroid mines and camouflaged demon raiders.", "Avoid colliding with dark matter clusters; conserve dash charges." },
+                { "Dandaka Void", "Waves 7-10", "Indrajit Ravana", "Dark nebulas filled with asteroid mines and camouflaged demon raiders.", "Avoid colliding with dark matter clusters; conserve dash charges." },
                 { "Lanka Approach", "Waves 11-15", "Kumbhakarna", "The outer perimeter of Ravana's golden citadel, guarded by heavy siege engines.", "Kumbhakarna deploys wide flak barriers; target his core vents." },
-                { "Setu Expanse", "Waves 16-20", "Meghnada", "A colossal bridge of floating planetary cores woven with electromagnetic webs.", "Meghnada conjures illusions; look for the true radar ping." },
+                { "Setu Expanse", "Waves 16-20", "Meghnada Stormlord", "A colossal bridge of floating planetary cores woven with electromagnetic webs.", "Meghnada conjures illusions; look for the true radar ping." },
                 { "Naraka Forge", "Waves 21-25", "None", "Subterranean magma pits generating legions of biomechanical Asuras.", "Thermal aura gradually heats hull; pick up Amrita promptly." },
-                { "Mahayuddha Citadel", "Waves 26-30", "Hiranyakashipu", "The throne of darkness. The ultimate clash for universal cosmic dharma.", "Immortal aura requires shattering solar beacons to inflict harm." }
+                { "Mahayuddha Citadel", "Waves 26-30", "Emperor Hiranyakashipu", "The throne of darkness. The ultimate clash for universal cosmic dharma.", "Immortal aura requires shattering solar beacons to inflict harm." }
+            };
+
+            static const char* realm_bg_files[] = {
+                "realm_swarga.png",
+                "realm_kshira_sagara.png",
+                "realm_dandaka_void.png",
+                "realm_lanka_approach.png",
+                "realm_setu_expanse.png",
+                "realm_naraka_forge.png",
+                "realm_mahayuddha_citadel.png"
             };
 
             for (int i = 0; i < 7; ++i) {
-                Rectangle item_rec = { list_box.x + 10, list_box.y + 10 + i * 36.0f, list_box.width - 20, 30 };
+                Rectangle item_rec = { list_box.x + 8, list_box.y + 10 + i * 36.0f, list_box.width - 16, 32 };
                 bool sel = (m_selected_index == i);
                 if (sel) DrawRectangleRec(item_rec, COLOR_SURFACE_HIGH);
-                DrawText(realms[i].name, static_cast<int>(item_rec.x + 10), static_cast<int>(item_rec.y + 7), 12, sel ? COLOR_GOLD_BRIGHT : COLOR_PARCHMENT);
+                DrawTextEx(body_font, realms[i].name, { item_rec.x + 10, item_rec.y + 8 }, 12, 1.0f, sel ? COLOR_GOLD_BRIGHT : COLOR_PARCHMENT);
             }
 
             const auto& r = realms[m_selected_index];
-            DrawTextEx(font, r.name, { detail_box.x + 25, detail_box.y + 20 }, 20, 1.0f, COLOR_GOLD_BRIGHT);
-            DrawText(("OPERATIONAL SPAN: " + std::string(r.waves)).c_str(), static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 48), 12, COLOR_CYAN_BRIGHT);
-            DrawText(("TITAN GUARDIAN: " + std::string(r.boss)).c_str(), static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 68), 12, COLOR_RED_BRIGHT);
+            DrawTextEx(title_font, r.name, { detail_box.x + 25, detail_box.y + 20 }, 20, 1.0f, COLOR_GOLD_BRIGHT);
+            DrawTextEx(body_font, ("OPERATIONAL SPAN: " + std::string(r.waves)).c_str(), { detail_box.x + 25, detail_box.y + 48 }, 12, 1.0f, COLOR_CYAN_BRIGHT);
+            DrawTextEx(body_font, ("TITAN GUARDIAN: " + std::string(r.boss)).c_str(), { detail_box.x + 25, detail_box.y + 68 }, 12, 1.0f, COLOR_RED_BRIGHT);
 
-            DrawLine(static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 95), static_cast<int>(detail_box.x + detail_box.width - 25), static_cast<int>(detail_box.y + 95), COLOR_MUTED);
+            // Realm Thumbnail Preview
+            Texture2D rtex = AssetManager::instance().get_texture(realm_bg_files[m_selected_index]);
+            if (rtex.id > 0) {
+                Rectangle src = { 0, 0, static_cast<float>(rtex.width), static_cast<float>(rtex.height) };
+                Rectangle dst = { detail_box.x + detail_box.width - 160, detail_box.y + 18, 140, 80 };
+                DrawRectangleRec({ dst.x - 2, dst.y - 2, dst.width + 4, dst.height + 4 }, COLOR_SURFACE_LOW);
+                DrawRectangleLinesEx({ dst.x - 2, dst.y - 2, dst.width + 4, dst.height + 4 }, 1.0f, COLOR_GOLD);
+                DrawTexturePro(rtex, src, dst, { 0, 0 }, 0.0f, WHITE);
+            }
 
-            DrawText("SECTOR LORE ARCHIVE:", static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 115), 11, COLOR_MUTED);
-            DrawText(r.lore, static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 135), 12, COLOR_PARCHMENT);
+            DrawLine(static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 105), static_cast<int>(detail_box.x + detail_box.width - 25), static_cast<int>(detail_box.y + 105), COLOR_MUTED);
 
-            DrawText("TACTICAL RECOMMENDATION:", static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 200), 11, COLOR_MUTED);
-            DrawText(r.tactic, static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 220), 12, COLOR_GREEN_BRIGHT);
+            DrawTextEx(body_font, "SECTOR LORE ARCHIVE:", { detail_box.x + 25, detail_box.y + 120 }, 11, 1.0f, COLOR_MUTED);
+            DrawTextEx(body_font, r.lore, { detail_box.x + 25, detail_box.y + 140 }, 12, 1.0f, COLOR_PARCHMENT);
+
+            DrawTextEx(body_font, "TACTICAL RECOMMENDATION:", { detail_box.x + 25, detail_box.y + 205 }, 11, 1.0f, COLOR_MUTED);
+            DrawTextEx(body_font, r.tactic, { detail_box.x + 25, detail_box.y + 225 }, 12, 1.0f, COLOR_GREEN_BRIGHT);
         }
         else if (m_active_tab == CodexTab::VIMANAS) {
             for (size_t i = 0; i < SHIP_FLEET.size(); ++i) {
-                Rectangle item_rec = { list_box.x + 10, list_box.y + 10 + i * 36.0f, list_box.width - 20, 30 };
+                Rectangle item_rec = { list_box.x + 8, list_box.y + 8 + i * 31.0f, list_box.width - 16, 28 };
                 bool sel = (m_selected_index == static_cast<int>(i));
                 if (sel) DrawRectangleRec(item_rec, COLOR_SURFACE_HIGH);
-                DrawText(SHIP_FLEET[i].name.c_str(), static_cast<int>(item_rec.x + 10), static_cast<int>(item_rec.y + 7), 12, sel ? COLOR_GOLD_BRIGHT : COLOR_PARCHMENT);
+                DrawTextEx(body_font, SHIP_FLEET[i].name.c_str(), { item_rec.x + 10, item_rec.y + 6 }, 11, 1.0f, sel ? COLOR_GOLD_BRIGHT : COLOR_PARCHMENT);
             }
 
             const auto& s = SHIP_FLEET[m_selected_index];
-            DrawTextEx(font, s.name.c_str(), { detail_box.x + 25, detail_box.y + 20 }, 20, 1.0f, COLOR_GOLD_BRIGHT);
-            DrawText(s.role.c_str(), static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 48), 12, COLOR_CYAN_BRIGHT);
+            DrawTextEx(title_font, s.name.c_str(), { detail_box.x + 25, detail_box.y + 20 }, 20, 1.0f, COLOR_GOLD_BRIGHT);
+            DrawTextEx(body_font, s.role.c_str(), { detail_box.x + 25, detail_box.y + 48 }, 12, 1.0f, COLOR_CYAN_BRIGHT);
 
             // Sprite preview
             Texture2D tex = AssetManager::instance().get_texture(s.sprite_file);
             if (tex.id > 0) {
-                DrawTextureEx(tex, { detail_box.x + detail_box.width - 120, detail_box.y + 20 }, 0.0f, 1.2f, WHITE);
+                Rectangle src = { 0, 0, static_cast<float>(tex.width), static_cast<float>(tex.height) };
+                Rectangle dst = { detail_box.x + detail_box.width - 105, detail_box.y + 18, 80, 80 };
+                DrawRectangleRec({ dst.x - 2, dst.y - 2, dst.width + 4, dst.height + 4 }, COLOR_SURFACE_LOW);
+                DrawRectangleLinesEx({ dst.x - 2, dst.y - 2, dst.width + 4, dst.height + 4 }, 1.0f, s.accent_color);
+                DrawTexturePro(tex, src, dst, { 0, 0 }, 0.0f, WHITE);
             }
 
-            DrawLine(static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 80), static_cast<int>(detail_box.x + detail_box.width - 140), static_cast<int>(detail_box.y + 80), COLOR_MUTED);
+            DrawLine(static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 80), static_cast<int>(detail_box.x + detail_box.width - 120), static_cast<int>(detail_box.y + 80), COLOR_MUTED);
 
             // Stats
-            DrawText(("HULL INTEGRITY: " + std::to_string(s.max_hp) + " HP").c_str(), static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 95), 12, COLOR_GREEN_BRIGHT);
-            DrawText(("PROPULSION VELOCITY: " + std::to_string(static_cast<int>(s.speed)) + " M/S").c_str(), static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 115), 12, COLOR_CYAN_BRIGHT);
-            DrawText(("WARP DASH COOLDOWN: " + std::to_string(s.dash_cooldown).substr(0, 4) + " SEC").c_str(), static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 135), 12, COLOR_PURPLE_BRIGHT);
+            DrawTextEx(body_font, ("HULL INTEGRITY: " + std::to_string(s.max_hp) + " HP").c_str(), { detail_box.x + 25, detail_box.y + 95 }, 12, 1.0f, COLOR_GREEN_BRIGHT);
+            DrawTextEx(body_font, ("PROPULSION VELOCITY: " + std::to_string(static_cast<int>(s.speed)) + " M/S").c_str(), { detail_box.x + 25, detail_box.y + 115 }, 12, 1.0f, COLOR_CYAN_BRIGHT);
+            DrawTextEx(body_font, ("WARP DASH COOLDOWN: " + std::to_string(s.dash_cooldown).substr(0, 4) + " SEC").c_str(), { detail_box.x + 25, detail_box.y + 135 }, 12, 1.0f, COLOR_PURPLE_BRIGHT);
 
-            DrawText("DESIGNATION & CLASS:", static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 175), 11, COLOR_MUTED);
-            DrawText(s.subtitle.c_str(), static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 195), 12, COLOR_GOLD);
+            DrawTextEx(body_font, "DESIGNATION & CLASS:", { detail_box.x + 25, detail_box.y + 175 }, 11, 1.0f, COLOR_MUTED);
+            DrawTextEx(body_font, s.subtitle.c_str(), { detail_box.x + 25, detail_box.y + 195 }, 12, 1.0f, COLOR_GOLD);
 
-            DrawText("COMMISSION REQUIREMENTS:", static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 240), 11, COLOR_MUTED);
+            DrawTextEx(body_font, "COMMISSION REQUIREMENTS:", { detail_box.x + 25, detail_box.y + 240 }, 11, 1.0f, COLOR_MUTED);
             std::string cost_str = "PRANA COST: " + std::to_string(s.prana_cost) + " | WAVE UNLOCK: " + std::to_string(s.unlock_wave);
-            DrawText(cost_str.c_str(), static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 260), 11, COLOR_PARCHMENT);
+            DrawTextEx(body_font, cost_str.c_str(), { detail_box.x + 25, detail_box.y + 260 }, 11, 1.0f, COLOR_PARCHMENT);
         }
         else if (m_active_tab == CodexTab::ASURAS) {
             struct AsuraIntel { const char* name; const char* threat; const char* role; const char* weakness; const char* desc; };
@@ -197,73 +225,83 @@ private:
             };
 
             for (int i = 0; i < 5; ++i) {
-                Rectangle item_rec = { list_box.x + 10, list_box.y + 10 + i * 36.0f, list_box.width - 20, 30 };
+                Rectangle item_rec = { list_box.x + 8, list_box.y + 10 + i * 36.0f, list_box.width - 16, 32 };
                 bool sel = (m_selected_index == i);
                 if (sel) DrawRectangleRec(item_rec, COLOR_SURFACE_HIGH);
-                DrawText(asuras[i].name, static_cast<int>(item_rec.x + 10), static_cast<int>(item_rec.y + 7), 12, sel ? COLOR_GOLD_BRIGHT : COLOR_PARCHMENT);
+                DrawTextEx(body_font, asuras[i].name, { item_rec.x + 10, item_rec.y + 8 }, 12, 1.0f, sel ? COLOR_GOLD_BRIGHT : COLOR_PARCHMENT);
             }
 
             const auto& a = asuras[m_selected_index];
-            DrawTextEx(font, a.name, { detail_box.x + 25, detail_box.y + 20 }, 20, 1.0f, COLOR_RED_BRIGHT);
-            DrawText(a.threat, static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 48), 12, COLOR_ORANGE_BRIGHT);
-            DrawText(a.role, static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 68), 12, COLOR_CYAN_BRIGHT);
+            DrawTextEx(title_font, a.name, { detail_box.x + 25, detail_box.y + 20 }, 20, 1.0f, COLOR_RED_BRIGHT);
+            DrawTextEx(body_font, a.threat, { detail_box.x + 25, detail_box.y + 48 }, 12, 1.0f, COLOR_ORANGE_BRIGHT);
+            DrawTextEx(body_font, a.role, { detail_box.x + 25, detail_box.y + 68 }, 12, 1.0f, COLOR_CYAN_BRIGHT);
 
             DrawLine(static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 95), static_cast<int>(detail_box.x + detail_box.width - 25), static_cast<int>(detail_box.y + 95), COLOR_MUTED);
 
-            DrawText("ASURA TACTICAL BLUEPRINT:", static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 115), 11, COLOR_MUTED);
-            DrawText(a.desc, static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 135), 12, COLOR_PARCHMENT);
+            DrawTextEx(body_font, "ASURA TACTICAL BLUEPRINT:", { detail_box.x + 25, detail_box.y + 115 }, 11, 1.0f, COLOR_MUTED);
+            DrawTextEx(body_font, a.desc, { detail_box.x + 25, detail_box.y + 135 }, 12, 1.0f, COLOR_PARCHMENT);
 
-            DrawText("IDENTIFIED VULNERABILITY:", static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 200), 11, COLOR_MUTED);
-            DrawText(a.weakness, static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 220), 12, COLOR_GREEN_BRIGHT);
+            DrawTextEx(body_font, "IDENTIFIED VULNERABILITY:", { detail_box.x + 25, detail_box.y + 200 }, 11, 1.0f, COLOR_MUTED);
+            DrawTextEx(body_font, a.weakness, { detail_box.x + 25, detail_box.y + 220 }, 12, 1.0f, COLOR_GREEN_BRIGHT);
         }
         else if (m_active_tab == CodexTab::BOSSES) {
-            struct BossIntel { const char* name; const char* wave; const char* title; const char* telegraph; const char* strat; };
+            struct BossIntel { const char* name; const char* wave; const char* title; const char* telegraph; const char* strat; const char* sprite; };
             static const BossIntel bosses[] = {
-                { "Makara Leviathan", "Wave 6 Boss", "Terror of Kshira Sagara", "1.2s warning banner before discharging concentric Void Orbs.", "Maintain distance during vortex charge; attack during recovery cool-down." },
-                { "Kumbhakarna", "Wave 15 Boss", "The Sleeping Colossus", "Audible siren and red targeting laser preceding mega-beam discharge.", "Heavy armor deflects frontal shots. Maneuver behind the titan to hit exhaust vents." },
-                { "Meghnada", "Wave 20 Boss", "Sorcerer of Storms (Indrajit)", "Lightning arc telegraph creates glowing danger zones before striking.", "Use Vajra Flares to dissolve lightning traps and reveal his genuine position." },
-                { "Hiranyakashipu", "Wave 30 Final Boss", "Immortal Demon Emperor", "Charges apocalyptic Brahmashira cannon with full-screen crimson reticle.", "Deploy Brahmastra bombs to break invulnerability shield; prioritize dodging over DPS." }
+                { "Makara Leviathan", "Wave 6 Boss", "Terror of Kshira Sagara", "1.2s warning banner before discharging concentric Void Orbs.", "Maintain distance during vortex charge; attack during recovery cool-down.", "boss_makara" },
+                { "Indrajit Ravana", "Wave 10 Boss", "Lord of Lanka & Sorcery", "Invisibility cloaking followed by illusion clones and poison darts.", "Track true radar ping; detonate Chakram to dispel illusion doubles.", "boss_indrajit.png" },
+                { "Kumbhakarna", "Wave 15 Boss", "The Sleeping Colossus", "Audible siren and red targeting laser preceding mega-beam discharge.", "Heavy armor deflects frontal shots. Maneuver behind the titan to hit exhaust vents.", "boss_kumbhakarna" },
+                { "Meghnada Stormlord", "Wave 20 Boss", "Master of Illusion & Thunder", "Lightning arc telegraph creates glowing danger zones before striking.", "Use Vajra Flares to dissolve lightning traps and reveal his genuine position.", "boss_indrajit.png" },
+                { "Hiranyakashipu", "Wave 30 Final Boss", "Immortal Demon Emperor", "Charges apocalyptic Brahmashira cannon with full-screen crimson reticle.", "Deploy Brahmastra bombs to break invulnerability shield; prioritize dodging over DPS.", "boss_hiranyakashipu.png" }
             };
 
-            for (int i = 0; i < 4; ++i) {
-                Rectangle item_rec = { list_box.x + 10, list_box.y + 10 + i * 36.0f, list_box.width - 20, 30 };
+            for (int i = 0; i < 5; ++i) {
+                Rectangle item_rec = { list_box.x + 8, list_box.y + 10 + i * 36.0f, list_box.width - 16, 32 };
                 bool sel = (m_selected_index == i);
                 if (sel) DrawRectangleRec(item_rec, COLOR_SURFACE_HIGH);
-                DrawText(bosses[i].name, static_cast<int>(item_rec.x + 10), static_cast<int>(item_rec.y + 7), 12, sel ? COLOR_GOLD_BRIGHT : COLOR_PARCHMENT);
+                DrawTextEx(body_font, bosses[i].name, { item_rec.x + 10, item_rec.y + 8 }, 12, 1.0f, sel ? COLOR_GOLD_BRIGHT : COLOR_PARCHMENT);
             }
 
             const auto& b = bosses[m_selected_index];
-            DrawTextEx(font, b.name, { detail_box.x + 25, detail_box.y + 20 }, 20, 1.0f, COLOR_GOLD_BRIGHT);
-            DrawText(b.wave, static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 48), 12, COLOR_RED_BRIGHT);
-            DrawText(b.title, static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 68), 12, COLOR_PURPLE_BRIGHT);
+            DrawTextEx(title_font, b.name, { detail_box.x + 25, detail_box.y + 20 }, 20, 1.0f, COLOR_GOLD_BRIGHT);
+            DrawTextEx(body_font, b.wave, { detail_box.x + 25, detail_box.y + 48 }, 12, 1.0f, COLOR_RED_BRIGHT);
+            DrawTextEx(body_font, b.title, { detail_box.x + 25, detail_box.y + 68 }, 12, 1.0f, COLOR_PURPLE_BRIGHT);
 
-            DrawLine(static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 95), static_cast<int>(detail_box.x + detail_box.width - 25), static_cast<int>(detail_box.y + 95), COLOR_MUTED);
+            // Boss Portrait preview
+            Texture2D btex = AssetManager::instance().get_texture(b.sprite);
+            if (btex.id > 0) {
+                Rectangle src = { 0, 0, static_cast<float>(btex.width), static_cast<float>(btex.height) };
+                Rectangle dst = { detail_box.x + detail_box.width - 105, detail_box.y + 18, 80, 80 };
+                DrawRectangleRec({ dst.x - 2, dst.y - 2, dst.width + 4, dst.height + 4 }, COLOR_SURFACE_LOW);
+                DrawRectangleLinesEx({ dst.x - 2, dst.y - 2, dst.width + 4, dst.height + 4 }, 1.0f, COLOR_RED_BRIGHT);
+                DrawTexturePro(btex, src, dst, { 0, 0 }, 0.0f, WHITE);
+            }
 
-            DrawText("ATTACK TELEGRAPH WARNING:", static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 115), 11, COLOR_MUTED);
-            DrawText(b.telegraph, static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 135), 12, COLOR_ORANGE_BRIGHT);
+            DrawLine(static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 95), static_cast<int>(detail_box.x + detail_box.width - 120), static_cast<int>(detail_box.y + 95), COLOR_MUTED);
 
-            DrawText("COUNTER-STRATEGY:", static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 200), 11, COLOR_MUTED);
-            DrawText(b.strat, static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 220), 12, COLOR_GREEN_BRIGHT);
+            DrawTextEx(body_font, "ATTACK TELEGRAPH WARNING:", { detail_box.x + 25, detail_box.y + 115 }, 11, 1.0f, COLOR_MUTED);
+            DrawTextEx(body_font, b.telegraph, { detail_box.x + 25, detail_box.y + 135 }, 12, 1.0f, COLOR_ORANGE_BRIGHT);
+
+            DrawTextEx(body_font, "COUNTER-STRATEGY:", { detail_box.x + 25, detail_box.y + 200 }, 11, 1.0f, COLOR_MUTED);
+            DrawTextEx(body_font, b.strat, { detail_box.x + 25, detail_box.y + 220 }, 12, 1.0f, COLOR_GREEN_BRIGHT);
         }
         else if (m_active_tab == CodexTab::SYNERGIES) {
             for (size_t i = 0; i < ALL_SYNERGIES.size(); ++i) {
-                Rectangle item_rec = { list_box.x + 10, list_box.y + 10 + i * 36.0f, list_box.width - 20, 30 };
+                Rectangle item_rec = { list_box.x + 8, list_box.y + 10 + i * 36.0f, list_box.width - 16, 32 };
                 bool sel = (m_selected_index == static_cast<int>(i));
                 if (sel) DrawRectangleRec(item_rec, COLOR_SURFACE_HIGH);
-                DrawText(ALL_SYNERGIES[i].name.c_str(), static_cast<int>(item_rec.x + 10), static_cast<int>(item_rec.y + 7), 12, sel ? COLOR_GOLD_BRIGHT : COLOR_PARCHMENT);
+                DrawTextEx(body_font, ALL_SYNERGIES[i].name.c_str(), { item_rec.x + 10, item_rec.y + 8 }, 12, 1.0f, sel ? COLOR_GOLD_BRIGHT : COLOR_PARCHMENT);
             }
 
             const auto& syn = ALL_SYNERGIES[m_selected_index];
-            DrawTextEx(font, syn.name.c_str(), { detail_box.x + 25, detail_box.y + 20 }, 20, 1.0f, syn.color);
-            DrawText(("RECIPE FORMULA: " + syn.formula).c_str(), static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 48), 13, COLOR_GOLD_BRIGHT);
+            DrawTextEx(title_font, syn.name.c_str(), { detail_box.x + 25, detail_box.y + 20 }, 20, 1.0f, syn.color);
+            DrawTextEx(body_font, ("RECIPE FORMULA: " + syn.formula).c_str(), { detail_box.x + 25, detail_box.y + 48 }, 13, 1.0f, COLOR_GOLD_BRIGHT);
 
             DrawLine(static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 80), static_cast<int>(detail_box.x + detail_box.width - 25), static_cast<int>(detail_box.y + 80), COLOR_MUTED);
 
-            DrawText("DIVINE SYNERGISTIC EFFECT:", static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 105), 11, COLOR_MUTED);
-            DrawText(syn.description.c_str(), static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 130), 13, COLOR_PARCHMENT);
+            DrawTextEx(body_font, "DIVINE SYNERGISTIC EFFECT:", { detail_box.x + 25, detail_box.y + 105 }, 11, 1.0f, COLOR_MUTED);
+            DrawTextEx(body_font, syn.description.c_str(), { detail_box.x + 25, detail_box.y + 130 }, 13, 1.0f, COLOR_PARCHMENT);
 
-            DrawText("STRATEGIC UTILITY:", static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 200), 11, COLOR_MUTED);
-            DrawText("Combining these two boons during rogue draft unlocks this passive power permanently for your expedition!", static_cast<int>(detail_box.x + 25), static_cast<int>(detail_box.y + 220), 11, COLOR_CYAN_BRIGHT);
+            DrawTextEx(body_font, "STRATEGIC UTILITY:", { detail_box.x + 25, detail_box.y + 200 }, 11, 1.0f, COLOR_MUTED);
         }
     }
 

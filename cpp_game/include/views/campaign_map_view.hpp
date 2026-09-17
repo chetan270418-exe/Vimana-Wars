@@ -137,12 +137,12 @@ public:
 
             // Node Index or Cleared Icon
             if (cleared) {
-                DrawText("✓", static_cast<int>(node.map_pos.x - 6), static_cast<int>(node.map_pos.y - 8), 16, COLOR_GOLD_BRIGHT);
+                UI::DrawCheckmarkIcon(node.map_pos, 8.0f, COLOR_GOLD_BRIGHT);
             } else if (unlocked) {
                 std::string num_str = std::to_string(node.id);
-                DrawText(num_str.c_str(), static_cast<int>(node.map_pos.x - 4), static_cast<int>(node.map_pos.y - 7), 14, WHITE);
+                DrawTextEx(font, num_str.c_str(), { node.map_pos.x - 4, node.map_pos.y - 7 }, 14, 1.0f, WHITE);
             } else {
-                DrawText("🔒", static_cast<int>(node.map_pos.x - 6), static_cast<int>(node.map_pos.y - 7), 12, COLOR_MUTED);
+                UI::DrawLockIcon(node.map_pos, 7.0f, COLOR_MUTED);
             }
 
             // Realm short title below node
@@ -154,22 +154,42 @@ public:
         // Selected Realm Intel Dossier (Bottom Drawer / Right Panel)
         if (m_selected_node >= 0 && m_selected_node < static_cast<int>(CAMPAIGN_REALMS.size())) {
             const auto& node = CAMPAIGN_REALMS[m_selected_node];
-            Rectangle dossier_rec = { 230, SCREEN_HEIGHT - 130, SCREEN_WIDTH - 530, 105 };
-            UI::DrawChamferedPanel(dossier_rec, node.accent_color, COLOR_SURFACE_MID, 6.0f);
+            Rectangle dossier_rec = { 220, SCREEN_HEIGHT - 135, SCREEN_WIDTH - 515, 110 };
+            UI::DrawYantraPanel(dossier_rec, node.accent_color, COLOR_SURFACE_MID, 6.0f, true);
+
+            // Realm image thumbnail on the right of dossier
+            std::string realm_tex_name = "realm_swarga.png";
+            switch (node.id) {
+                case 1: realm_tex_name = "realm_swarga.png"; break;
+                case 2: realm_tex_name = "realm_kshira_sagara.png"; break;
+                case 3: realm_tex_name = "realm_dandaka_void.png"; break;
+                case 4: realm_tex_name = "realm_lanka_approach.png"; break;
+                case 5: realm_tex_name = "realm_setu_expanse.png"; break;
+                case 6: realm_tex_name = "realm_naraka_forge.png"; break;
+                case 7: realm_tex_name = "realm_mahayuddha_citadel.png"; break;
+            }
+            Texture2D r_tex = AssetManager::instance().get_texture(realm_tex_name);
+            if (r_tex.id > 0) {
+                Rectangle r_src = { 0, 0, static_cast<float>(r_tex.width), static_cast<float>(r_tex.height) };
+                Rectangle r_dest = { dossier_rec.x + dossier_rec.width - 120, dossier_rec.y + 12, 105, 75 };
+                DrawTexturePro(r_tex, r_src, r_dest, { 0, 0 }, 0.0f, WHITE);
+                DrawRectangleLinesEx(r_dest, 1.0f, node.accent_color);
+            }
 
             std::string realm_hdr = "SECTOR " + std::to_string(node.id) + ": " + node.name + " (" + node.sanskrit_title + ")";
-            DrawTextEx(font, realm_hdr.c_str(), { dossier_rec.x + 16, dossier_rec.y + 12 }, 15, 1.0f, node.accent_color);
+            DrawTextEx(font, realm_hdr.c_str(), { dossier_rec.x + 16, dossier_rec.y + 10 }, 15, 1.0f, node.accent_color);
 
             std::string wave_rng = "WAVES: " + std::to_string(node.start_wave) + " - " + std::to_string(node.end_wave);
-            DrawText(wave_rng.c_str(), static_cast<int>(dossier_rec.x + 16), static_cast<int>(dossier_rec.y + 35), 12, COLOR_CYAN_BRIGHT);
+            DrawText(wave_rng.c_str(), static_cast<int>(dossier_rec.x + 16), static_cast<int>(dossier_rec.y + 32), 12, COLOR_CYAN_BRIGHT);
 
             if (std::string(node.boss_name) != "None") {
-                std::string boss_warn = "⚠ TITAN ALERT: " + std::string(node.boss_name);
-                DrawText(boss_warn.c_str(), static_cast<int>(dossier_rec.x + 140), static_cast<int>(dossier_rec.y + 35), 12, COLOR_RED_BRIGHT);
+                UI::DrawWarningIcon({ dossier_rec.x + 145, dossier_rec.y + 38 }, 6.0f, COLOR_RED_BRIGHT);
+                std::string boss_warn = "TITAN ALERT: " + std::string(node.boss_name);
+                DrawText(boss_warn.c_str(), static_cast<int>(dossier_rec.x + 158), static_cast<int>(dossier_rec.y + 32), 12, COLOR_RED_BRIGHT);
             }
 
             std::string mod_str = std::string("SECTOR HAZARD: ") + node.modifier_desc;
-            DrawText(mod_str.c_str(), static_cast<int>(dossier_rec.x + 16), static_cast<int>(dossier_rec.y + 55), 11, COLOR_GOLD);
+            DrawText(mod_str.c_str(), static_cast<int>(dossier_rec.x + 16), static_cast<int>(dossier_rec.y + 54), 11, COLOR_GOLD);
 
             DrawText(node.description, static_cast<int>(dossier_rec.x + 16), static_cast<int>(dossier_rec.y + 74), 10, COLOR_PARCHMENT);
         }

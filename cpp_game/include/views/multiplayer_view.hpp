@@ -100,7 +100,7 @@ public:
             // Squad Room View Actions
             if (m_btn_ready.update(mouse_pos) || IsKeyPressed(KEY_SPACE)) {
                 m_is_ready = !m_is_ready;
-                m_btn_ready.set_label(m_is_ready ? "STATUS: READY ?" : "READY PILOT [SPACE]");
+                m_btn_ready.set_label(m_is_ready ? "STATUS: [READY]" : "READY PILOT [SPACE]");
                 m_btn_ready.set_color(m_is_ready ? COLOR_GOLD_BRIGHT : COLOR_GREEN_BRIGHT);
             }
 
@@ -124,25 +124,27 @@ public:
 
     void draw() override {
         ClearBackground(COLOR_OBSIDIAN);
-        Font font = AssetManager::instance().font();
+        Font title_font = AssetManager::instance().title_font();
+        Font body_font = AssetManager::instance().body_font();
 
         // Header
         UI::DrawChamferedPanel({ 30, 20, 840, 50 }, COLOR_GOLD, COLOR_SURFACE_LOW, 6.0f);
-        DrawTextEx(font, "SANGHA NETWORK // REAL WINSOCK2 UDP SQUAD COMMAND", { 45, 30 }, 20, 1.0f, COLOR_GOLD_BRIGHT);
+        DrawTextEx(title_font, "SANGHA NETWORK // REAL WINSOCK2 UDP SQUAD COMMAND", { 45, 30 }, 20, 1.0f, COLOR_GOLD_BRIGHT);
 
         // Ping Indicator
-        std::string ping_str = "?? RTT " + std::to_string(NetworkManager::instance().ping_ms()) + " ms [PORT 7704]";
-        DrawText(ping_str.c_str(), SCREEN_WIDTH - 240, 36, 12, COLOR_GREEN_BRIGHT);
+        std::string ping_str = "RTT: " + std::to_string(NetworkManager::instance().ping_ms()) + " ms | PORT 7704";
+        DrawCircle(SCREEN_WIDTH - 245, 45, 4.0f, COLOR_GREEN_BRIGHT);
+        DrawTextEx(body_font, ping_str.c_str(), { static_cast<float>(SCREEN_WIDTH - 235), 37.0f }, 13, 1.0f, COLOR_GREEN_BRIGHT);
 
         if (!m_in_room) {
             // -- BROWSER MODE --
             UI::DrawChamferedPanel({ 30, 85, 520, 420 }, COLOR_CYAN_BRIGHT, COLOR_SURFACE_LOW, 6.0f);
-            DrawText("OPEN SQUAD LAN PROTOCOLS", 50, 100, 12, COLOR_GOLD_BRIGHT);
+            DrawTextEx(title_font, "OPEN SQUAD LAN PROTOCOLS", { 50, 100 }, 14, 1.0f, COLOR_GOLD_BRIGHT);
 
-            DrawText("ROOM", 50, 125, 10, COLOR_MUTED);
-            DrawText("MISSION / REALM", 130, 125, 10, COLOR_MUTED);
-            DrawText("MODE", 330, 125, 10, COLOR_MUTED);
-            DrawText("STATUS", 440, 125, 10, COLOR_MUTED);
+            DrawTextEx(body_font, "ROOM", { 50, 125 }, 11, 1.0f, COLOR_MUTED);
+            DrawTextEx(body_font, "MISSION / REALM", { 130, 125 }, 11, 1.0f, COLOR_MUTED);
+            DrawTextEx(body_font, "MODE", { 330, 125 }, 11, 1.0f, COLOR_MUTED);
+            DrawTextEx(body_font, "STATUS", { 440, 125 }, 11, 1.0f, COLOR_MUTED);
             DrawLine(45, 142, 535, 142, COLOR_SURFACE_HIGH);
 
             int y = 158;
@@ -150,39 +152,39 @@ public:
                 Rectangle row_rec = { 45, static_cast<float>(y - 4), 490, 34 };
                 UI::DrawChamferedPanel(row_rec, COLOR_SURFACE_MID, COLOR_SURFACE_MID, 3.0f);
 
-                DrawText(lob.code.c_str(), 50, y + 4, 12, COLOR_GOLD_BRIGHT);
-                DrawText(lob.name.c_str(), 130, y + 4, 12, COLOR_PARCHMENT);
-                DrawText(lob.slots.c_str(), 330, y + 4, 11, COLOR_CYAN_BRIGHT);
-                DrawText(lob.status.c_str(), 440, y + 4, 11, COLOR_GREEN_BRIGHT);
+                DrawTextEx(title_font, lob.code.c_str(), { 50, static_cast<float>(y + 4) }, 13, 1.0f, COLOR_GOLD_BRIGHT);
+                DrawTextEx(body_font, lob.name.c_str(), { 130, static_cast<float>(y + 4) }, 12, 1.0f, COLOR_PARCHMENT);
+                DrawTextEx(body_font, lob.slots.c_str(), { 330, static_cast<float>(y + 4) }, 12, 1.0f, COLOR_CYAN_BRIGHT);
+                DrawTextEx(body_font, lob.status.c_str(), { 440, static_cast<float>(y + 4) }, 12, 1.0f, COLOR_GREEN_BRIGHT);
                 y += 42;
             }
 
             // Right Actions
             UI::DrawChamferedPanel({ 560, 85, 310, 420 }, COLOR_GOLD, COLOR_SURFACE_LOW, 6.0f);
-            DrawText("LAN SQUAD SETUP", 580, 95, 11, COLOR_MUTED);
+            DrawTextEx(title_font, "LAN SQUAD SETUP", { 580, 95 }, 13, 1.0f, COLOR_MUTED);
 
-            m_btn_quick.draw(font);
-            m_btn_create.draw(font);
+            m_btn_quick.draw(title_font);
+            m_btn_create.draw(title_font);
 
             // IP Entry box
-            DrawText("TARGET LAN HOST IP & PORT:", 580, 205, 10, COLOR_PARCHMENT);
+            DrawTextEx(body_font, "TARGET LAN HOST IP & PORT:", { 580, 205 }, 11, 1.0f, COLOR_PARCHMENT);
             Rectangle ip_rec = { 580, 225, 260, 32 };
             DrawRectangleRec(ip_rec, m_ip_focused ? COLOR_SURFACE_HIGH : COLOR_SURFACE_MID);
             DrawRectangleLinesEx(ip_rec, 1.5f, m_ip_focused ? COLOR_CYAN_BRIGHT : COLOR_SURFACE_HIGH);
-            DrawText(m_target_ip.c_str(), 590, 233, 14, WHITE);
+            DrawTextEx(body_font, m_target_ip.c_str(), { 590, 233 }, 14, 1.0f, WHITE);
             if (m_ip_focused && (static_cast<int>(GetTime() * 2) % 2 == 0)) {
-                int txt_w = MeasureText(m_target_ip.c_str(), 14);
-                DrawLine(590 + txt_w + 2, 229, 590 + txt_w + 2, 251, COLOR_CYAN_BRIGHT);
+                Vector2 txt_sz = MeasureTextEx(body_font, m_target_ip.c_str(), 14, 1.0f);
+                DrawLine(590 + static_cast<int>(txt_sz.x) + 2, 229, 590 + static_cast<int>(txt_sz.x) + 2, 251, COLOR_CYAN_BRIGHT);
             }
 
-            m_btn_join_lan.draw(font);
-            m_btn_duel.draw(font);
+            m_btn_join_lan.draw(title_font);
+            m_btn_duel.draw(title_font);
 
-            DrawText("ACTIVE SQUAD NETCODE:", 580, 360, 10, COLOR_MUTED);
-            DrawText("• Winsock2 Non-blocking UDP (Port 7704)", 580, 380, 11, COLOR_CYAN_BRIGHT);
-            DrawText("• 30Hz Server Snapshots + 60Hz Inputs", 580, 400, 11, COLOR_PARCHMENT);
-            DrawText("• 15s Reconnect Window + AI Takeover", 580, 420, 11, COLOR_GOLD_BRIGHT);
-            DrawText("• Downed Beacon [Hold E to Revive]", 580, 440, 11, COLOR_GREEN_BRIGHT);
+            DrawTextEx(body_font, "ACTIVE SQUAD NETCODE:", { 580, 355 }, 11, 1.0f, COLOR_MUTED);
+            DrawTextEx(body_font, "- Winsock2 Non-blocking UDP (Port 7704)", { 580, 375 }, 11, 1.0f, COLOR_CYAN_BRIGHT);
+            DrawTextEx(body_font, "- 30Hz Server Snapshots + 60Hz Inputs", { 580, 395 }, 11, 1.0f, COLOR_PARCHMENT);
+            DrawTextEx(body_font, "- 15s Reconnect Window + AI Takeover", { 580, 415 }, 11, 1.0f, COLOR_GOLD_BRIGHT);
+            DrawTextEx(body_font, "- Downed Beacon [Hold E to Revive]", { 580, 435 }, 11, 1.0f, COLOR_GREEN_BRIGHT);
 
         } else {
             // -- SQUAD ROOM VIEW --
@@ -191,57 +193,78 @@ public:
             if (NetworkManager::instance().role() == NetworkRole::HOST) code_header += " [HOST - PORT 7704]";
             else code_header += " [CLIENT - " + NetworkManager::instance().target_host_ip() + "]";
 
-            DrawTextEx(font, code_header.c_str(), { 50, 100 }, 15, 1.0f, COLOR_GOLD_BRIGHT);
+            DrawTextEx(title_font, code_header.c_str(), { 50, 98 }, 15, 1.0f, COLOR_GOLD_BRIGHT);
 
             const auto& players = NetworkManager::instance().players();
 
             for (int i = 0; i < 4; ++i) {
-                float slot_y = 135.0f + i * 85.0f;
-                Rectangle slot_box = { 45, slot_y, 490, 75 };
+                float slot_y = 130.0f + i * 86.0f;
+                Rectangle slot_box = { 45, slot_y, 490, 78 };
                 bool filled = (i < static_cast<int>(players.size()));
 
                 Color slot_border = filled ? COLOR_GOLD : COLOR_SURFACE_HIGH;
                 Color slot_bg = filled ? COLOR_SURFACE_MID : COLOR_SURFACE_LOW;
                 UI::DrawChamferedPanel(slot_box, slot_border, slot_bg, 4.0f);
 
-                DrawText(("PILOT SLOT 0" + std::to_string(i + 1)).c_str(), 55, slot_y + 8, 9, COLOR_MUTED);
-
                 if (filled) {
+                    // Ship Sprite Preview
+                    std::string sid = players[i].ship_id;
+                    if (sid.empty()) sid = "garuda";
+                    std::string tex_key = sid + ".png";
+                    Texture2D tex = AssetManager::instance().get_texture(tex_key);
+                    if (tex.id == 0) tex = AssetManager::instance().get_texture(sid);
+                    if (tex.id == 0) tex = AssetManager::instance().get_texture("pushpaka.png");
+
+                    if (tex.id > 0) {
+                        Rectangle src = { 0, 0, static_cast<float>(tex.width), static_cast<float>(tex.height) };
+                        Rectangle dst = { 55, slot_y + 12, 54, 54 };
+                        DrawRectangleRec({ dst.x - 2, dst.y - 2, dst.width + 4, dst.height + 4 }, COLOR_SURFACE_LOW);
+                        DrawRectangleLinesEx({ dst.x - 2, dst.y - 2, dst.width + 4, dst.height + 4 }, 1.0f, COLOR_GOLD);
+                        DrawTexturePro(tex, src, dst, { 0, 0 }, 0.0f, WHITE);
+                    }
+
+                    // Pilot info
+                    DrawTextEx(body_font, ("PILOT SLOT 0" + std::to_string(i + 1)).c_str(), { 120, slot_y + 8 }, 10, 1.0f, COLOR_MUTED);
+
                     std::string p_name = (i == 0) ? DBSystem::instance().player_name() + " [HOST]" : "SQUAD PILOT 0" + std::to_string(i + 1);
-                    DrawText(p_name.c_str(), 55, slot_y + 24, 14, COLOR_GOLD_BRIGHT);
+                    DrawTextEx(title_font, p_name.c_str(), { 120, slot_y + 22 }, 15, 1.0f, COLOR_GOLD_BRIGHT);
 
                     std::string vessel_str = "VESSEL: " + std::string(players[i].ship_id);
-                    DrawText(vessel_str.c_str(), 55, slot_y + 44, 11, COLOR_CYAN_BRIGHT);
+                    DrawTextEx(body_font, vessel_str.c_str(), { 120, slot_y + 44 }, 11, 1.0f, COLOR_CYAN_BRIGHT);
 
                     const char* role_badge = (i == 0) ? "ROLE: MOBILITY (DPS)" :
                                              (i == 1) ? "ROLE: TANK (FRONT)" :
                                              (i == 2) ? "ROLE: HEAVY DPS" : "ROLE: SUPPORT (HEAL)";
-                    DrawText(role_badge, 220, slot_y + 44, 11, COLOR_PARCHMENT);
+                    DrawTextEx(body_font, role_badge, { 120, slot_y + 58 }, 10, 1.0f, COLOR_PARCHMENT);
 
-                    DrawText("STATUS: READY ?", 380, slot_y + 28, 12, COLOR_GREEN_BRIGHT);
+                    // Ready Badge
+                    Rectangle ready_bg = { 375, slot_y + 24, 95, 28 };
+                    DrawRectangleRec(ready_bg, ColorAlpha(COLOR_GREEN_BRIGHT, 0.2f));
+                    DrawRectangleLinesEx(ready_bg, 1.0f, COLOR_GREEN_BRIGHT);
+                    DrawTextEx(body_font, "[ READY ]", { 390, slot_y + 30 }, 12, 1.0f, COLOR_GREEN_BRIGHT);
                 } else {
-                    DrawText("EMPTY SQUAD POSITION", 55, slot_y + 28, 13, COLOR_MUTED);
-                    DrawText("AWAITING SQUAD PILOT OR AI BOT", 55, slot_y + 46, 10, COLOR_SURFACE_HIGH);
+                    DrawTextEx(body_font, ("PILOT SLOT 0" + std::to_string(i + 1) + " // VACANT").c_str(), { 60, slot_y + 16 }, 11, 1.0f, COLOR_MUTED);
+                    DrawTextEx(body_font, "AWAITING SQUAD PILOT OR AI BOT", { 60, slot_y + 36 }, 12, 1.0f, COLOR_SURFACE_HIGH);
                 }
             }
 
             // Right Panel Room Controls
             UI::DrawChamferedPanel({ 560, 85, 310, 420 }, COLOR_CYAN_BRIGHT, COLOR_SURFACE_LOW, 6.0f);
-            DrawText("SQUAD BRIEFING & LAUNCH", 580, 100, 11, COLOR_MUTED);
+            DrawTextEx(title_font, "SQUAD BRIEFING & LAUNCH", { 580, 100 }, 13, 1.0f, COLOR_MUTED);
 
-            DrawText("MISSION: MAHAYUDDHA CO-OP", 580, 130, 13, COLOR_GOLD_BRIGHT);
-            DrawText("DIFFICULTY: KSHATRIYA", 580, 155, 12, COLOR_RED_BRIGHT);
-            DrawText("OBJECTIVE: SURVIVE & SLAY BOSS", 580, 180, 11, COLOR_PARCHMENT);
-            DrawText("CO-OP ASTRA: DUAL SYNERGY", 580, 205, 11, COLOR_CYAN_BRIGHT);
+            DrawTextEx(body_font, "MISSION: MAHAYUDDHA CO-OP", { 580, 130 }, 13, 1.0f, COLOR_GOLD_BRIGHT);
+            DrawTextEx(body_font, "DIFFICULTY: KSHATRIYA", { 580, 155 }, 12, 1.0f, COLOR_RED_BRIGHT);
+            DrawTextEx(body_font, "OBJECTIVE: SURVIVE & SLAY BOSS", { 580, 180 }, 11, 1.0f, COLOR_PARCHMENT);
+            DrawTextEx(body_font, "CO-OP ASTRA: DUAL SYNERGY", { 580, 205 }, 11, 1.0f, COLOR_CYAN_BRIGHT);
 
             DrawLine(580, 235, 850, 235, COLOR_SURFACE_HIGH);
 
-            m_btn_add_ai.draw(font);
-            m_btn_ready.draw(font);
-            m_btn_start.draw(font);
+            m_btn_add_ai.draw(title_font);
+            m_btn_ready.draw(title_font);
+            m_btn_start.draw(title_font);
         }
 
-        m_btn_back.draw(font);
+        m_btn_back.draw(title_font);
         if (g_scanlines_enabled) UI::DrawScanlines();
     }
 

@@ -26,13 +26,32 @@ public:
         }
         std::cout << "[AssetManager] Resolved assets base path: " << m_base_path << std::endl;
 
-        // Preload default font if available
-        std::string font_path = m_base_path + "/fonts/Cinzel-SemiBold.ttf";
-        if (std::filesystem::exists(font_path)) {
-            m_main_font = LoadFontEx(font_path.c_str(), 32, nullptr, 0);
+        // Preload fonts
+        std::string title_font_path = m_base_path + "/fonts/Cinzel-Bold.ttf";
+        if (std::filesystem::exists(title_font_path)) {
+            m_main_font = LoadFontEx(title_font_path.c_str(), 36, nullptr, 0);
             SetTextureFilter(m_main_font.texture, TEXTURE_FILTER_BILINEAR);
+            std::cout << "[AssetManager] Loaded Title Font: " << title_font_path << std::endl;
         } else {
             m_main_font = GetFontDefault();
+        }
+
+        std::string body_font_path = m_base_path + "/fonts/SpaceGrotesk-Bold.ttf";
+        if (std::filesystem::exists(body_font_path)) {
+            m_body_font = LoadFontEx(body_font_path.c_str(), 28, nullptr, 0);
+            SetTextureFilter(m_body_font.texture, TEXTURE_FILTER_BILINEAR);
+            std::cout << "[AssetManager] Loaded Body Font: " << body_font_path << std::endl;
+        } else {
+            m_body_font = m_main_font;
+        }
+
+        std::string mono_font_path = m_base_path + "/fonts/JetBrainsMono-Bold.ttf";
+        if (std::filesystem::exists(mono_font_path)) {
+            m_mono_font = LoadFontEx(mono_font_path.c_str(), 24, nullptr, 0);
+            SetTextureFilter(m_mono_font.texture, TEXTURE_FILTER_BILINEAR);
+            std::cout << "[AssetManager] Loaded Mono Font: " << mono_font_path << std::endl;
+        } else {
+            m_mono_font = m_body_font;
         }
     }
 
@@ -53,6 +72,12 @@ public:
         if (m_main_font.texture.id != GetFontDefault().texture.id) {
             UnloadFont(m_main_font);
         }
+        if (m_body_font.texture.id != GetFontDefault().texture.id && m_body_font.texture.id != m_main_font.texture.id) {
+            UnloadFont(m_body_font);
+        }
+        if (m_mono_font.texture.id != GetFontDefault().texture.id && m_mono_font.texture.id != m_body_font.texture.id && m_mono_font.texture.id != m_main_font.texture.id) {
+            UnloadFont(m_mono_font);
+        }
     }
 
     Texture2D get_texture(const std::string& filename) {
@@ -60,12 +85,26 @@ public:
             return m_textures[filename];
         }
 
-        std::string full_path = m_base_path + "/images/" + filename;
-        if (std::filesystem::exists(full_path)) {
-            Texture2D tex = LoadTexture(full_path.c_str());
-            SetTextureFilter(tex, TEXTURE_FILTER_BILINEAR);
-            m_textures[filename] = tex;
-            return tex;
+        // Search in priority directories
+        std::vector<std::string> search_dirs = {
+            m_base_path + "/images/",
+            m_base_path + "/images/ships/",
+            m_base_path + "/images/bosses/",
+            m_base_path + "/images/realms/",
+            m_base_path + "/ui/",
+            m_base_path + "/ui/icons/",
+            m_base_path + "/vfx/",
+            m_base_path + "/"
+        };
+
+        for (const auto& dir : search_dirs) {
+            std::string full_path = dir + filename;
+            if (std::filesystem::exists(full_path)) {
+                Texture2D tex = LoadTexture(full_path.c_str());
+                SetTextureFilter(tex, TEXTURE_FILTER_BILINEAR);
+                m_textures[filename] = tex;
+                return tex;
+            }
         }
 
         // Return empty dummy texture if not found
@@ -78,11 +117,19 @@ public:
             return m_sounds[filename];
         }
 
-        std::string full_path = m_base_path + "/sounds/" + filename;
-        if (std::filesystem::exists(full_path)) {
-            Sound snd = LoadSound(full_path.c_str());
-            m_sounds[filename] = snd;
-            return snd;
+        std::vector<std::string> search_dirs = {
+            m_base_path + "/sounds/",
+            m_base_path + "/online/kenney_sci-fi_sounds/Audio/",
+            m_base_path + "/"
+        };
+
+        for (const auto& dir : search_dirs) {
+            std::string full_path = dir + filename;
+            if (std::filesystem::exists(full_path)) {
+                Sound snd = LoadSound(full_path.c_str());
+                m_sounds[filename] = snd;
+                return snd;
+            }
         }
 
         Sound empty = { 0 };
@@ -91,6 +138,9 @@ public:
 
     void load_music(const std::string& filename) {
         std::string full_path = m_base_path + "/sounds/" + filename;
+        if (!std::filesystem::exists(full_path)) {
+            full_path = m_base_path + "/" + filename;
+        }
         if (std::filesystem::exists(full_path)) {
             if (m_music.stream.buffer != nullptr) {
                 UnloadMusicStream(m_music);
@@ -114,6 +164,9 @@ public:
     }
 
     Font font() const { return m_main_font; }
+    Font title_font() const { return m_main_font; }
+    Font body_font() const { return m_body_font; }
+    Font mono_font() const { return m_mono_font; }
     const std::string& base_path() const { return m_base_path; }
 
 private:
@@ -122,6 +175,8 @@ private:
 
     std::string m_base_path = "assets";
     Font m_main_font = { 0 };
+    Font m_body_font = { 0 };
+    Font m_mono_font = { 0 };
     Music m_music = { 0 };
     std::unordered_map<std::string, Texture2D> m_textures;
     std::unordered_map<std::string, Sound> m_sounds;
