@@ -160,6 +160,39 @@ public:
     int max_wave() const { return m_max_wave; }
     void update_max_wave(int wave) { if (wave > m_max_wave) m_max_wave = wave; }
 
+    std::vector<MatchRecord> fetch_match_history(int limit = 10) {
+        std::vector<MatchRecord> records;
+        if (!m_db) return records;
+
+        const char* sql = "SELECT level_reached, score, kills, total_damage, duration_seconds, ship_class, created_at "
+                          "FROM scores ORDER BY id DESC LIMIT ?;";
+        sqlite3_stmt* stmt = nullptr;
+        if (sqlite3_prepare_v2(m_db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+            sqlite3_bind_int(stmt, 1, limit);
+            while (sqlite3_step(stmt) == SQLITE_ROW) {
+                MatchRecord r;
+                r.wave = sqlite3_column_int(stmt, 0);
+                r.score = sqlite3_column_int(stmt, 1);
+                r.kills = sqlite3_column_int(stmt, 2);
+                r.total_damage = sqlite3_column_int(stmt, 3);
+                r.duration_sec = static_cast<float>(sqlite3_column_double(stmt, 4));
+                const char* sc = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
+                r.ship_id = sc ? sc : "pushpaka";
+                const char* ca = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 6));
+                r.created_at = ca ? ca : "";
+
+                if (r.wave >= 20 || r.score > 200000) r.rank = PerformanceRank::S_RANK;
+                else if (r.wave >= 10 || r.score > 100000) r.rank = PerformanceRank::A_RANK;
+                else if (r.wave >= 5) r.rank = PerformanceRank::B_RANK;
+                else r.rank = PerformanceRank::C_RANK;
+
+                records.push_back(r);
+            }
+            sqlite3_finalize(stmt);
+        }
+        return records;
+    }
+
 private:
     DBSystem() : m_db(nullptr), m_player_name("Warrior"), m_high_score(0), m_max_wave(1) {}
     ~DBSystem() = default;

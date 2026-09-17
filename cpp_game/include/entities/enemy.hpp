@@ -37,14 +37,21 @@ struct Enemy {
     // Type specific mechanics
     float special_timer = 0.0f;
     bool is_charging = false;
+    bool is_elite = false;
+    Color elite_tint = COLOR_GOLD_BRIGHT;
 
-    void init(EnemyType t, Vector2 spawn_pos, float speed_mult = 1.0f, float hp_mult = 1.0f) {
+    void init(EnemyType t, Vector2 spawn_pos, float speed_mult = 1.0f, float hp_mult = 1.0f, bool elite = false) {
         active = true;
         type = t;
         pos = spawn_pos;
         hit_flash = 0.0f;
         is_charging = false;
         special_timer = 0.0f;
+        is_elite = elite;
+        if (is_elite) {
+            hp_mult *= ELITE_HP_MULT;
+            speed_mult *= ELITE_SPEED_MULT;
+        }
 
         switch (type) {
             case EnemyType::ASURA_CHASER:
@@ -221,6 +228,14 @@ struct Enemy {
 
     void draw(Texture2D tex) const {
         if (!active) return;
+
+        // Elite Golden Pulsing Aura
+        if (is_elite) {
+            float pulse = 0.5f + 0.5f * std::sin(GetTime() * 8.0f);
+            DrawCircleLines(static_cast<int>(pos.x), static_cast<int>(pos.y), radius + 6.0f + 3.0f * pulse, COLOR_GOLD_BRIGHT);
+            DrawCircle(static_cast<int>(pos.x), static_cast<int>(pos.y), radius + 4.0f, ColorAlpha(COLOR_GOLD, 0.15f));
+            DrawText("ELITE", static_cast<int>(pos.x - 14.0f), static_cast<int>(pos.y - radius - 18.0f), 9, COLOR_GOLD_BRIGHT);
+        }
 
         // Sniper telegraph laser
         if (type == EnemyType::ASURA_SNIPER && is_charging) {

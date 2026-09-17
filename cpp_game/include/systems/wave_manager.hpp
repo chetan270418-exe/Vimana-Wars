@@ -18,10 +18,27 @@ struct SpawnInstruction {
 
 class WaveManager {
 public:
-    WaveManager() : m_current_wave(1), m_wave_timer(0.0f), m_is_wave_in_progress(false), m_boss_active(false) {}
+    WaveManager() 
+        : m_current_wave(1), m_wave_timer(0.0f), m_is_wave_in_progress(false), m_boss_active(false),
+          m_difficulty_profile(DIFFICULTY_PROFILES[1]), m_player_count(1) {}
 
-    void start_campaign(int start_wave = 1) {
+    void set_difficulty(Difficulty diff) {
+        for (const auto& dp : DIFFICULTY_PROFILES) {
+            if (dp.tier == diff) {
+                m_difficulty_profile = dp;
+                break;
+            }
+        }
+    }
+
+    void set_player_count(int count) {
+        m_player_count = std::max(1, count);
+    }
+
+    void start_campaign(int start_wave = 1, Difficulty diff = Difficulty::KSHATRIYA, int players = 1) {
         m_current_wave = start_wave;
+        set_difficulty(diff);
+        m_player_count = players;
         m_is_wave_in_progress = false;
         m_boss_active = false;
         m_banner_timer = 2.5f;
@@ -59,8 +76,10 @@ public:
 
         m_boss_active = false;
 
-        // Generate standard wave composition
-        int total_enemies = 8 + wave * 2;
+        // Generate standard wave composition with scaling
+        int base_enemies = 8 + wave * 2 + m_difficulty_profile.min_enemies_bonus;
+        // Co-op enemy count scaling: EnemyCount = BaseCount * (1 + 0.35 * (Players - 1))
+        int total_enemies = static_cast<int>(base_enemies * (1.0f + CO_OP_ENEMY_SCALE_PER_PLAYER * (m_player_count - 1)));
         float current_delay = 0.5f;
 
         for (int i = 0; i < total_enemies; ++i) {
@@ -82,7 +101,7 @@ public:
             float spawn_x = 40.0f + static_cast<float>(std::rand() % (SCREEN_WIDTH - 80));
             Vector2 pos = { spawn_x, -30.0f };
             m_spawn_queue.push({ type, current_delay, pos });
-            current_delay += 0.8f + (std::rand() % 8) / 10.0f;
+            current_delay += 0.7f + (std::rand() % 7) / 10.0f;
         }
     }
 
@@ -106,9 +125,18 @@ public:
             const auto& next_spawn = m_spawn_queue.front();
             if (m_wave_timer >= next_spawn.delay) {
                 Enemy enemy;
-                float spd_mult = 1.0f + (m_current_wave * 0.02f);
-                float hp_mult = 1.0f + (m_current_wave * 0.05f);
-                enemy.init(next_spawn.type, next_spawn.spawn_pos, spd_mult, hp_mult);
+                float spd_mult = (1.0f + (m_current_wave * 0.02f)) * m_difficulty_profile.bullet_speed_mult;
+                float hp_mult = (1.0f + (m_current_wave * 0.05f)) * m_difficulty_profile.enemy_hp_mult;
+
+                // Elite enemy roll: every 5 waves guaranteed 1-2 elites, plus difficulty chance
+                bool is_elite = false;
+                if ((m_current_wave % ELITE_SPAWN_EVERY_N_WAVES == 0) && (m_spawn_queue.size() % 6 == 0)) {
+                    is_elite = true;
+                } else if ((std::rand() % 100) < static_cast<int>((m_difficulty_profile.elite_chance_bonus + 0.04f * (m_player_count - 1)) * 100.0f)) {
+                    is_elite = true;
+                }
+
+                enemy.init(next_spawn.type, next_spawn.spawn_pos, spd_mult, hp_mult, is_elite);
                 enemies.push_back(enemy);
                 m_spawn_queue.pop();
             }
@@ -156,6 +184,8 @@ private:
     bool m_boss_active;
     Boss m_current_boss;
     std::queue<SpawnInstruction> m_spawn_queue;
+    DifficultyProfile m_difficulty_profile;
+    int m_player_count = 1;
 };
 
 } // namespace Vimana

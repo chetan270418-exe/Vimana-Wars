@@ -63,6 +63,10 @@ struct Player {
     int kills = 0;
     int total_damage_dealt = 0;
 
+    // Co-op Downed State
+    bool is_downed = false;
+    float downed_timer = 0.0f;
+
     void init(const ShipArchetype* ship_arch) {
         archetype = ship_arch ? ship_arch : &SHIP_FLEET[0];
         radius = 20.0f;
@@ -395,6 +399,14 @@ struct Player {
             // Procedural geometric ship
             DrawCircle(static_cast<int>(pos.x), static_cast<int>(pos.y), radius, archetype ? archetype->accent_color : COLOR_GOLD);
             DrawCircleLines(static_cast<int>(pos.x), static_cast<int>(pos.y), radius, COLOR_PARCHMENT);
+        }
+
+        // Co-op Downed Beacon
+        if (is_downed) {
+            float pulse = 0.5f + 0.5f * std::sin(GetTime() * 10.0f);
+            DrawCircleLines(static_cast<int>(pos.x), static_cast<int>(pos.y), radius + 15.0f + 5.0f * pulse, COLOR_RED_BRIGHT);
+            DrawCircle(static_cast<int>(pos.x), static_cast<int>(pos.y), radius + 8.0f, ColorAlpha(COLOR_RED_BRIGHT, 0.25f));
+            DrawText("⚠ DOWNED [HOLD E TO REVIVE]", static_cast<int>(pos.x - 70.0f), static_cast<int>(pos.y - radius - 20.0f), 10, COLOR_RED_BRIGHT);
         }
     }
 };

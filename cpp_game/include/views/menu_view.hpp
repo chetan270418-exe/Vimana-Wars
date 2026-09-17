@@ -27,17 +27,18 @@ public:
 
         float start_y = 195.0f;
         float btn_w = 320.0f;
-        float btn_h = 36.0f;
-        float spacing = 43.0f;
-        float center_x = 50.0f; // Left aligned menu column with right telemetry dashboard
+        float btn_h = 34.0f;
+        float spacing = 38.0f;
+        float center_x = 50.0f; // Left column
 
         m_buttons.emplace_back(Rectangle{ center_x, start_y, btn_w, btn_h }, "1. ENTER CAMPAIGN (MAHAYUDDHA)", COLOR_GOLD_BRIGHT);
         m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing, btn_w, btn_h }, "2. VIMANA HANGAR & SHIPS", COLOR_CYAN_BRIGHT);
-        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 2, btn_w, btn_h }, "3. ASTRAL CODEX & BESTIARY", COLOR_GREEN_BRIGHT);
-        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 3, btn_w, btn_h }, "4. DUEL & FLIGHT TRAINING", COLOR_ORANGE_BRIGHT);
-        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 4, btn_w, btn_h }, "5. SANGHA MULTIPLAYER LOBBY", COLOR_PURPLE_BRIGHT);
-        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 5, btn_w, btn_h }, "6. HALL OF VALOR (LEADERBOARDS)", COLOR_GOLD);
-        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 6, btn_w, btn_h }, "7. SYSTEM SETTINGS", COLOR_MUTED);
+        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 2, btn_w, btn_h }, "3. PILOT DOSSIER & PROFILE", COLOR_GREEN_BRIGHT);
+        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 3, btn_w, btn_h }, "4. ASTRAL CODEX & BESTIARY", COLOR_PARCHMENT);
+        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 4, btn_w, btn_h }, "5. DUEL & FLIGHT TRAINING", COLOR_ORANGE_BRIGHT);
+        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 5, btn_w, btn_h }, "6. SANGHA MULTIPLAYER LOBBY", COLOR_PURPLE_BRIGHT);
+        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 6, btn_w, btn_h }, "7. HALL OF VALOR (LEADERBOARDS)", COLOR_GOLD);
+        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 7, btn_w, btn_h }, "8. SYSTEM SETTINGS", COLOR_MUTED);
 
         // Ambient starfield
         m_stars.clear();
@@ -60,13 +61,21 @@ public:
             }
         }
 
-        if (m_buttons[0].update(mouse_pos)) m_next_view = ViewType::CAMPAIGN_MAP;
-        else if (m_buttons[1].update(mouse_pos)) m_next_view = ViewType::SHIP_SELECT;
-        else if (m_buttons[2].update(mouse_pos)) m_next_view = ViewType::CODEX;
-        else if (m_buttons[3].update(mouse_pos)) m_next_view = ViewType::DUEL;
-        else if (m_buttons[4].update(mouse_pos)) m_next_view = ViewType::MULTIPLAYER_LOBBY;
-        else if (m_buttons[5].update(mouse_pos)) m_next_view = ViewType::LEADERBOARD;
-        else if (m_buttons[6].update(mouse_pos)) m_next_view = ViewType::SETTINGS;
+        // Button clicks or Keyboard shortcuts [1-8]
+        if (m_buttons[0].update(mouse_pos) || IsKeyPressed(KEY_ONE)) m_next_view = ViewType::CAMPAIGN_MAP;
+        else if (m_buttons[1].update(mouse_pos) || IsKeyPressed(KEY_TWO)) m_next_view = ViewType::SHIP_SELECT;
+        else if (m_buttons[2].update(mouse_pos) || IsKeyPressed(KEY_THREE)) m_next_view = ViewType::PROFILE;
+        else if (m_buttons[3].update(mouse_pos) || IsKeyPressed(KEY_FOUR)) m_next_view = ViewType::CODEX;
+        else if (m_buttons[4].update(mouse_pos) || IsKeyPressed(KEY_FIVE)) m_next_view = ViewType::DUEL;
+        else if (m_buttons[5].update(mouse_pos) || IsKeyPressed(KEY_SIX)) m_next_view = ViewType::MULTIPLAYER_LOBBY;
+        else if (m_buttons[6].update(mouse_pos) || IsKeyPressed(KEY_SEVEN)) m_next_view = ViewType::LEADERBOARD;
+        else if (m_buttons[7].update(mouse_pos) || IsKeyPressed(KEY_EIGHT)) m_next_view = ViewType::SETTINGS;
+
+        // Click on top-right Pilot Badge opens Profile
+        Rectangle pilot_badge = { SCREEN_WIDTH - 360, 25, 310, 48 };
+        if (CheckCollisionPointRec(mouse_pos, pilot_badge) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            m_next_view = ViewType::PROFILE;
+        }
     }
 
     void draw() override {
@@ -90,10 +99,12 @@ public:
 
         // Pilot Callout Strip (Top Right)
         Rectangle pilot_badge = { SCREEN_WIDTH - 360, 25, 310, 48 };
-        UI::DrawChamferedPanel(pilot_badge, COLOR_GOLD, COLOR_SURFACE_MID, 4.0f);
-        DrawText("PILOT IDENTIFICATION RECORD:", static_cast<int>(pilot_badge.x + 12), static_cast<int>(pilot_badge.y + 7), 10, COLOR_MUTED);
-        DrawText("VMN-7704 // PILOT: CHETAN", static_cast<int>(pilot_badge.x + 12), static_cast<int>(pilot_badge.y + 20), 13, COLOR_GOLD_BRIGHT);
-        DrawText("SQUADRON: ARJUNA CELESTIAL ACE", static_cast<int>(pilot_badge.x + 12), static_cast<int>(pilot_badge.y + 34), 10, COLOR_CYAN_BRIGHT);
+        bool badge_hover = CheckCollisionPointRec(GetMousePosition(), pilot_badge);
+        UI::DrawChamferedPanel(pilot_badge, badge_hover ? COLOR_GOLD_BRIGHT : COLOR_GOLD, COLOR_SURFACE_MID, 4.0f);
+        DrawText("PILOT IDENTIFICATION RECORD (CLICK FOR DOSSIER):", static_cast<int>(pilot_badge.x + 12), static_cast<int>(pilot_badge.y + 7), 9, COLOR_MUTED);
+        std::string callsign_line = PILOT_ID + std::string(" // PILOT: ") + DBSystem::instance().player_name();
+        DrawText(callsign_line.c_str(), static_cast<int>(pilot_badge.x + 12), static_cast<int>(pilot_badge.y + 20), 13, COLOR_GOLD_BRIGHT);
+        DrawText(PILOT_SQUADRON, static_cast<int>(pilot_badge.x + 12), static_cast<int>(pilot_badge.y + 34), 10, COLOR_CYAN_BRIGHT);
 
         // Subtitle line
         DrawText("CELESTIAL ASTRAL COMBAT // THE 7 REALMS OF MAHAYUDDHA", 52, 160, 12, COLOR_CYAN_BRIGHT);
@@ -105,16 +116,16 @@ public:
         }
 
         // ── RIGHT COLUMN: TELEMETRY DASHBOARD STATUS TILES ──────────────────────
-        Rectangle dash_box = { 400, 195, 450, 305 };
+        Rectangle dash_box = { 400, 195, 450, 325 };
         UI::DrawChamferedPanel(dash_box, COLOR_CYAN_BRIGHT, COLOR_SURFACE_LOW, 6.0f);
 
         DrawTextEx(font, "COMMAND TELEMETRY // SECTOR STATUS", { dash_box.x + 20, dash_box.y + 15 }, 16, 1.0f, COLOR_GOLD_BRIGHT);
         DrawLine(static_cast<int>(dash_box.x + 20), static_cast<int>(dash_box.y + 40), static_cast<int>(dash_box.x + dash_box.width - 20), static_cast<int>(dash_box.y + 40), COLOR_MUTED);
 
-        // Tile 1: Campaign Progression
+        // Tile 1: Campaign Progression & High Score
         int max_wave = DBSystem::instance().max_wave();
         if (max_wave < 1) max_wave = 1;
-        Rectangle tile1 = { dash_box.x + 20, dash_box.y + 55, dash_box.width - 40, 52 };
+        Rectangle tile1 = { dash_box.x + 20, dash_box.y + 50, dash_box.width - 40, 52 };
         UI::DrawChamferedPanel(tile1, COLOR_GOLD, COLOR_SURFACE_MID, 4.0f);
         DrawText("CAMPAIGN EXPEDITION MILESTONE", static_cast<int>(tile1.x + 15), static_cast<int>(tile1.y + 8), 10, COLOR_MUTED);
         std::string wave_prog = "HIGHEST REALM WAVE: " + std::to_string(max_wave) + " / 30";
@@ -127,29 +138,30 @@ public:
         for (const auto& ship : SHIP_FLEET) {
             if (CurrencySystem::instance().is_ship_unlocked(ship.id, max_wave)) unlocked_count++;
         }
-        Rectangle tile2 = { dash_box.x + 20, dash_box.y + 120, dash_box.width - 40, 52 };
+        Rectangle tile2 = { dash_box.x + 20, dash_box.y + 112, dash_box.width - 40, 52 };
         UI::DrawChamferedPanel(tile2, COLOR_CYAN_BRIGHT, COLOR_SURFACE_MID, 4.0f);
         DrawText("VIMANA FLEET COMMISSIONED", static_cast<int>(tile2.x + 15), static_cast<int>(tile2.y + 8), 10, COLOR_MUTED);
-        std::string fleet_str = std::to_string(unlocked_count) + " / 9 VIMANAS COMBAT READY";
+        std::string fleet_str = std::to_string(unlocked_count) + " / " + std::to_string(SHIP_FLEET.size()) + " VIMANAS COMBAT READY";
         DrawText(fleet_str.c_str(), static_cast<int>(tile2.x + 15), static_cast<int>(tile2.y + 24), 14, COLOR_CYAN_BRIGHT);
         DrawText("HANGAR INSPECTED", static_cast<int>(tile2.x + 260), static_cast<int>(tile2.y + 24), 11, COLOR_PARCHMENT);
 
-        // Tile 3: Prana Shards Treasury
+        // Tile 3: Prana Shards Treasury & High Score
         int prana = CurrencySystem::instance().prana_shards();
-        Rectangle tile3 = { dash_box.x + 20, dash_box.y + 185, dash_box.width - 40, 52 };
+        Rectangle tile3 = { dash_box.x + 20, dash_box.y + 174, dash_box.width - 40, 52 };
         UI::DrawChamferedPanel(tile3, COLOR_GREEN_BRIGHT, COLOR_SURFACE_MID, 4.0f);
-        DrawText("ASTRAL PRANA CURRENCY BALANCE", static_cast<int>(tile3.x + 15), static_cast<int>(tile3.y + 8), 10, COLOR_MUTED);
-        std::string prana_str = std::to_string(prana) + " PRANA SHARDS AVAILABLE";
+        DrawText("ASTRAL PRANA CURRENCY & LIFETIME RECORD", static_cast<int>(tile3.x + 15), static_cast<int>(tile3.y + 8), 10, COLOR_MUTED);
+        std::string prana_str = std::to_string(prana) + " PRANA SHARDS";
         DrawText(prana_str.c_str(), static_cast<int>(tile3.x + 15), static_cast<int>(tile3.y + 24), 14, COLOR_GREEN_BRIGHT);
-        DrawText("READY FOR LOADOUT", static_cast<int>(tile3.x + 250), static_cast<int>(tile3.y + 24), 11, COLOR_GOLD);
+        std::string hs_str = "HIGH: " + std::to_string(DBSystem::instance().high_score());
+        DrawText(hs_str.c_str(), static_cast<int>(tile3.x + 250), static_cast<int>(tile3.y + 24), 12, COLOR_GOLD_BRIGHT);
 
-        // Quick tip
-        DrawText("PRESS [1-7] OR CLICK BUTTONS TO NAVIGATE • 60 FPS NATIVE DESKTOP", static_cast<int>(dash_box.x + 20), static_cast<int>(dash_box.y + 255), 10, COLOR_MUTED);
+        // Quick tip & keybind hint
+        DrawText("PRESS [1-8] ON KEYBOARD OR CLICK TO NAVIGATE • 60 FPS NATIVE DESKTOP", static_cast<int>(dash_box.x + 20), static_cast<int>(dash_box.y + 285), 10, COLOR_MUTED);
 
         // Footer hint
         const char* footer = "VIMANA WARS C++ ENGINE // ARCHITECTURE: RAYLIB + SQLITE3 + ADVANCED DSA";
         Vector2 f_sz = MeasureTextEx(font, footer, 11, 1.0f);
-        DrawTextEx(font, footer, { (SCREEN_WIDTH - f_sz.x) / 2.0f, SCREEN_HEIGHT - 28 }, 11, 1.0f, COLOR_MUTED);
+        DrawTextEx(font, footer, { (SCREEN_WIDTH - f_sz.x) / 2.0f, SCREEN_HEIGHT - 24 }, 11, 1.0f, COLOR_MUTED);
 
         UI::DrawScanlines();
     }

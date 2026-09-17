@@ -68,19 +68,33 @@ public:
                 if (!enemy.active) continue;
 
                 if (Vector2Distance(b.pos, enemy.pos) < (b.radius + enemy.radius)) {
-                    // Critical hit execution with Yama boon
+                    // 1. Critical Hit Calculation
+                    bool is_crit = (std::rand() % 100) < static_cast<int>(CRIT_CHANCE * 100.0f);
                     int final_dmg = b.damage;
+                    if (is_crit) {
+                        final_dmg = static_cast<int>(final_dmg * CRIT_MULTIPLIER);
+                    }
+
+                    // 2. Critical hit execution with Yama boon or baseline execute threshold
                     if (player.has_boon(BoonType::YAMA_FATAL_DECREE) && enemy.hp < enemy.max_hp * 0.4f) {
                         final_dmg = static_cast<int>(final_dmg * 1.6f);
-                        particles.add_floating_text(enemy.pos, "EXECUTE!", COLOR_PURPLE_BRIGHT);
+                        particles.add_floating_text(enemy.pos, "FATAL DECREE!", COLOR_PURPLE_BRIGHT);
+                    } else if (enemy.hp <= enemy.max_hp * EXECUTE_THRESHOLD) {
+                        final_dmg = static_cast<int>(final_dmg * EXECUTE_BONUS);
+                        particles.add_floating_text(enemy.pos, "EXECUTE!", COLOR_RED_BRIGHT);
+                    }
+
+                    if (is_crit) {
+                        particles.add_floating_text({ enemy.pos.x, enemy.pos.y - 12.0f }, "+CRIT!", COLOR_GOLD_BRIGHT);
+                        player.score += SCORE_CRIT_BONUS;
                     }
 
                     enemy.hp -= final_dmg;
                     enemy.hit_flash = 0.15f;
                     player.total_damage_dealt += final_dmg;
-                    particles.emit_explosion(b.pos, b.color, 5, 80.0f);
-                    particles.add_floating_text(enemy.pos, std::to_string(final_dmg), b.color);
-                    SoundSystem::instance().play_sfx("hit.wav", 0.35f);
+                    particles.emit_explosion(b.pos, is_crit ? COLOR_GOLD_BRIGHT : b.color, is_crit ? 10 : 5, is_crit ? 130.0f : 80.0f);
+                    particles.add_floating_text(enemy.pos, std::to_string(final_dmg), is_crit ? COLOR_GOLD_BRIGHT : b.color);
+                    SoundSystem::instance().play_sfx("hit.wav", is_crit ? 0.6f : 0.35f);
 
                     // Chain lightning on hit (Indra boon)
                     if (player.has_boon(BoonType::INDRA_VAJRA_THUNDER) && (std::rand() % 100 < 35)) {
@@ -99,14 +113,21 @@ public:
                         enemy.active = false;
                         player.kills++;
                         player.add_combo();
-                        player.score += enemy.score_value * player.combo;
-                        out_prana_earned += 2; // +2 Shards per regular enemy
+                        int kill_score = (enemy.is_elite ? enemy.score_value * 2 : enemy.score_value) * player.combo;
+                        player.score += kill_score;
+                        int prana_drop = enemy.is_elite ? 8 : 2;
+                        out_prana_earned += prana_drop;
 
-                        particles.emit_explosion(enemy.pos, COLOR_ORANGE_BRIGHT, 22, 200.0f);
+                        if (enemy.is_elite) {
+                            particles.add_floating_text(enemy.pos, "ELITE SLAIN +8 PRANA", COLOR_GOLD_BRIGHT);
+                        }
+
+                        particles.emit_explosion(enemy.pos, enemy.is_elite ? COLOR_GOLD_BRIGHT : COLOR_ORANGE_BRIGHT, enemy.is_elite ? 35 : 22, 220.0f);
                         SoundSystem::instance().play_sfx("explosion.wav", 0.6f);
 
-                        // Drop Astral Ability Cube / Amrita (22% chance)
-                        if ((std::rand() % 100) < 22) {
+                        // Drop Astral Ability Cube / Amrita (22% chance, 50% for elite)
+                        int drop_chance = enemy.is_elite ? 50 : 22;
+                        if ((std::rand() % 100) < drop_chance) {
                             Powerup p;
                             p.active = true;
                             p.pos = enemy.pos;
