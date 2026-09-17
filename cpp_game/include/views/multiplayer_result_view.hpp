@@ -27,13 +27,61 @@ public:
     void init() override {
         m_next_view = ViewType::MULTIPLAYER_RESULT;
 
-        // Squad members stats breakdown
-        m_squad_stats = {
-            { DBSystem::instance().player_name(), "GARUDA (MOBILITY)", 148500, 192, 28, 2, "DAMAGE MASTER ★" },
-            { "ROHAN", "TRIPURA (TANK)", 92400, 114, 45, 4, "REVIVAL MASTER ★" },
-            { "ARYA", "VAJRA (DPS)", 116200, 142, 31, 1, "COMBO MASTER ★" },
-            { "DEV", "KAMADHENU (SUPPORT)", 48000, 68, 62, 3, "SUPPORT ACE ★" }
-        };
+        if (m_squad_stats.empty()) {
+            // Default squad breakdown if not set by match
+            m_squad_stats = {
+                { DBSystem::instance().player_name(), "GARUDA (SPEED)", 148500, 192, 28, 2, "DAMAGE MASTER ★" },
+                { "ROHAN", "TRIPURA (TANK)", 92400, 114, 45, 4, "SANJEEVANI ACE ★" },
+                { "ARYA", "VAJRA (DPS)", 116200, 142, 31, 1, "ASURA SLAYER ★" },
+                { "DEV", "KAMADHENU (SUPPORT)", 48000, 68, 62, 3, "IMMORTAL SHIELD ★" }
+            };
+        }
+    }
+
+    void set_results(bool victory, int team_score, const std::vector<Player>& squad) {
+        m_is_victory = victory;
+        m_team_score = team_score;
+        m_squad_stats.clear();
+
+        if (squad.empty()) return;
+
+        // Find leaders for badges
+        int max_dmg = -1, max_dmg_idx = 0;
+        int max_kills = -1, max_kills_idx = 0;
+        int max_revives = -1, max_revives_idx = 0;
+        int min_downs = 9999, min_downs_idx = 0;
+
+        for (size_t i = 0; i < squad.size(); ++i) {
+            if (squad[i].total_damage_dealt > max_dmg) { max_dmg = squad[i].total_damage_dealt; max_dmg_idx = static_cast<int>(i); }
+            if (squad[i].kills > max_kills) { max_kills = squad[i].kills; max_kills_idx = static_cast<int>(i); }
+            if (squad[i].revives_given > max_revives) { max_revives = squad[i].revives_given; max_revives_idx = static_cast<int>(i); }
+            if (squad[i].downed_count < min_downs) { min_downs = squad[i].downed_count; min_downs_idx = static_cast<int>(i); }
+        }
+
+        for (size_t i = 0; i < squad.size(); ++i) {
+            const auto& p = squad[i];
+            SquadMemberStat stat;
+            stat.name = p.callsign.empty() ? ("PILOT-" + std::to_string(i + 1)) : p.callsign;
+            std::string arch_name = p.archetype ? p.archetype->name : "Pushpaka";
+            stat.role = arch_name;
+            stat.damage = p.total_damage_dealt;
+            stat.kills = p.kills;
+            stat.assists = p.score / 250;
+            stat.revives = p.revives_given;
+
+            if (static_cast<int>(i) == max_dmg_idx) {
+                stat.citation = "DAMAGE MASTER ★";
+            } else if (static_cast<int>(i) == max_kills_idx) {
+                stat.citation = "ASURA SLAYER ★";
+            } else if (static_cast<int>(i) == max_revives_idx && p.revives_given > 0) {
+                stat.citation = "SANJEEVANI ACE ★";
+            } else if (static_cast<int>(i) == min_downs_idx) {
+                stat.citation = "IMMORTAL SHIELD ★";
+            } else {
+                stat.citation = "BRAVE WINGMAN ★";
+            }
+            m_squad_stats.push_back(stat);
+        }
     }
 
     void update(float dt, Vector2 mouse_pos) override {
@@ -51,11 +99,14 @@ public:
         Font font = AssetManager::instance().font();
 
         // Header Panel
-        UI::DrawChamferedPanel({ 30, 20, 840, 55 }, COLOR_GOLD_BRIGHT, COLOR_SURFACE_LOW, 6.0f);
-        DrawTextEx(font, "SANGHA SQUADRON DEBRIEFING // VICTORY AT LANKA", { 45, 28 }, 22, 1.0f, COLOR_GOLD_BRIGHT);
+        UI::DrawChamferedPanel({ 30, 20, 840, 55 }, m_is_victory ? COLOR_GOLD_BRIGHT : COLOR_RED_BRIGHT, COLOR_SURFACE_LOW, 6.0f);
+        const char* hdr_text = m_is_victory ? "SANGHA SQUADRON DEBRIEFING // VICTORY ACHIEVED" : "SANGHA SQUADRON DEBRIEFING // SQUADRON DOWNED";
+        DrawTextEx(font, hdr_text, { 45, 28 }, 20, 1.0f, m_is_victory ? COLOR_GOLD_BRIGHT : COLOR_RED_BRIGHT);
 
-        DrawText("ALL OBJECTIVES SECURED • TITAN HIRANYAKASHIPU VANQUISHED", 45, 52, 10, COLOR_CYAN_BRIGHT);
-        DrawText("TEAM SCORE: 405,100", SCREEN_WIDTH - 240, 36, 16, COLOR_GOLD_BRIGHT);
+        std::string sub_text = m_is_victory ? "ALL OBJECTIVES SECURED • CELESTIAL ORDER RESTORED" : "TACTICAL RETREAT INITIATED • SQUADRON REGROUP REQUIRED";
+        DrawText(sub_text.c_str(), 45, 52, 10, COLOR_CYAN_BRIGHT);
+        std::string score_str = "TEAM SCORE: " + std::to_string(m_team_score);
+        DrawText(score_str.c_str(), SCREEN_WIDTH - 250, 36, 16, COLOR_GOLD_BRIGHT);
 
         // Squad Performance Cards (4 columns)
         float start_x = 35.0f;
@@ -113,7 +164,7 @@ public:
         m_btn_lobby.draw(font);
         m_btn_menu.draw(font);
 
-        UI::DrawScanlines();
+        if (g_scanlines_enabled) UI::DrawScanlines();
     }
 
     ViewType next_view() const override { return m_next_view; }
@@ -131,6 +182,8 @@ private:
     };
 
     ViewType m_next_view;
+    bool m_is_victory = true;
+    int m_team_score = 0;
     std::vector<SquadMemberStat> m_squad_stats;
 
     UI::Button m_btn_rematch;

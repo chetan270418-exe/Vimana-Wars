@@ -55,6 +55,10 @@ struct Player {
     ConsumableInventory inventory;
     std::vector<BoonType> boons;
 
+    // Identification
+    uint8_t player_id = 0;
+    std::string callsign = "Warrior";
+
     // Statistics for current run
     int score = 0;
     int combo = 1;
@@ -62,6 +66,10 @@ struct Player {
     float combo_timer = 0.0f;
     int kills = 0;
     int total_damage_dealt = 0;
+    long long shots_fired = 0;
+    long long shots_hit = 0;
+    int downed_count = 0;
+    int revives_given = 0;
 
     // Co-op Downed State
     bool is_downed = false;
@@ -99,6 +107,13 @@ struct Player {
         combo_timer = 0.0f;
         kills = 0;
         total_damage_dealt = 0;
+        shots_fired = 0;
+        shots_hit = 0;
+        downed_count = 0;
+        revives_given = 0;
+        is_downed = false;
+        downed_timer = 0.0f;
+        boons.clear();
     }
 
     bool has_boon(BoonType boon) const {
@@ -252,17 +267,23 @@ struct Player {
         float rad = angle * (3.14159f / 180.0f);
         Vector2 nose = { pos.x + std::cos(rad) * radius, pos.y + std::sin(rad) * radius };
 
-        // Berserk multiplier for Narasimha
+        // Damage calculation
         int dmg = bullet_damage;
+        // Narasimha Archetype trait: low HP scaling
         if (archetype && archetype->id == "narasimha") {
             float missing_hp = 1.0f - (static_cast<float>(hp) / max_hp);
-            dmg += static_cast<int>(missing_hp * 40); // Scaling damage
+            dmg += static_cast<int>(missing_hp * 25);
+        }
+        // Narasimha 9th Boon: +40% damage when HP < 35%
+        if (has_boon(BoonType::NARASIMHA_BERSERK_MIGHT) && (static_cast<float>(hp) / max_hp) < 0.35f) {
+            dmg = static_cast<int>(dmg * 1.4f);
         }
 
         bool is_pierce = (has_boon(BoonType::SURYA_RADIANT_PIERCE) && (shot_counter % 7 == 0));
 
         if (buff_agneyastra_timer > 0) {
             // 3-way spread fire
+            shots_fired += 3;
             for (int off : { -16, 0, 16 }) {
                 float a = (angle + off) * (3.14159f / 180.0f);
                 Bullet b;
@@ -273,9 +294,12 @@ struct Player {
                 b.radius = 6.0f;
                 b.color = COLOR_RED_BRIGHT;
                 b.pierce_remaining = is_pierce ? 3 : 0;
+                b.owner_player_id = player_id;
+                b.is_player_owned = true;
                 out_bullets.push_back(b);
             }
         } else {
+            shots_fired += 1;
             Bullet b;
             b.active = true;
             b.pos = nose;
@@ -284,6 +308,8 @@ struct Player {
             b.radius = is_pierce ? 8.0f : PLAYER_BULLET_RADIUS;
             b.color = is_pierce ? COLOR_GOLD_BRIGHT : (archetype ? archetype->accent_color : COLOR_GOLD);
             b.pierce_remaining = is_pierce ? 4 : 0;
+            b.owner_player_id = player_id;
+            b.is_player_owned = true;
             if (archetype && archetype->id == "narasimha") {
                 b.type = BulletType::NARASIMHA_CLAW;
             }
@@ -302,6 +328,7 @@ struct Player {
     void try_chakram(std::vector<Bullet>& out_bullets) {
         if (chakram_timer > 0) return;
         chakram_timer = chakram_cooldown;
+        shots_fired += 1;
 
         Bullet b;
         b.active = true;
@@ -313,6 +340,8 @@ struct Player {
         b.type = BulletType::CHAKRAM;
         b.pierce_remaining = 999;
         b.max_lifetime = 5.0f;
+        b.owner_player_id = player_id;
+        b.is_player_owned = true;
         out_bullets.push_back(b);
     }
 
@@ -326,6 +355,7 @@ struct Player {
     void use_vajra_flare(std::vector<Bullet>& out_bullets) {
         if (inventory.vajra_flares > 0) {
             inventory.vajra_flares--;
+            shots_fired += 24;
             // Spawn 24 outward pulse blades
             for (int i = 0; i < 24; ++i) {
                 float rad = (i * 15.0f) * (3.14159f / 180.0f);
@@ -337,6 +367,8 @@ struct Player {
                 b.radius = 7.0f;
                 b.color = COLOR_CYAN_BRIGHT;
                 b.pierce_remaining = 2;
+                b.owner_player_id = player_id;
+                b.is_player_owned = true;
                 out_bullets.push_back(b);
             }
         }

@@ -71,7 +71,7 @@ constexpr float ELITE_DAMAGE_MULT        = 1.25f;
 constexpr float ELITE_SPEED_MULT         = 1.15f;
 
 // ── Co-op: Downed & Revive ────────────────────────────────────────────────────
-constexpr float REVIVE_TIME          = 8.0f;   // seconds to fully revive
+constexpr float REVIVE_TIME          = 3.5f;   // 3.5 seconds to fully revive
 constexpr float REVIVE_RANGE         = 80.0f;  // pixels — must be this close
 constexpr float DOWNED_TIMER         = 15.0f;  // seconds before eliminated
 
@@ -82,7 +82,7 @@ constexpr float TEAM_COMBO_BUFF_DUR    = 8.0f;   // seconds the buff lasts
 
 // ── Co-op: Cooperative Astra Cooldown ────────────────────────────────────────
 constexpr float CO_OP_ASTRA_COOLDOWN   = 30.0f;  // 30 second shared cooldown
-constexpr float CO_OP_ASTRA_SYNC_WIN   = 0.5f;   // both players must activate within 0.5s
+constexpr float CO_OP_ASTRA_SYNC_WIN   = 1.5f;   // 1.5 second coordination window
 
 // ── Co-op: Player Scaling ─────────────────────────────────────────────────────
 // EnemyCount = BaseCount * (1 + 0.35 * (Players - 1))
@@ -119,10 +119,12 @@ inline const Color COLOR_GREEN_BRIGHT  = {  50, 240, 120, 255 };
 inline const Color COLOR_ORANGE_BRIGHT = { 255, 140,  40, 255 };
 inline const Color COLOR_PURPLE_BRIGHT = { 210,  90, 255, 255 };
 
-// Colorblind-mode overrides (swapped in via accessibility setting)
-inline Color COLOR_CB_ACCENT_1 = { 255, 255, 255, 255 }; // replaces cyan → white
-inline Color COLOR_CB_ACCENT_2 = { 255, 230,  50, 255 }; // replaces gold → bright yellow
-inline bool  g_colorblind_mode = false;
+// Accessibility overrides
+inline Color COLOR_CB_ACCENT_1        = { 255, 255, 255, 255 };
+inline Color COLOR_CB_ACCENT_2        = { 255, 230,  50, 255 };
+inline bool  g_colorblind_mode        = false;
+inline bool  g_screen_shake_enabled   = true;
+inline bool  g_scanlines_enabled      = true;
 
 // ── Difficulty Profiles ───────────────────────────────────────────────────────
 inline const std::array<DifficultyProfile, 4> DIFFICULTY_PROFILES = {{
@@ -155,37 +157,55 @@ inline const std::array<DifficultyProfile, 4> DIFFICULTY_PROFILES = {{
     }
 }};
 
-// ── Realm Metadata ────────────────────────────────────────────────────────────
-struct RealmData {
-    int         id;
-    const char* name;
-    const char* subtitle;
-    int         start_wave;
-    int         end_wave;
-    Color       bg_color;
-    Color       accent_color;
+// ── Campaign Realms & Boss Single Source of Truth ─────────────────────────────
+enum class RealmModifierType {
+    NONE,
+    SWARGA_AETHER,      // +15% player thruster agility
+    KSHIRA_VORTEX,      // vortex currents & projectile drift
+    DANDAKA_JAMMING,    // sensor/radar jamming & short telegraphs
+    LANKA_MOLTEN_FIRE,  // +15% void fire damage
+    SETU_DRIFT,         // +20% dash distance
+    NARAKA_FLAK,        // extra flak shrapnel from shooter enemies
+    MAHAYUDDHA_DISTORT  // reality distortion rift events
 };
 
-inline const std::array<RealmData, 10> REALMS = {{
-    { 1, "Swarga",            "The Heavenly Celestial Realm",         1,  3,  { 5,  8, 26, 255}, {120,200,255,255} },
-    { 2, "Kshira Sagara",     "The Cosmic Ocean of Milk",             4,  6,  { 4, 18, 28, 255}, { 80,240,220,255} },
-    { 3, "Dandaka Void",      "The Mystical Astral Forest",           7,  9,  {14,  5, 24, 255}, {210,100,255,255} },
-    { 4, "Lanka",             "The Molten Rift of Ravana",           10, 12,  {22,  4, 10, 255}, {255, 70, 70,255} },
-    { 5, "Setu Expanse",      "The Bridge Between Celestial Worlds", 13, 15,  { 9, 12, 30, 255}, {255,150, 80,255} },
-    { 6, "Naraka Forge",      "The Burning Foundry of Asura Warships",16,18, {25,  7,  5, 255}, {255,100, 40,255} },
-    { 7, "Mahayuddha Citadel","The Final Astral Battlefield",        19, 20,  {18,  4, 24, 255}, {255, 80,190,255} },
-    { 8, "Patala Depths",     "The Serpent Kingdom Below",           21, 23,  { 3, 12, 18, 255}, { 60,255,180,255} },
-    { 9, "Brahmaloka Summit", "The Creator's Divine Citadel",        24, 26,  {20, 18, 30, 255}, {200,170,255,255} },
-    {10, "Vaikuntha Gate",    "The Eternal Threshold of Vishnu",     27, 30,  {10,  5, 20, 255}, {255,150,255,255} }
+struct CampaignRealm {
+    int               id;
+    const char*       name;
+    const char*       sanskrit_title;
+    int               start_wave;
+    int               end_wave;
+    int               boss_wave;
+    const char*       boss_name;
+    RealmModifierType modifier_type;
+    const char*       modifier_desc;
+    const char*       description;
+    Vector2           map_pos;
+    Color             accent_color;
+};
+
+inline const std::array<CampaignRealm, 7> CAMPAIGN_REALMS = {{
+    { 1, "Swarga Outpost",     "Gate of Indra",                 1,  3,  0, "None",                   RealmModifierType::SWARGA_AETHER,     "Celestial Aether (+15% Speed)",       "Outer orbital sanctuary guarding the celestial gateway. Light Asura reconnaissance forces.", { 140, 420 }, COLOR_CYAN_BRIGHT },
+    { 2, "Kshira Sagara",      "Ocean of Celestial Nectar",     4,  6,  5, "Titan Kumbhakarna",      RealmModifierType::KSHIRA_VORTEX,     "Vortex Currents & Drift",             "Astral sea of luminescent nebulae. Beware the awakened Slumbering Mountain at wave 5.",        { 250, 310 }, { 100, 220, 255, 255 } },
+    { 3, "Dandaka Void",       "Forest of Eternal Shadows",     7,  9,  0, "None",                   RealmModifierType::DANDAKA_JAMMING,   "Sensor Jamming & Stealth",            "Perilous asteroid expanse infested with cloaked Rakshasa raiders and plasma minefields.",      { 390, 360 }, COLOR_PURPLE_BRIGHT },
+    { 4, "Lanka Approach",     "The Molten Bastion",           10, 12, 10, "Emperor Ravana",         RealmModifierType::LANKA_MOLTEN_FIRE, "Molten Void Fire (+15% Dmg)",        "Outer planetary defense network surrounding the demon fortress. Emperor Ravana commands wave 10.", { 510, 260 }, COLOR_GOLD_BRIGHT },
+    { 5, "Setu Expanse",       "Bridge of Floating Spheres",   13, 15, 15, "Warlord Mahishasura",    RealmModifierType::SETU_DRIFT,        "Hyperlane Drift (+20% Dash)",         "Cosmic bridge of magnetized meteors. Guarded by the unyielding Buffalo Warlord at wave 15.",    { 630, 330 }, COLOR_GREEN_BRIGHT },
+    { 6, "Naraka Forge",       "Foundry of Asura Warships",    16, 25, 25, "Conqueror Indrajit",     RealmModifierType::NARAKA_FLAK,       "Heavy Flak Shrapnel",                 "Volcanic underworld foundry where demon dreadnoughts are forged. Conqueror Indrajit strikes at wave 25.", { 730, 220 }, COLOR_RED_BRIGHT },
+    { 7, "Mahayuddha Citadel", "Throne of the Demon Sovereign",26, 30, 30, "Tyrant Hiranyakashipu", RealmModifierType::MAHAYUDDHA_DISTORT, "Reality Distortion Field",            "Epicenter of the Asura Dominion. Confront the immortal tyrant Hiranyakashipu in the final wave 30 clash.", { 820, 140 }, COLOR_ORANGE_BRIGHT }
 }};
 
-inline const RealmData& GetRealmForWave(int wave) {
+inline const CampaignRealm& GetCampaignRealmForWave(int wave) {
     int effective = ((wave - 1) % 30) + 1;
-    for (const auto& realm : REALMS) {
+    for (const auto& realm : CAMPAIGN_REALMS) {
         if (effective >= realm.start_wave && effective <= realm.end_wave) return realm;
     }
-    return REALMS[9];
+    return CAMPAIGN_REALMS[6];
 }
+
+// Backward-compatibility alias for legacy code
+using RealmData = CampaignRealm;
+inline const std::array<CampaignRealm, 7>& REALMS = CAMPAIGN_REALMS;
+inline const CampaignRealm& GetRealmForWave(int wave) { return GetCampaignRealmForWave(wave); }
 
 // ── Currency & Armory ─────────────────────────────────────────────────────────
 constexpr int PRANA_REWARD_WAVE_CLEAR   = 50;

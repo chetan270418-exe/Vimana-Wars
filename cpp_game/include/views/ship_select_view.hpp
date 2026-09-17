@@ -55,7 +55,7 @@ public:
             std::string unlock_txt = "UNLOCK FOR " + std::to_string(current_ship.prana_cost) + " PRANA";
             m_btn_unlock.set_label(unlock_txt);
             if (m_btn_unlock.update(mouse_pos)) {
-                CurrencySystem::instance().try_unlock_ship_with_prana(current_ship.id);
+                CurrencySystem::instance().try_unlock_ship_with_prana(current_ship.id, max_wave);
             }
         } else {
             if (m_btn_launch.update(mouse_pos) || IsKeyPressed(KEY_ENTER)) {

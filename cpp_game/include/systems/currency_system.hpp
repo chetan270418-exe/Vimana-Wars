@@ -42,8 +42,8 @@ public:
         return false;
     }
 
-    bool try_unlock_ship_with_prana(const std::string& ship_id) {
-        if (is_ship_unlocked(ship_id, 99)) return false; // Already unlocked
+    bool try_unlock_ship_with_prana(const std::string& ship_id, int campaign_max_wave = 1) {
+        if (is_ship_unlocked(ship_id, campaign_max_wave)) return false; // Already unlocked
         const ShipArchetype* arch = GetShipArchetype(ship_id);
         int cost = arch ? arch->prana_cost : COST_EARLY_SHIP_UNLOCK;
         if (spend_prana_shards(cost)) {

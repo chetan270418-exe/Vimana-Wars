@@ -102,6 +102,23 @@ enum class BoonType {
     NARASIMHA_BERSERK_MIGHT  // Low HP massive damage amplification
 };
 
+struct UpgradeChoice {
+    std::string id;
+    std::string name;
+    std::string description;
+    int cost;
+    bool purchased;
+};
+
+// ── Combat & Damage Events ───────────────────────────────────────────────────
+struct DamageEvent {
+    uint8_t source_player_id = 0;
+    int damage_amount        = 0;
+    bool is_crit             = false;
+    bool is_fatal            = false;
+    Vector2 hit_position     = { 0.0f, 0.0f };
+};
+
 struct BoonSynergy {
     std::string id;
     std::string name;

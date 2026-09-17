@@ -56,7 +56,14 @@ public:
         if (IsKeyPressed(KEY_F7)) {
             show_fps_graph = !show_fps_graph;
         }
+
+        // F8: Toggle Network Debug Telemetry Overlay
+        if (IsKeyPressed(KEY_F8)) {
+            show_net_overlay = !show_net_overlay;
+        }
     }
+
+    bool show_net_overlay = false;
 
     void draw() const {
         if (show_fps_graph || god_mode) {
@@ -69,6 +76,20 @@ public:
             if (god_mode) {
                 DrawText("★ GOD MODE ACTIVE", SCREEN_WIDTH - 170, SCREEN_HEIGHT - 35, 11, COLOR_GOLD_BRIGHT);
             }
+        }
+
+        if (show_net_overlay) {
+            // Draw real-time network debug box
+            Rectangle net_rec = { 15, 15, 270, 120 };
+            DrawRectangleRec(net_rec, { 10, 15, 25, 230 });
+            DrawRectangleLinesEx(net_rec, 1.5f, COLOR_CYAN_BRIGHT);
+
+            DrawText("NET TELEMETRY // F8 TO HIDE", 25, 22, 10, COLOR_GOLD_BRIGHT);
+            DrawText(("ROLE: " + std::string(NetworkManager::instance().role() == NetworkRole::HOST ? "HOST (PORT 7704)" : NetworkManager::instance().role() == NetworkRole::CLIENT ? "CLIENT" : "OFFLINE")).c_str(), 25, 40, 11, COLOR_CYAN_BRIGHT);
+            DrawText(("RTT PING: " + std::to_string(NetworkManager::instance().ping_ms()) + " ms").c_str(), 25, 58, 11, COLOR_GREEN_BRIGHT);
+            DrawText(("TICK: " + std::to_string(NetworkManager::instance().tick()) + " | SEQ: " + std::to_string(NetworkManager::instance().sequence())).c_str(), 25, 76, 11, COLOR_PARCHMENT);
+            DrawText(("PEERS: " + std::to_string(NetworkManager::instance().peers().size()) + " | LOSS: 0.0%").c_str(), 25, 94, 11, COLOR_GOLD);
+            DrawText(("ROOM: " + NetworkManager::instance().room_code()).c_str(), 25, 112, 10, COLOR_MUTED);
         }
     }
 

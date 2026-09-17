@@ -148,13 +148,14 @@ int main() {
                     current_view = difficulty_view.get();
                 } else if (next == ViewType::GAMEPLAY) {
                     if (current_view_type == ViewType::LOADOUT) {
-                        game_view->start_with_ship(&loadout_view->selected_ship(), loadout_view->inventory(), loadout_view->starting_wave());
+                        game_view->start_with_ship(&loadout_view->selected_ship(), loadout_view->inventory(), loadout_view->starting_wave(), difficulty_view->selected_difficulty(), 1);
                     } else if (current_view_type == ViewType::SHIP_SELECT) {
-                        game_view->start_with_ship(&ship_select_view->selected_ship(), ship_select_view->consumables(), 1);
+                        game_view->start_with_ship(&ship_select_view->selected_ship(), ship_select_view->consumables(), 1, difficulty_view->selected_difficulty(), 1);
                     } else if (current_view_type == ViewType::BOON_SELECT) {
                         game_view->apply_boon_and_resume(boon_view->chosen_boon());
                     } else if (current_view_type == ViewType::MULTIPLAYER_LOBBY) {
-                        game_view->start_with_ship(&ship_select_view->selected_ship(), ship_select_view->consumables(), 1);
+                        int num_squad = NetworkManager::instance().players().empty() ? 2 : static_cast<int>(NetworkManager::instance().players().size());
+                        game_view->start_with_ship(&ship_select_view->selected_ship(), ship_select_view->consumables(), 1, difficulty_view->selected_difficulty(), num_squad);
                     }
                     current_view = game_view.get();
                 } else if (next == ViewType::WAVE_CLEAR) {
@@ -176,6 +177,11 @@ int main() {
                     multiplayer_view->init();
                     current_view = multiplayer_view.get();
                 } else if (next == ViewType::MULTIPLAYER_RESULT) {
+                    multiplayer_result_view->set_results(
+                        game_view->current_wave() >= 30,
+                        game_view->total_team_score(),
+                        game_view->squad()
+                    );
                     multiplayer_result_view->init();
                     current_view = multiplayer_result_view.get();
                 } else if (next == ViewType::SETTINGS) {

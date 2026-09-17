@@ -37,7 +37,9 @@ public:
         m_btn_music_up = UI::Button({ cx + 70, 290, 40, 34 }, "+", COLOR_GOLD);
 
         m_btn_fullscreen = UI::Button({ cx - 110, 350, 220, 36 }, "TOGGLE FULLSCREEN", COLOR_CYAN_BRIGHT);
-        m_btn_colorblind = UI::Button({ cx - 110, 260, 220, 36 }, "TOGGLE COLORBLIND", COLOR_GREEN_BRIGHT);
+        m_btn_colorblind = UI::Button({ cx + 20, 160, 190, 34 }, "TOGGLE PALETTE", COLOR_GREEN_BRIGHT);
+        m_btn_shake = UI::Button({ cx + 20, 245, 190, 34 }, "TOGGLE SHAKE", COLOR_CYAN_BRIGHT);
+        m_btn_scanlines = UI::Button({ cx + 20, 330, 190, 34 }, "TOGGLE SCANLINES", COLOR_GOLD_BRIGHT);
 
         m_btn_back = UI::Button({ 40, 520, 110, 36 }, "SAVE & BACK", COLOR_MUTED);
     }
@@ -85,6 +87,12 @@ public:
         } else if (m_active_tab == 2) {
             if (m_btn_colorblind.update(mouse_pos)) {
                 g_colorblind_mode = !g_colorblind_mode;
+            }
+            if (m_btn_shake.update(mouse_pos)) {
+                g_screen_shake_enabled = !g_screen_shake_enabled;
+            }
+            if (m_btn_scanlines.update(mouse_pos)) {
+                g_scanlines_enabled = !g_scanlines_enabled;
             }
         }
     }
@@ -156,21 +164,24 @@ public:
 
         } else if (m_active_tab == 2) {
             // ── ACCESSIBILITY TAB ──
-            DrawText("HIGH-CONTRAST / COLORBLIND MODE", cx - 220, 200, 14, COLOR_PARCHMENT);
-            std::string cb_status = g_colorblind_mode ? "ACTIVE // HIGH-CONTRAST PALETTE" : "STANDARD // VEDIC PALETTE";
-            Color cb_col = g_colorblind_mode ? COLOR_GREEN_BRIGHT : COLOR_MUTED;
-            DrawText(cb_status.c_str(), cx - 220, 225, 12, cb_col);
+            DrawText("HIGH-CONTRAST / COLORBLIND MODE", cx - 220, 160, 13, COLOR_PARCHMENT);
+            std::string cb_status = g_colorblind_mode ? "ACTIVE // HIGH-CONTRAST PALETTE" : "OFF // STANDARD VEDIC PALETTE";
+            DrawText(cb_status.c_str(), cx - 220, 180, 11, g_colorblind_mode ? COLOR_GREEN_BRIGHT : COLOR_MUTED);
             m_btn_colorblind.draw(font);
 
-            DrawText("SCREEN SHAKE REDUCTION", cx - 220, 325, 14, COLOR_PARCHMENT);
-            DrawText("STANDARD // ACTIVE WITH IMPACT INTENSITY", cx - 220, 348, 12, COLOR_CYAN_BRIGHT);
+            DrawText("SCREEN SHAKE INTENSITY", cx - 220, 245, 13, COLOR_PARCHMENT);
+            std::string shake_status = g_screen_shake_enabled ? "ENABLED // FULL IMPACT FEEDBACK" : "DISABLED // STATIC CAMERA";
+            DrawText(shake_status.c_str(), cx - 220, 265, 11, g_screen_shake_enabled ? COLOR_CYAN_BRIGHT : COLOR_MUTED);
+            m_btn_shake.draw(font);
 
-            DrawText("CRT SCANLINE OVERLAY", cx - 220, 385, 14, COLOR_PARCHMENT);
-            DrawText("ACTIVE // CELESTIAL WAR CONSOLE SIMULATION", cx - 220, 408, 12, COLOR_GOLD_BRIGHT);
+            DrawText("CRT SCANLINE OVERLAY", cx - 220, 330, 13, COLOR_PARCHMENT);
+            std::string scan_status = g_scanlines_enabled ? "ENABLED // RETRO WAR CONSOLE" : "DISABLED // CRISP HI-DEF";
+            DrawText(scan_status.c_str(), cx - 220, 350, 11, g_scanlines_enabled ? COLOR_GOLD_BRIGHT : COLOR_MUTED);
+            m_btn_scanlines.draw(font);
         }
 
         m_btn_back.draw(font);
-        UI::DrawScanlines();
+        if (g_scanlines_enabled) UI::DrawScanlines();
     }
 
     ViewType next_view() const override { return m_next_view; }
@@ -192,6 +203,8 @@ private:
     UI::Button m_btn_music_up;
     UI::Button m_btn_fullscreen;
     UI::Button m_btn_colorblind;
+    UI::Button m_btn_shake;
+    UI::Button m_btn_scanlines;
     UI::Button m_btn_back;
 };
 

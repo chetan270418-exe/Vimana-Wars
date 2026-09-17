@@ -18,8 +18,8 @@ class CollisionSystem {
 public:
     CollisionSystem() : m_grid(SCREEN_WIDTH, SCREEN_HEIGHT, 80.0f) {}
 
-    void resolve_combat(
-        Player& player,
+    void resolve_combat_ptrs(
+        const std::vector<Player*>& squad,
         std::vector<Enemy>& enemies,
         Boss* current_boss,
         std::vector<Bullet>& bullets,
@@ -27,6 +27,7 @@ public:
         ParticleSystem& particles,
         int& out_prana_earned
     ) {
+        if (squad.empty()) return;
         m_grid.clear();
 
         // 1. Insert active enemies into SpatialGrid
@@ -42,11 +43,24 @@ public:
         for (auto& b : bullets) {
             if (!b.active || b.is_enemy) continue;
 
+            // Find bullet owner
+            Player* owner = nullptr;
+            for (auto* p : squad) {
+                if (p && p->player_id == b.owner_player_id) {
+                    owner = p;
+                    break;
+                }
+            }
+            if (!owner) owner = squad[0];
+
             // Check Boss first if active
             if (current_boss && current_boss->active) {
                 if (Vector2Distance(b.pos, current_boss->pos) < (b.radius + current_boss->radius)) {
                     current_boss->take_damage(b.damage);
-                    player.total_damage_dealt += b.damage;
+                    if (owner) {
+                        owner->shots_hit++;
+                        owner->total_damage_dealt += b.damage;
+                    }
                     particles.emit_explosion(b.pos, COLOR_GOLD_BRIGHT, 6, 90.0f);
                     particles.add_floating_text(b.pos, std::to_string(b.damage), COLOR_GOLD_BRIGHT);
                     SoundSystem::instance().play_sfx("hit.wav", 0.4f);
@@ -68,6 +82,10 @@ public:
                 if (!enemy.active) continue;
 
                 if (Vector2Distance(b.pos, enemy.pos) < (b.radius + enemy.radius)) {
+                    if (owner) {
+                        owner->shots_hit++;
+                    }
+
                     // 1. Critical Hit Calculation
                     bool is_crit = (std::rand() % 100) < static_cast<int>(CRIT_CHANCE * 100.0f);
                     int final_dmg = b.damage;
@@ -76,7 +94,7 @@ public:
                     }
 
                     // 2. Critical hit execution with Yama boon or baseline execute threshold
-                    if (player.has_boon(BoonType::YAMA_FATAL_DECREE) && enemy.hp < enemy.max_hp * 0.4f) {
+                    if (owner && owner->has_boon(BoonType::YAMA_FATAL_DECREE) && enemy.hp < enemy.max_hp * 0.4f) {
                         final_dmg = static_cast<int>(final_dmg * 1.6f);
                         particles.add_floating_text(enemy.pos, "FATAL DECREE!", COLOR_PURPLE_BRIGHT);
                     } else if (enemy.hp <= enemy.max_hp * EXECUTE_THRESHOLD) {
@@ -86,18 +104,19 @@ public:
 
                     if (is_crit) {
                         particles.add_floating_text({ enemy.pos.x, enemy.pos.y - 12.0f }, "+CRIT!", COLOR_GOLD_BRIGHT);
-                        player.score += SCORE_CRIT_BONUS;
+                        if (owner) owner->score += SCORE_CRIT_BONUS;
                     }
 
                     enemy.hp -= final_dmg;
                     enemy.hit_flash = 0.15f;
-                    player.total_damage_dealt += final_dmg;
+                    if (owner) owner->total_damage_dealt += final_dmg;
+
                     particles.emit_explosion(b.pos, is_crit ? COLOR_GOLD_BRIGHT : b.color, is_crit ? 10 : 5, is_crit ? 130.0f : 80.0f);
                     particles.add_floating_text(enemy.pos, std::to_string(final_dmg), is_crit ? COLOR_GOLD_BRIGHT : b.color);
                     SoundSystem::instance().play_sfx("hit.wav", is_crit ? 0.6f : 0.35f);
 
                     // Chain lightning on hit (Indra boon)
-                    if (player.has_boon(BoonType::INDRA_VAJRA_THUNDER) && (std::rand() % 100 < 35)) {
+                    if (owner && owner->has_boon(BoonType::INDRA_VAJRA_THUNDER) && (std::rand() % 100 < 35)) {
                         for (auto& other_e : enemies) {
                             if (other_e.active && &other_e != &enemy && Vector2Distance(enemy.pos, other_e.pos) < 160.0f) {
                                 other_e.hp -= 20;
@@ -111,10 +130,12 @@ public:
                     // Enemy death
                     if (enemy.hp <= 0) {
                         enemy.active = false;
-                        player.kills++;
-                        player.add_combo();
-                        int kill_score = (enemy.is_elite ? enemy.score_value * 2 : enemy.score_value) * player.combo;
-                        player.score += kill_score;
+                        if (owner) {
+                            owner->kills++;
+                            owner->add_combo();
+                            int kill_score = (enemy.is_elite ? enemy.score_value * 2 : enemy.score_value) * owner->combo;
+                            owner->score += kill_score;
+                        }
                         int prana_drop = enemy.is_elite ? 8 : 2;
                         out_prana_earned += prana_drop;
 
@@ -147,75 +168,114 @@ public:
             }
         }
 
-        // 3. Enemy Bullets vs Player
+        // 3. Enemy Bullets vs Squad Members
         for (auto& b : bullets) {
             if (!b.active || !b.is_enemy) continue;
-            if (Vector2Distance(b.pos, player.pos) < (b.radius + player.radius)) {
-                player.take_damage(b.damage);
-                particles.emit_explosion(b.pos, COLOR_RED_BRIGHT, 10, 110.0f);
-                particles.trigger_screen_shake(7.0f, 0.25f);
-                SoundSystem::instance().play_sfx("hit.wav", 0.8f);
-                b.active = false;
-            }
-        }
-
-        // 4. Player vs Enemies (Contact damage)
-        m_grid.query(player.pos, player.radius + 20.0f, candidate_indices);
-        for (int idx : candidate_indices) {
-            if (idx < 0 || idx >= static_cast<int>(enemies.size())) continue;
-            Enemy& enemy = enemies[idx];
-            if (!enemy.active) continue;
-
-            if (Vector2Distance(player.pos, enemy.pos) < (player.radius + enemy.radius)) {
-                player.take_damage(PLAYER_CONTACT_DAMAGE);
-                enemy.hp -= 30; // Contact recoil damage
-                particles.trigger_screen_shake(8.0f, 0.3f);
-                if (enemy.hp <= 0) {
-                    enemy.active = false;
-                    player.kills++;
-                    particles.emit_explosion(enemy.pos, COLOR_ORANGE_BRIGHT, 20, 180.0f);
+            for (auto* p : squad) {
+                if (!p || p->is_downed) continue;
+                if (Vector2Distance(b.pos, p->pos) < (b.radius + p->radius)) {
+                    p->take_damage(b.damage);
+                    particles.emit_explosion(b.pos, COLOR_RED_BRIGHT, 10, 110.0f);
+                    if (g_screen_shake_enabled) particles.trigger_screen_shake(7.0f, 0.25f);
+                    SoundSystem::instance().play_sfx("hit.wav", 0.8f);
+                    b.active = false;
+                    break;
                 }
             }
         }
 
-        // 5. Player vs Astral Cubes
-        for (auto& p : powerups) {
-            if (!p.active) continue;
-            if (Vector2Distance(p.pos, player.pos) < (p.radius + player.radius + 10.0f)) {
-                p.active = false;
-                SoundSystem::instance().play_sfx("powerup.wav", 0.7f);
-                particles.emit_explosion(p.pos, COLOR_CYAN_BRIGHT, 15, 140.0f);
+        // 4. Squad Members vs Enemies (Contact damage)
+        for (auto* p : squad) {
+            if (!p || p->is_downed) continue;
+            m_grid.query(p->pos, p->radius + 20.0f, candidate_indices);
+            for (int idx : candidate_indices) {
+                if (idx < 0 || idx >= static_cast<int>(enemies.size())) continue;
+                Enemy& enemy = enemies[idx];
+                if (!enemy.active) continue;
 
-                switch (p.type) {
-                    case PowerupType::KAVACH_SHIELD:
-                        player.has_kavach_shield = true;
-                        player.kavach_timer = 8.0f;
-                        particles.add_floating_text(player.pos, "KAVACH SHIELD!", COLOR_CYAN_BRIGHT);
-                        break;
-                    case PowerupType::AGNEYASTRA_SPREAD:
-                        player.buff_agneyastra_timer = 10.0f;
-                        particles.add_floating_text(player.pos, "AGNEYASTRA SPREAD!", COLOR_RED_BRIGHT);
-                        break;
-                    case PowerupType::VAYAVYASTRA_SPEED:
-                        player.buff_speed_timer = 10.0f;
-                        player.dash_charges = player.max_dash_charges;
-                        particles.add_floating_text(player.pos, "VAYU SURGE!", COLOR_GREEN_BRIGHT);
-                        break;
-                    case PowerupType::AMRITA_HEAL:
-                        player.hp = std::min(player.max_hp, player.hp + 35);
-                        particles.add_floating_text(player.pos, "+35 HP AMRITA", { 80, 240, 180, 255 });
-                        break;
-                    case PowerupType::BRAHMASTRA_BOMB:
-                        player.brahmastra_bombs++;
-                        particles.add_floating_text(player.pos, "+1 BRAHMASTRA BOMB", COLOR_GOLD_BRIGHT);
-                        break;
-                    case PowerupType::ASTRA_OVERDRIVE:
-                        player.buff_overdrive_timer = 8.0f;
-                        particles.add_floating_text(player.pos, "ASTRA OVERDRIVE!", COLOR_PURPLE_BRIGHT);
-                        break;
+                if (Vector2Distance(p->pos, enemy.pos) < (p->radius + enemy.radius)) {
+                    p->take_damage(PLAYER_CONTACT_DAMAGE);
+                    enemy.hp -= 30; // Contact recoil damage
+                    if (g_screen_shake_enabled) particles.trigger_screen_shake(8.0f, 0.3f);
+                    if (enemy.hp <= 0) {
+                        enemy.active = false;
+                        p->kills++;
+                        particles.emit_explosion(enemy.pos, COLOR_ORANGE_BRIGHT, 20, 180.0f);
+                    }
                 }
             }
         }
+
+        // 5. Squad Members vs Astral Cubes
+        for (auto& pw : powerups) {
+            if (!pw.active) continue;
+            for (auto* p : squad) {
+                if (!p || p->is_downed) continue;
+                if (Vector2Distance(pw.pos, p->pos) < (pw.radius + p->radius + 10.0f)) {
+                    pw.active = false;
+                    SoundSystem::instance().play_sfx("powerup.wav", 0.7f);
+                    particles.emit_explosion(pw.pos, COLOR_CYAN_BRIGHT, 15, 140.0f);
+
+                    switch (pw.type) {
+                        case PowerupType::KAVACH_SHIELD:
+                            p->has_kavach_shield = true;
+                            p->kavach_timer = 8.0f;
+                            particles.add_floating_text(p->pos, "KAVACH SHIELD!", COLOR_CYAN_BRIGHT);
+                            break;
+                        case PowerupType::AGNEYASTRA_SPREAD:
+                            p->buff_agneyastra_timer = 10.0f;
+                            particles.add_floating_text(p->pos, "AGNEYASTRA SPREAD!", COLOR_RED_BRIGHT);
+                            break;
+                        case PowerupType::VAYAVYASTRA_SPEED:
+                            p->buff_speed_timer = 10.0f;
+                            p->dash_charges = p->max_dash_charges;
+                            particles.add_floating_text(p->pos, "VAYU SURGE!", COLOR_GREEN_BRIGHT);
+                            break;
+                        case PowerupType::AMRITA_HEAL:
+                            p->hp = std::min(p->max_hp, p->hp + 35);
+                            particles.add_floating_text(p->pos, "+35 HP AMRITA", { 80, 240, 180, 255 });
+                            break;
+                        case PowerupType::BRAHMASTRA_BOMB:
+                            p->brahmastra_bombs++;
+                            particles.add_floating_text(p->pos, "+1 BRAHMASTRA BOMB", COLOR_GOLD_BRIGHT);
+                            break;
+                        case PowerupType::ASTRA_OVERDRIVE:
+                            p->buff_overdrive_timer = 8.0f;
+                            particles.add_floating_text(p->pos, "ASTRA OVERDRIVE!", COLOR_PURPLE_BRIGHT);
+                            break;
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    void resolve_combat(
+        std::vector<Player>& squad,
+        std::vector<Enemy>& enemies,
+        Boss* current_boss,
+        std::vector<Bullet>& bullets,
+        std::vector<Powerup>& powerups,
+        ParticleSystem& particles,
+        int& out_prana_earned
+    ) {
+        std::vector<Player*> ptrs;
+        ptrs.reserve(squad.size());
+        for (auto& p : squad) ptrs.push_back(&p);
+        resolve_combat_ptrs(ptrs, enemies, current_boss, bullets, powerups, particles, out_prana_earned);
+    }
+
+    void resolve_combat(
+        Player& player,
+        std::vector<Enemy>& enemies,
+        Boss* current_boss,
+        std::vector<Bullet>& bullets,
+        std::vector<Powerup>& powerups,
+        ParticleSystem& particles,
+        int& out_prana_earned
+    ) {
+        std::vector<Player*> ptrs = { &player };
+        resolve_combat_ptrs(ptrs, enemies, current_boss, bullets, powerups, particles, out_prana_earned);
     }
 
 private:

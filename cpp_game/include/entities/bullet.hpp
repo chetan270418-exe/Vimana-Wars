@@ -12,6 +12,8 @@ struct Bullet {
     float radius = 5.0f;
     int damage = 25;
     bool is_enemy = false;
+    uint8_t owner_player_id = 0;
+    bool is_player_owned = true;
     bool grazed = false;
     BulletType type = BulletType::PLAYER_BASIC;
     int pierce_remaining = 0;

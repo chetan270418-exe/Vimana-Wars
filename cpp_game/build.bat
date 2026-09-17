@@ -16,7 +16,7 @@ if not exist "%CXX%" set CXX=g++.exe
 
 set INCLUDES=-Iinclude -I..\tools\raylib-6.0_win64_mingw-w64\include
 set LIB_DIRS=-L..\tools\raylib-6.0_win64_mingw-w64\lib
-set LIBS=-lraylib -lopengl32 -lgdi32 -lwinmm -lwinhttp
+set LIBS=-lraylib -lopengl32 -lgdi32 -lwinmm -lwinhttp -lws2_32
 set CFLAGS=-O2
 set CXXFLAGS=-std=c++20 -O2 -Wall -Wno-missing-braces -Wno-unused-variable
 
