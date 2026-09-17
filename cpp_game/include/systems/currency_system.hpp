@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <functional>
 #include "core/types.hpp"
 #include "core/constants.hpp"
 #include "entities/ship_archetypes.hpp"
@@ -42,12 +43,15 @@ public:
         return false;
     }
 
+    void set_on_ship_unlocked(std::function<void(const std::string&)> cb) { m_on_ship_unlocked = cb; }
+
     bool try_unlock_ship_with_prana(const std::string& ship_id, int campaign_max_wave = 1) {
         if (is_ship_unlocked(ship_id, campaign_max_wave)) return false; // Already unlocked
         const ShipArchetype* arch = GetShipArchetype(ship_id);
         int cost = arch ? arch->prana_cost : COST_EARLY_SHIP_UNLOCK;
         if (spend_prana_shards(cost)) {
             m_unlocked_ships.push_back(ship_id);
+            if (m_on_ship_unlocked) m_on_ship_unlocked(ship_id);
             return true;
         }
         return false;
@@ -84,6 +88,7 @@ private:
 
     int m_prana_shards;
     std::vector<std::string> m_unlocked_ships;
+    std::function<void(const std::string&)> m_on_ship_unlocked;
 };
 
 } // namespace Vimana

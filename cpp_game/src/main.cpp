@@ -9,6 +9,7 @@
 #include "systems/db_system.hpp"
 #include "systems/network_manager.hpp"
 #include "systems/account_system.hpp"
+#include "systems/achievement_system.hpp"
 #include "systems/transition_manager.hpp"
 #include "ui/debug_overlay.hpp"
 
@@ -46,6 +47,7 @@ int main() {
     DBSystem::instance().init();
     NetworkManager::instance().init();
     AccountSystem::instance().init();
+    AchievementSystem::instance().init();
 
     // 3. Render Texture for 900x600 Logical Scaling
     RenderTexture2D target = LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -87,6 +89,7 @@ int main() {
         SoundSystem::instance().update_music();
         DebugOverlay::instance().update();
         AccountSystem::instance().update();
+        AchievementSystem::instance().update(dt);
 
         // Calculate aspect ratio scaling
         float scale = std::min(static_cast<float>(GetScreenWidth()) / SCREEN_WIDTH,
@@ -230,6 +233,7 @@ int main() {
         if (current_view) {
             current_view->draw();
         }
+        AchievementSystem::instance().draw_toast(AssetManager::instance().title_font(), AssetManager::instance().body_font());
         TransitionManager::instance().draw();
         DebugOverlay::instance().draw();
         EndTextureMode();

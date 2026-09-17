@@ -845,6 +845,37 @@ def update_profile():
     return jsonify({"success": True, "profile": current})
 
 
+@app.route("/achievements", methods=["POST"])
+def award_achievement():
+    user, error = _require_user()
+    if error:
+        return jsonify({"success": False, "message": "Guest mode - achievement saved locally"}), 200
+    data = request.get_json(silent=True) or {}
+    achievement_id = str(data.get("achievement_id", "")).strip()
+    if not achievement_id:
+        return jsonify({"error": "achievement_id required"}), 400
+    with get_db() as conn:
+        row = conn.execute("SELECT profile_json FROM profiles WHERE user_id = ?", (user["id"],)).fetchone()
+        try:
+            current = json.loads(row["profile_json"]) if row else _default_profile()
+        except (TypeError, ValueError):
+            current = _default_profile()
+        if "achievements" not in current or not isinstance(current["achievements"], list):
+            current["achievements"] = []
+        if achievement_id not in current["achievements"]:
+            current["achievements"].append(achievement_id)
+            encoded = json.dumps(current, separators=(",", ":"))
+            conn.execute(
+                """
+                INSERT INTO profiles (user_id, profile_json, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(user_id) DO UPDATE SET profile_json = excluded.profile_json,
+                                                   updated_at = CURRENT_TIMESTAMP
+                """, (user["id"], encoded)
+            )
+            conn.commit()
+    return jsonify({"success": True, "achievement_id": achievement_id, "awarded": True})
+
+
 @app.route("/account/stats", methods=["GET"])
 def get_account_stats():
     user, error = _require_user()

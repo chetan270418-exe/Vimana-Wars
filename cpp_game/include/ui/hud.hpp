@@ -58,8 +58,11 @@ public:
                 Color border_col = mate.is_downed ? COLOR_RED_BRIGHT : COLOR_CYAN_BRIGHT;
                 DrawChamferedPanel(mate_bar, border_col, COLOR_SURFACE_MID, 3.0f);
 
-                DrawText(mate.callsign.c_str(), static_cast<int>(sx + 8), static_cast<int>(sy + 6), 9, COLOR_PARCHMENT);
-                if (mate.is_downed) {
+                std::string mate_name = mate.callsign + " [L:" + std::to_string(mate.lives) + "]";
+                DrawText(mate_name.c_str(), static_cast<int>(sx + 8), static_cast<int>(sy + 6), 9, COLOR_PARCHMENT);
+                if (mate.is_spectator) {
+                    DrawText("[SPECTATING]", static_cast<int>(sx + 120), static_cast<int>(sy + 6), 9, COLOR_MUTED);
+                } else if (mate.is_downed) {
                     float flash = 0.5f + 0.5f * std::sin(GetTime() * 10.0f);
                     Color d_col = ColorAlpha(COLOR_RED_BRIGHT, 0.7f + 0.3f * flash);
                     std::string down_str = "[DOWNED " + std::to_string(static_cast<int>(mate.downed_timer)) + "s]";
@@ -98,11 +101,13 @@ public:
         // ── Bottom Cockpit Instruments ──────────────────────────────────────
         DrawYantraPanel({ 15, SCREEN_HEIGHT - 65, 870, 52 }, COLOR_GOLD, COLOR_SURFACE_LOW, 6.0f, true);
 
-        // 1. Health Bar
+        // 1. Health Bar & Life Tokens
         float hp_ratio = std::clamp(static_cast<float>(player.hp) / player.max_hp, 0.0f, 1.0f);
         Color hp_col = (hp_ratio > 0.5f) ? COLOR_GREEN_BRIGHT : (hp_ratio > 0.25f ? COLOR_GOLD : COLOR_RED_BRIGHT);
 
+        std::string lives_txt = "LIVES: " + std::to_string(player.lives) + "/3";
         DrawText("HULL INTEGRITY", 30, SCREEN_HEIGHT - 58, 9, COLOR_MUTED);
+        DrawText(lives_txt.c_str(), 140, SCREEN_HEIGHT - 58, 9, (player.lives > 1) ? COLOR_GOLD_BRIGHT : COLOR_RED_BRIGHT);
         DrawRectangle(30, SCREEN_HEIGHT - 44, 180, 18, { 25, 30, 45, 255 });
         DrawRectangle(30, SCREEN_HEIGHT - 44, static_cast<int>(180 * hp_ratio), 18, hp_col);
         DrawRectangleLines(30, SCREEN_HEIGHT - 44, 180, 18, COLOR_GOLD);

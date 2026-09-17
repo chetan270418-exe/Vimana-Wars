@@ -60,6 +60,11 @@ public:
             save_session_to_save();
         }
 
+        // Wire ship unlock notification from CurrencySystem
+        CurrencySystem::instance().set_on_ship_unlocked([this](const std::string& ship_id) {
+            grant_ship(ship_id);
+        });
+
         if (!m_auth_token.empty()) {
             std::cout << "[AccountSystem] Found saved session token. Attempting auto-login..." << std::endl;
             auto_login();
@@ -86,6 +91,20 @@ public:
     const std::string& email() const { return m_user.email; }
     const std::string& player_name() const { return m_user.player_name; }
     bool email_verified() const { return m_user.email_verified; }
+    const std::vector<std::string>& owned_ships() const { return m_user.owned_ships; }
+
+    bool owns_ship(const std::string& ship_id) const {
+        return std::find(m_user.owned_ships.begin(), m_user.owned_ships.end(), ship_id) != m_user.owned_ships.end();
+    }
+
+    void grant_ship(const std::string& ship_id) {
+        if (!owns_ship(ship_id)) {
+            m_user.owned_ships.push_back(ship_id);
+            if (is_logged_in()) {
+                sync_profile(nullptr);
+            }
+        }
+    }
 
     // ── Authentication API ───────────────────────────────────────────────────
 
@@ -366,8 +385,11 @@ public:
                         if (cloud_wave > local_wave) DBSystem::instance().update_max_wave(cloud_wave);
 
                         if (prof.contains("ships_mastered") && prof["ships_mastered"].is_array()) {
+                            m_user.owned_ships.clear();
                             for (auto& s : prof["ships_mastered"]) {
-                                CurrencySystem::instance().unlock_ship(s.get<std::string>());
+                                std::string ship_id = s.get<std::string>();
+                                m_user.owned_ships.push_back(ship_id);
+                                CurrencySystem::instance().unlock_ship(ship_id);
                             }
                         }
 
@@ -396,11 +418,19 @@ public:
         m_sync_status = CloudSyncStatus::SYNCING;
         m_sync_message = "Backing up progress to cloud...";
 
+        // Union local unlocked ships with user owned ships
+        auto all_unlocked = CurrencySystem::instance().unlocked_ships();
+        for (const auto& s : m_user.owned_ships) {
+            if (std::find(all_unlocked.begin(), all_unlocked.end(), s) == all_unlocked.end()) {
+                all_unlocked.push_back(s);
+            }
+        }
+
         nlohmann::json prof;
         prof["player_name"] = DBSystem::instance().player_name();
         prof["high_score"] = DBSystem::instance().high_score();
         prof["last_wave"] = DBSystem::instance().max_wave();
-        prof["ships_mastered"] = CurrencySystem::instance().unlocked_ships();
+        prof["ships_mastered"] = all_unlocked;
 
         nlohmann::json root;
         root["profile"] = prof;

@@ -10,6 +10,7 @@
 #include "systems/asset_manager.hpp"
 #include "systems/db_system.hpp"
 #include "systems/account_system.hpp"
+#include "systems/achievement_system.hpp"
 #include "ui/button.hpp"
 #include "ui/vedic_theme.hpp"
 
@@ -275,6 +276,7 @@ public:
                     m_is_loading = false;
                     if (success) {
                         set_status(msg, false);
+                        AchievementSystem::instance().check_and_award("REGISTER");
                         if (needs_verify) {
                             m_active_tab = 2; // Switch to verify tab
                             setup_inputs();

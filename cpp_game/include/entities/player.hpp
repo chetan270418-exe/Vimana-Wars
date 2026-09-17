@@ -71,9 +71,12 @@ struct Player {
     int downed_count = 0;
     int revives_given = 0;
 
-    // Co-op Downed State
+    // Co-op Downed & Lives System
     bool is_downed = false;
     float downed_timer = 0.0f;
+    float self_revive_timer = 0.0f;
+    int lives = 3;
+    bool is_spectator = false;
 
     void init(const ShipArchetype* ship_arch) {
         archetype = ship_arch ? ship_arch : &SHIP_FLEET[0];
@@ -113,6 +116,9 @@ struct Player {
         revives_given = 0;
         is_downed = false;
         downed_timer = 0.0f;
+        self_revive_timer = 0.0f;
+        lives = 3;
+        is_spectator = false;
         boons.clear();
     }
 
@@ -413,6 +419,14 @@ struct Player {
     }
 
     void draw(Texture2D tex) const {
+        // Spectator Reticle
+        if (is_spectator) {
+            DrawCircleLines(static_cast<int>(pos.x), static_cast<int>(pos.y), 18.0f, ColorAlpha(COLOR_CYAN_BRIGHT, 0.7f));
+            DrawCircle(static_cast<int>(pos.x), static_cast<int>(pos.y), 4.0f, COLOR_CYAN_BRIGHT);
+            DrawText("SPECTATOR CAM [WASD FLY // F PING]", static_cast<int>(pos.x - 90.0f), static_cast<int>(pos.y - 32.0f), 10, COLOR_CYAN_BRIGHT);
+            return;
+        }
+
         // Dash trail & i-frames flicker
         if (invincibility_timer > 0 && !is_dashing) {
             if (static_cast<int>(GetTime() * 20) % 2 == 0) return; // Flash
@@ -446,7 +460,15 @@ struct Player {
             float pulse = 0.5f + 0.5f * std::sin(GetTime() * 10.0f);
             DrawCircleLines(static_cast<int>(pos.x), static_cast<int>(pos.y), radius + 15.0f + 5.0f * pulse, COLOR_RED_BRIGHT);
             DrawCircle(static_cast<int>(pos.x), static_cast<int>(pos.y), radius + 8.0f, ColorAlpha(COLOR_RED_BRIGHT, 0.25f));
-            DrawText("⚠ DOWNED [HOLD E TO REVIVE]", static_cast<int>(pos.x - 70.0f), static_cast<int>(pos.y - radius - 20.0f), 10, COLOR_RED_BRIGHT);
+            DrawText("⚠ DOWNED [HOLD E TO REVIVE]", static_cast<int>(pos.x - 75.0f), static_cast<int>(pos.y - radius - 20.0f), 10, COLOR_RED_BRIGHT);
+            if (self_revive_timer > 0.0f) {
+                float pct = std::clamp(self_revive_timer / 30.0f, 0.0f, 1.0f);
+                DrawRectangle(static_cast<int>(pos.x - 50.0f), static_cast<int>(pos.y + radius + 10.0f), 100, 8, DARKGRAY);
+                DrawRectangle(static_cast<int>(pos.x - 50.0f), static_cast<int>(pos.y + radius + 10.0f), static_cast<int>(100.0f * pct), 8, COLOR_GOLD_BRIGHT);
+                DrawText(TextFormat("SELF-REVIVING: %.0f%% [R]", pct * 100.0f), static_cast<int>(pos.x - 55.0f), static_cast<int>(pos.y + radius + 22.0f), 10, COLOR_GOLD_BRIGHT);
+            } else {
+                DrawText("[HOLD R TO SELF-REVIVE (30s)]", static_cast<int>(pos.x - 70.0f), static_cast<int>(pos.y + radius + 10.0f), 9, COLOR_GOLD);
+            }
         }
     }
 };

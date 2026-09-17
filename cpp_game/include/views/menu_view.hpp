@@ -13,6 +13,7 @@
 #include "systems/db_system.hpp"
 #include "systems/account_system.hpp"
 #include "entities/player.hpp"
+#include "views/player_card_view.hpp"
 
 namespace Vimana {
 
@@ -25,6 +26,7 @@ public:
     void init() override {
         m_next_view = ViewType::MENU;
         m_buttons.clear();
+        m_card_overlay.set_visible(false);
 
         float start_y = 195.0f;
         float btn_w = 320.0f;
@@ -53,6 +55,17 @@ public:
     }
 
     void update(float dt, Vector2 mouse_pos) override {
+        // Overlay takes priority if open
+        if (m_card_overlay.is_visible()) {
+            m_card_overlay.update(dt, mouse_pos);
+            return;
+        }
+
+        // Toggle Player Card Overlay via [P]
+        if (IsKeyPressed(KEY_P)) {
+            m_card_overlay.toggle();
+        }
+
         // Starfield drift
         for (auto& star : m_stars) {
             star.y += star.z * 20.0f * dt;
@@ -68,17 +81,17 @@ public:
         // Button clicks or Keyboard shortcuts [1-8]
         if (m_buttons[0].update(mouse_pos) || IsKeyPressed(KEY_ONE)) m_next_view = ViewType::CAMPAIGN_MAP;
         else if (m_buttons[1].update(mouse_pos) || IsKeyPressed(KEY_TWO)) m_next_view = ViewType::SHIP_SELECT;
-        else if (m_buttons[2].update(mouse_pos) || IsKeyPressed(KEY_THREE)) m_next_view = ViewType::PROFILE;
+        else if (m_buttons[2].update(mouse_pos) || IsKeyPressed(KEY_THREE)) m_card_overlay.set_visible(true);
         else if (m_buttons[3].update(mouse_pos) || IsKeyPressed(KEY_FOUR)) m_next_view = ViewType::CODEX;
         else if (m_buttons[4].update(mouse_pos) || IsKeyPressed(KEY_FIVE)) m_next_view = ViewType::DUEL;
         else if (m_buttons[5].update(mouse_pos) || IsKeyPressed(KEY_SIX)) m_next_view = ViewType::MULTIPLAYER_LOBBY;
         else if (m_buttons[6].update(mouse_pos) || IsKeyPressed(KEY_SEVEN)) m_next_view = ViewType::LEADERBOARD;
         else if (m_buttons[7].update(mouse_pos) || IsKeyPressed(KEY_EIGHT)) m_next_view = ViewType::SETTINGS;
 
-        // Click on top-right Pilot Badge opens Profile
+        // Click on top-right Pilot Badge opens Player Card
         Rectangle pilot_badge = { SCREEN_WIDTH - 360, 25, 310, 48 };
         if (CheckCollisionPointRec(mouse_pos, pilot_badge) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-            m_next_view = ViewType::PROFILE;
+            m_card_overlay.set_visible(true);
         }
     }
 
@@ -185,12 +198,15 @@ public:
         DrawText(hs_str.c_str(), static_cast<int>(tile3.x + 250), static_cast<int>(tile3.y + 26), 12, COLOR_GOLD_BRIGHT);
 
         // Quick tip & keybind hint
-        DrawText("PRESS [1-8] ON KEYBOARD OR CLICK TO NAVIGATE • 60 FPS NATIVE", static_cast<int>(dash_box.x + 20), static_cast<int>(dash_box.y + 285), 10, COLOR_MUTED);
+        DrawText("PRESS [1-8] NAVIGATE • [P] PILOT CARD DOSSIER • 60 FPS NATIVE", static_cast<int>(dash_box.x + 20), static_cast<int>(dash_box.y + 285), 10, COLOR_MUTED);
 
         // Footer hint
         const char* footer = "VIMANA WARS // NATIVE C++20 ENGINE • ADVANCED DSA • WINSOCK2 UDP LAN NETWORKING";
         Vector2 f_sz = MeasureTextEx(title_f, footer, 11, 1.0f);
         DrawTextEx(title_f, footer, { (SCREEN_WIDTH - f_sz.x) / 2.0f, SCREEN_HEIGHT - 24 }, 11, 1.0f, COLOR_MUTED);
+
+        // Pilot Card Overlay (draws on top of everything when active)
+        m_card_overlay.draw(title_f, body_f);
 
         if (g_scanlines_enabled) UI::DrawScanlines();
     }
@@ -204,6 +220,7 @@ private:
     std::vector<UI::Button> m_buttons;
     ViewType m_next_view;
     float m_ship_bob = 0.0f;
+    PlayerCardOverlay m_card_overlay;
 };
 
 } // namespace Vimana
