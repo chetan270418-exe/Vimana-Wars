@@ -29,5 +29,11 @@ env/
 
 # OS files
 Thumbs.db
-.DS_Store
 .hilo/
+
+# C++ Build & Toolchains
+tools/
+*.o
+*.obj
+*.pdb
+

@@ -7,17 +7,17 @@ with open(filepath, 'r', encoding='utf-8') as f:
     text = f.read()
 
 # ── Fix 1: register() — INSERT INTO users … RETURNING id ─────────────────────
-old_register = '''                INSERT INTO users (game_id, email, player_name, password_hash, email_verified)
+old_register = r'''                INSERT INTO users (game_id, email, player_name, password_hash, email_verified)
                 VALUES (?, ?, ?, ?, ?)
-                ''', (game_id, email, player_name, _password_hash(password),
+                """, (game_id, email, player_name, _password_hash(password),
                       0 if REQUIRE_EMAIL_VERIFICATION else 1)
             )
             user_id = cursor.lastrowid'''
 
-new_register = '''                INSERT INTO users (game_id, email, player_name, password_hash, email_verified)
+new_register = r'''                INSERT INTO users (game_id, email, player_name, password_hash, email_verified)
                 VALUES (?, ?, ?, ?, ?)
                 RETURNING id
-                ''', (game_id, email, player_name, _password_hash(password),
+                """, (game_id, email, player_name, _password_hash(password),
                       0 if REQUIRE_EMAIL_VERIFICATION else 1)
             )
             _row = cursor.fetchone()
