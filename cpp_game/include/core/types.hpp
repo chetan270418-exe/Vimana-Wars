@@ -47,6 +47,7 @@ enum class ViewType {
     PROFILE,            // Pilot profile + match history
     CODEX,              // Bestiary / lore / synergy reference
     SETTINGS,           // Audio / Controls / Accessibility
+    AUTH,               // Online Account Login / Registration
     VICTORY,            // Campaign victory
     GAME_OVER           // Defeat screen
 };

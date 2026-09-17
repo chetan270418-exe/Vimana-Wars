@@ -15,8 +15,9 @@ class PilotSetupView : public IView {
 public:
     PilotSetupView() 
         : m_next_view(ViewType::PILOT_SETUP),
-          m_btn_confirm({ SCREEN_WIDTH / 2.0f - 110.0f, 380, 220, 42 }, "CONFIRM CALLSIGN", COLOR_GOLD_BRIGHT),
-          m_btn_skip({ SCREEN_WIDTH / 2.0f - 110.0f, 435, 220, 36 }, "USE DEFAULT (CHETAN)", COLOR_MUTED)
+          m_btn_confirm({ SCREEN_WIDTH / 2.0f - 130.0f, 365, 260, 36 }, "CONFIRM CALLSIGN", COLOR_GOLD_BRIGHT),
+          m_btn_skip({ SCREEN_WIDTH / 2.0f - 130.0f, 408, 260, 32 }, "USE GUEST CALLSIGN (WARRIOR)", COLOR_MUTED),
+          m_btn_auth({ SCREEN_WIDTH / 2.0f - 130.0f, 448, 260, 32 }, "SIGN IN TO CLOUD ACCOUNT >>", COLOR_CYAN_BRIGHT)
     {
         init();
     }
@@ -25,7 +26,7 @@ public:
         m_next_view = ViewType::PILOT_SETUP;
         m_callsign = DBSystem::instance().player_name();
         if (m_callsign.empty() || m_callsign == "Warrior") {
-            m_callsign = "CHETAN";
+            m_callsign = "WARRIOR";
         }
         m_cursor_timer = 0.0f;
     }
@@ -52,17 +53,21 @@ public:
         }
 
         if (IsKeyPressed(KEY_ENTER) || m_btn_confirm.update(mouse_pos)) {
-            if (m_callsign.empty()) m_callsign = "CHETAN";
+            if (m_callsign.empty()) m_callsign = "WARRIOR";
             DBSystem::instance().set_player_name(m_callsign);
             DBSystem::instance().save_game();
             m_next_view = ViewType::MENU;
         }
 
         if (m_btn_skip.update(mouse_pos)) {
-            m_callsign = "CHETAN";
+            m_callsign = "WARRIOR";
             DBSystem::instance().set_player_name(m_callsign);
             DBSystem::instance().save_game();
             m_next_view = ViewType::MENU;
+        }
+
+        if (m_btn_auth.update(mouse_pos)) {
+            m_next_view = ViewType::AUTH;
         }
     }
 
@@ -111,6 +116,7 @@ public:
         // Action Buttons
         m_btn_confirm.draw(font);
         m_btn_skip.draw(font);
+        m_btn_auth.draw(font);
 
         UI::DrawScanlines();
     }
@@ -124,6 +130,7 @@ private:
     float m_cursor_timer;
     UI::Button m_btn_confirm;
     UI::Button m_btn_skip;
+    UI::Button m_btn_auth;
 };
 
 } // namespace Vimana

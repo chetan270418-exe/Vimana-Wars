@@ -5,6 +5,8 @@
 #include "core/types.hpp"
 #include "views/view_interface.hpp"
 #include "systems/asset_manager.hpp"
+#include "systems/db_system.hpp"
+#include "systems/account_system.hpp"
 #include "ui/vedic_theme.hpp"
 
 namespace Vimana {
@@ -197,11 +199,17 @@ public:
         Vector2 tl_sz = MeasureTextEx(font, tagline, 13, 1.0f);
         DrawTextEx(font, tagline, { (SCREEN_WIDTH - tl_sz.x) / 2.0f, 310 }, 13, 1.0f, COLOR_CYAN_BRIGHT);
 
-        // Pilot badge
-        UI::DrawChamferedPanel({ SCREEN_WIDTH / 2.0f - 175, 345, 350, 42 }, COLOR_GOLD, COLOR_SURFACE_LOW, 5.0f);
-        const char* pilot_line = "PILOT: CHETAN  //  VMN-7704  //  ARJUNA ACE";
-        Vector2 pl_sz = MeasureTextEx(font, pilot_line, 12, 1.0f);
-        DrawTextEx(font, pilot_line, { (SCREEN_WIDTH - pl_sz.x) / 2.0f, 358 }, 12, 1.0f, COLOR_GOLD_BRIGHT);
+        // Dynamic Pilot badge
+        UI::DrawChamferedPanel({ SCREEN_WIDTH / 2.0f - 195, 345, 390, 42 }, COLOR_GOLD, COLOR_SURFACE_LOW, 5.0f);
+        std::string p_name = DBSystem::instance().player_name();
+        std::string g_id = AccountSystem::instance().game_id();
+        int max_w = DBSystem::instance().max_wave();
+        std::string rank_title = (max_w >= 25) ? "MAHAYUDDHA LEGEND" :
+                                 (max_w >= 15) ? "ARJUNA ACE" :
+                                 (max_w >= 8)  ? "KSHATRIYA VANGUARD" : "ASTRAL PILOT";
+        std::string pilot_line = "PILOT: " + p_name + "  //  " + g_id + "  //  " + rank_title;
+        Vector2 pl_sz = MeasureTextEx(font, pilot_line.c_str(), 11, 1.0f);
+        DrawTextEx(font, pilot_line.c_str(), { (SCREEN_WIDTH - pl_sz.x) / 2.0f, 359 }, 11, 1.0f, COLOR_GOLD_BRIGHT);
 
         // Pulsing PRESS SPACE
         float pulse = 0.5f + 0.5f * std::sin(m_blink * 3.5f);

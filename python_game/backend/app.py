@@ -44,7 +44,10 @@ if not DB_PATH.exists() and (Path(__file__).resolve().parent.parent / "leaderboa
     DB_PATH = Path(__file__).resolve().parent.parent / "leaderboard.db"
 elif not DB_PATH.exists() and (Path(__file__).resolve().parent.parent.parent / "leaderboard.db").exists():
     DB_PATH = Path(__file__).resolve().parent.parent.parent / "leaderboard.db"
-DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
+DATABASE_URL = os.environ.get(
+    "DATABASE_URL",
+    "postgresql://postgres:CHetanamit37@db.wlergqltjdyzpqiucovr.supabase.co:5432/postgres"
+).strip()
 SESSION_TTL_SECONDS = 30 * 24 * 60 * 60
 ACTION_TOKEN_TTL_SECONDS = 30 * 60
 REQUIRE_EMAIL_VERIFICATION = os.environ.get("REQUIRE_EMAIL_VERIFICATION", "0").lower() in ("1", "true", "yes")
@@ -892,7 +895,7 @@ def submit_score():
 
     # These are deliberately generous sanity limits. They stop accidental or
     # obviously forged payloads while leaving room for future balance changes.
-    max_wave = 10000 if difficulty == "endless" else 20
+    max_wave = 10000 if difficulty == "endless" else 30
     max_score = max(250_000, level_reached * 250_000)
     if level_reached < 1 or level_reached > max_wave:
         return jsonify({"error": "Invalid wave value"}), 422

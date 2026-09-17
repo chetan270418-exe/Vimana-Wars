@@ -8,11 +8,13 @@
 #include "systems/sound_system.hpp"
 #include "systems/db_system.hpp"
 #include "systems/network_manager.hpp"
+#include "systems/account_system.hpp"
 #include "systems/transition_manager.hpp"
 #include "ui/debug_overlay.hpp"
 
 #include "views/boot_view.hpp"
 #include "views/pilot_setup_view.hpp"
+#include "views/auth_view.hpp"
 #include "views/menu_view.hpp"
 #include "views/campaign_map_view.hpp"
 #include "views/loadout_view.hpp"
@@ -43,6 +45,7 @@ int main() {
     AssetManager::instance().init();
     DBSystem::instance().init();
     NetworkManager::instance().init();
+    AccountSystem::instance().init();
 
     // 3. Render Texture for 900x600 Logical Scaling
     RenderTexture2D target = LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -52,6 +55,7 @@ int main() {
     auto boot_view = std::make_unique<BootView>();
     auto title_view = std::make_unique<TitleView>();
     auto pilot_setup_view = std::make_unique<PilotSetupView>();
+    auto auth_view = std::make_unique<AuthView>();
     auto menu_view = std::make_unique<MenuView>();
     auto campaign_map_view = std::make_unique<CampaignMapView>();
     auto loadout_view = std::make_unique<LoadoutView>();
@@ -82,6 +86,7 @@ int main() {
 
         SoundSystem::instance().update_music();
         DebugOverlay::instance().update();
+        AccountSystem::instance().update();
 
         // Calculate aspect ratio scaling
         float scale = std::min(static_cast<float>(GetScreenWidth()) / SCREEN_WIDTH,
@@ -107,9 +112,12 @@ int main() {
             } else if (next == ViewType::PILOT_SETUP) {
                 pilot_setup_view->init();
                 current_view = pilot_setup_view.get();
+            } else if (next == ViewType::AUTH) {
+                auth_view->init();
+                current_view = auth_view.get();
             } else if (next == ViewType::MENU) {
                 // If returning from title on a fresh profile, prompt callsign setup
-                if (current_view_type == ViewType::TITLE && DBSystem::instance().player_name() == "Warrior") {
+                if (current_view_type == ViewType::TITLE && DBSystem::instance().player_name() == "Warrior" && !AccountSystem::instance().is_logged_in()) {
                     pilot_setup_view->init();
                     current_view = pilot_setup_view.get();
                     next = ViewType::PILOT_SETUP;
@@ -185,7 +193,9 @@ int main() {
             } else if (next == ViewType::GAME_OVER || next == ViewType::VICTORY) {
                 bool is_vic = (next == ViewType::VICTORY);
                 const auto& p = game_view->player();
-                game_over_view->set_results(is_vic, p.score, game_view->current_wave(), p.kills, p.total_damage_dealt, p.archetype ? p.archetype->name : "Pushpaka");
+                game_over_view->set_results(is_vic, p.score, game_view->current_wave(), p.kills, p.total_damage_dealt,
+                                           p.archetype ? p.archetype->name : "Pushpaka",
+                                           game_view->run_duration(), game_view->difficulty_string());
                 current_view = game_over_view.get();
             }
 

@@ -10,6 +10,7 @@
 #include "systems/asset_manager.hpp"
 #include "ui/button.hpp"
 #include "ui/vedic_theme.hpp"
+#include "systems/account_system.hpp"
 
 namespace Vimana {
 
@@ -19,6 +20,8 @@ public:
         : m_next_view(is_victory ? ViewType::VICTORY : ViewType::GAME_OVER), 
           m_is_victory(is_victory),
           m_is_new_high_score(false),
+          m_duration(0.0f),
+          m_difficulty("normal"),
           m_btn_replay({ SCREEN_WIDTH / 2.0f - 220, 470, 135, 40 }, "FLY AGAIN", COLOR_GOLD_BRIGHT),
           m_btn_profile({ SCREEN_WIDTH / 2.0f - 75, 470, 150, 40 }, "PILOT PROFILE", COLOR_CYAN_BRIGHT),
           m_btn_menu({ SCREEN_WIDTH / 2.0f + 85, 470, 135, 40 }, "MAIN MENU", COLOR_MUTED)
@@ -30,13 +33,16 @@ public:
         m_next_view = m_is_victory ? ViewType::VICTORY : ViewType::GAME_OVER;
     }
 
-    void set_results(bool victory, int score, int wave, int kills, int damage, const std::string& ship_name) {
+    void set_results(bool victory, int score, int wave, int kills, int damage, const std::string& ship_name,
+                     float duration_seconds = 0.0f, const std::string& difficulty = "normal") {
         m_is_victory = victory;
         m_score = score;
         m_wave = wave;
         m_kills = kills;
         m_damage = damage;
         m_ship = ship_name;
+        m_duration = duration_seconds;
+        m_difficulty = difficulty;
 
         int previous_high = DBSystem::instance().high_score();
         m_is_new_high_score = (score > previous_high && score > 0);
@@ -56,19 +62,24 @@ public:
             m_rank_reason = "Vessel sustained catastrophic structural failure";
         }
 
-        // Save score to SQLite database
+        // Save score to local SQLite database
         ScoreEntry entry;
         entry.player_name = DBSystem::instance().player_name();
         entry.score = score;
         entry.level_reached = wave;
+        entry.difficulty = difficulty;
         entry.ship_class = ship_name;
         entry.kills = kills;
         entry.total_damage = damage;
-        entry.duration_seconds = 0.0f;
+        entry.duration_seconds = duration_seconds;
         DBSystem::instance().insert_score(entry);
         DBSystem::instance().update_high_score(score);
         DBSystem::instance().update_max_wave(wave);
         DBSystem::instance().save_game();
+
+        // Submit score to Sangha Cloud API asynchronously
+        AccountSystem::instance().submit_score(score, wave, kills, damage, duration_seconds, difficulty, ship_name);
+        AccountSystem::instance().sync_profile();
     }
 
     void update(float dt, Vector2 mouse_pos) override {
@@ -147,8 +158,14 @@ public:
         DrawTextEx(body_font, "VESSEL CLASS :", { lx, cy }, 13, 1.0f, COLOR_PARCHMENT);
         DrawTextEx(title_font, m_ship.c_str(), { rx, cy - 2 }, 15, 1.0f, COLOR_GOLD);
 
+        // Mission Duration
+        int mins = static_cast<int>(m_duration) / 60;
+        int secs = static_cast<int>(m_duration) % 60;
+        char dur_buf[32];
+        std::snprintf(dur_buf, sizeof(dur_buf), "%02d:%02d", mins, secs);
+
         // Performance Rank Medal Display
-        cy += 38.0f;
+        cy += 36.0f;
         Rectangle rank_box = { card.x + 30, cy, card.width - 60, 52 };
         UI::DrawChamferedPanel(rank_box, COLOR_GOLD, COLOR_SURFACE_MID, 4.0f);
 
@@ -162,6 +179,10 @@ public:
         DrawTextEx(title_font, rank_letter, { rank_box.x + 18, rank_box.y + 8 }, 34, 1.0f, rank_color);
         DrawTextEx(body_font, "PERFORMANCE RANK EVALUATION", { rank_box.x + 60, rank_box.y + 10 }, 10, 1.0f, COLOR_MUTED);
         DrawTextEx(body_font, m_rank_reason.c_str(), { rank_box.x + 60, rank_box.y + 26 }, 11, 1.0f, COLOR_PARCHMENT);
+
+        // Duration / Cloud Status Tag at bottom of card
+        std::string footer_tag = "SORTIE TIME: " + std::string(dur_buf) + " // DIFFICULTY: " + m_difficulty;
+        DrawText(footer_tag.c_str(), static_cast<int>(card.x + 30), static_cast<int>(card.y + card.height - 18), 10, COLOR_MUTED);
 
         // Action Buttons
         m_btn_replay.draw(title_font);
@@ -178,6 +199,8 @@ private:
     ViewType m_next_view;
     bool m_is_victory;
     bool m_is_new_high_score;
+    float m_duration = 0.0f;
+    std::string m_difficulty = "normal";
     int m_score = 0;
     int m_wave = 1;
     int m_kills = 0;

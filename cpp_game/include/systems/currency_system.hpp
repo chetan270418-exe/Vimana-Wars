@@ -69,6 +69,11 @@ public:
 
     const std::vector<std::string>& unlocked_ships() const { return m_unlocked_ships; }
     void set_unlocked_ships(const std::vector<std::string>& ships) { m_unlocked_ships = ships; }
+    void unlock_ship(const std::string& ship_id) {
+        if (std::find(m_unlocked_ships.begin(), m_unlocked_ships.end(), ship_id) == m_unlocked_ships.end()) {
+            m_unlocked_ships.push_back(ship_id);
+        }
+    }
     void set_prana_shards(int shards) { m_prana_shards = shards; }
 
 private:

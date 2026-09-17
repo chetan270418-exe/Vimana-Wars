@@ -1,0 +1,38 @@
+{
+  "pack": "phase7-additive-assets",
+  "engine": "native-cpp-raylib",
+  "policy": "additive-only",
+  "existing_files_overwritten": false,
+  "new_boss_visuals": [
+    "images/boss_makara.png",
+    "images/bosses/boss_makara.png",
+    "images/boss_meghnada.png",
+    "images/bosses/boss_meghnada.png"
+  ],
+  "new_vfx": [
+    "vfx/vfx_dash_trail.png",
+    "vfx/vfx_astra_burst.png",
+    "vfx/vfx_boss_telegraph.png",
+    "vfx/vfx_powerup_cube.png"
+  ],
+  "new_audio": {
+    "combat_stingers": [
+      "sounds/astra_charge.wav",
+      "sounds/boss_phase_shift.wav"
+    ],
+    "realm_ambience": [
+      "sounds/ambience_swarga.wav",
+      "sounds/ambience_kshira_sagara.wav",
+      "sounds/ambience_dandaka_void.wav",
+      "sounds/ambience_lanka_approach.wav",
+      "sounds/ambience_setu_expanse.wav",
+      "sounds/ambience_naraka_forge.wav",
+      "sounds/ambience_mahayuddha_citadel.wav"
+    ]
+  },
+  "notes": [
+    "The native asset search paths already include images, bosses, and vfx folders.",
+    "Existing gameplay, UI, Python, web, and build files were not changed by this pack.",
+    "The new audio files are optional resources; the existing sound fallback remains unchanged."
+  ]
+}

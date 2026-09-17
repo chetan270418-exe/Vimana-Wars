@@ -8,6 +8,7 @@
 #include "systems/db_system.hpp"
 #include "systems/currency_system.hpp"
 #include "systems/asset_manager.hpp"
+#include "systems/account_system.hpp"
 #include "entities/ship_archetypes.hpp"
 #include "ui/button.hpp"
 #include "ui/vedic_theme.hpp"
@@ -18,7 +19,11 @@ class ProfileView : public IView {
 public:
     ProfileView() 
         : m_next_view(ViewType::PROFILE),
-          m_btn_back({ 50, 520, 110, 36 }, "BACK", COLOR_MUTED)
+          m_btn_back({ 40, 520, 95, 36 }, "BACK", COLOR_MUTED),
+          m_btn_cloud_sync({ 150, 520, 140, 36 }, "CLOUD SYNC", COLOR_GOLD_BRIGHT),
+          m_btn_edit_callsign({ 305, 520, 140, 36 }, "CALLSIGN", COLOR_CYAN_BRIGHT),
+          m_btn_switch_pilot({ 460, 520, 185, 36 }, "ACCOUNT / LOGIN", COLOR_GREEN_BRIGHT),
+          m_btn_logout({ 660, 520, 200, 36 }, "LOGOUT (GUEST)", COLOR_ORANGE_BRIGHT)
     {
         init();
     }
@@ -31,6 +36,22 @@ public:
     void update(float dt, Vector2 mouse_pos) override {
         if (m_btn_back.update(mouse_pos) || IsKeyPressed(KEY_ESCAPE)) {
             m_next_view = ViewType::MENU;
+        }
+
+        if (m_btn_cloud_sync.update(mouse_pos)) {
+            AccountSystem::instance().sync_profile();
+        }
+
+        if (m_btn_edit_callsign.update(mouse_pos)) {
+            m_next_view = ViewType::PILOT_SETUP;
+        }
+
+        if (m_btn_switch_pilot.update(mouse_pos)) {
+            m_next_view = ViewType::AUTH;
+        }
+
+        if (m_btn_logout.update(mouse_pos)) {
+            AccountSystem::instance().logout();
         }
     }
 
@@ -51,15 +72,22 @@ public:
 
         DrawText("PILOT IDENTITY RECORD", lx, ly, 10, COLOR_MUTED);
         ly += 16.0f;
-        std::string name_line = DBSystem::instance().player_name() + " // " + PILOT_ID;
-        DrawTextEx(font, name_line.c_str(), { lx, ly }, 20, 1.0f, COLOR_GOLD_BRIGHT);
+        std::string name_line = DBSystem::instance().player_name() + " // " + AccountSystem::instance().game_id();
+        DrawTextEx(font, name_line.c_str(), { lx, ly }, 18, 1.0f, COLOR_GOLD_BRIGHT);
 
-        ly += 30.0f;
+        ly += 26.0f;
+        std::string sync_badge = AccountSystem::instance().is_logged_in() 
+            ? "[CLOUD SYNCED: " + AccountSystem::instance().email() + "]" 
+            : "[LOCAL GUEST MODE // OFFLINE]";
+        Color sync_col = AccountSystem::instance().is_logged_in() ? COLOR_GREEN_BRIGHT : COLOR_MUTED;
+        DrawText(sync_badge.c_str(), static_cast<int>(lx), static_cast<int>(ly), 10, sync_col);
+
+        ly += 18.0f;
         DrawText("SQUADRON FLEET", lx, ly, 10, COLOR_MUTED);
         ly += 14.0f;
         DrawText(PILOT_SQUADRON, lx, ly, 13, COLOR_CYAN_BRIGHT);
 
-        ly += 26.0f;
+        ly += 22.0f;
         DrawLine(lx, ly, left_panel.x + left_panel.width - 20, ly, COLOR_SURFACE_HIGH);
 
         ly += 15.0f;
@@ -144,6 +172,11 @@ public:
         }
 
         m_btn_back.draw(font);
+        m_btn_cloud_sync.draw(font);
+        m_btn_edit_callsign.draw(font);
+        m_btn_switch_pilot.draw(font);
+        m_btn_logout.draw(font);
+
         UI::DrawScanlines();
     }
 
@@ -154,6 +187,10 @@ private:
     ViewType m_next_view;
     std::vector<MatchRecord> m_history;
     UI::Button m_btn_back;
+    UI::Button m_btn_cloud_sync;
+    UI::Button m_btn_edit_callsign;
+    UI::Button m_btn_switch_pilot;
+    UI::Button m_btn_logout;
 };
 
 } // namespace Vimana

@@ -8,6 +8,8 @@
 #include "json.hpp"
 #include "core/types.hpp"
 #include "systems/currency_system.hpp"
+#include "systems/sound_system.hpp"
+#include <chrono>
 
 namespace Vimana {
 
@@ -122,9 +124,28 @@ public:
                 for (auto& s : j["unlocked_ships"]) ships.push_back(s.get<std::string>());
                 CurrencySystem::instance().set_unlocked_ships(ships);
             }
+
+            // Audio channels
+            if (j.contains("master_volume")) SoundSystem::instance().set_master_volume(j["master_volume"].get<float>());
+            if (j.contains("sfx_volume")) SoundSystem::instance().set_sfx_volume(j["sfx_volume"].get<float>());
+            if (j.contains("music_volume")) SoundSystem::instance().set_music_volume(j["music_volume"].get<float>());
+            if (j.contains("ui_volume")) SoundSystem::instance().set_ui_volume(j["ui_volume"].get<float>());
+            if (j.contains("boss_volume")) SoundSystem::instance().set_boss_volume(j["boss_volume"].get<float>());
+
+            // Accessibility flags
+            if (j.contains("colorblind_mode")) g_colorblind_mode = j["colorblind_mode"].get<bool>();
+            if (j.contains("screen_shake_enabled")) g_screen_shake_enabled = j["screen_shake_enabled"].get<bool>();
+            if (j.contains("scanlines_enabled")) g_scanlines_enabled = j["scanlines_enabled"].get<bool>();
+
             std::cout << "[DBSystem] Loaded savegame: " << m_player_name << " HighScore: " << m_high_score << std::endl;
         } catch (const std::exception& ex) {
             std::cerr << "[DBSystem] Error loading save.json: " << ex.what() << std::endl;
+            try {
+                auto now = std::chrono::system_clock::now().time_since_epoch().count();
+                std::string corrupt_backup = save_dir + "/save.json.corrupt." + std::to_string(now);
+                std::filesystem::copy_file(save_path, corrupt_backup, std::filesystem::copy_options::overwrite_existing);
+                std::cerr << "[DBSystem] Corrupt save backed up to: " << corrupt_backup << std::endl;
+            } catch (...) {}
         }
     }
 
@@ -140,11 +161,31 @@ public:
 
         try {
             nlohmann::json j;
+            if (std::filesystem::exists(save_path)) {
+                try {
+                    std::ifstream fi(save_path);
+                    fi >> j;
+                } catch (...) {}
+            }
+
+            j["version"] = 3;
             j["player_name"] = m_player_name;
             j["high_score"] = m_high_score;
             j["last_wave"] = m_max_wave;
             j["prana_shards"] = CurrencySystem::instance().prana_shards();
             j["unlocked_ships"] = CurrencySystem::instance().unlocked_ships();
+
+            // Audio channel volumes
+            j["master_volume"] = SoundSystem::instance().master_volume();
+            j["sfx_volume"] = SoundSystem::instance().sfx_volume();
+            j["music_volume"] = SoundSystem::instance().music_volume();
+            j["ui_volume"] = SoundSystem::instance().ui_volume();
+            j["boss_volume"] = SoundSystem::instance().boss_volume();
+
+            // Accessibility settings
+            j["colorblind_mode"] = g_colorblind_mode;
+            j["screen_shake_enabled"] = g_screen_shake_enabled;
+            j["scanlines_enabled"] = g_scanlines_enabled;
 
             std::ofstream f(save_path);
             f << j.dump(2);

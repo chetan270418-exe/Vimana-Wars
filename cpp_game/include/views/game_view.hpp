@@ -67,6 +67,8 @@ public:
         m_controllers.push_back(std::make_unique<HumanController>(0));
 
         m_is_coop_mode = false;
+        m_difficulty = Difficulty::KSHATRIYA;
+        m_run_duration = 0.0f;
         m_wave_mgr.start_campaign(1, Difficulty::KSHATRIYA, 1);
         m_wave_start_hp = m_squad[0].hp;
         m_wave_kills = 0;
@@ -89,6 +91,10 @@ public:
         Difficulty diff = Difficulty::KSHATRIYA,
         int squad_size = 1
     ) {
+        m_difficulty = diff;
+        if (starting_wave <= 1) {
+            m_run_duration = 0.0f;
+        }
         m_is_coop_mode = (squad_size > 1 || NetworkManager::instance().role() != NetworkRole::OFFLINE);
         int num_players = m_is_coop_mode ? std::max(squad_size, (int)NetworkManager::instance().players().size()) : 1;
         if (num_players < 1) num_players = 1;
@@ -210,6 +216,8 @@ public:
             }
             return;
         }
+
+        m_run_duration += dt;
 
         // Team Transcendence countdown
         if (m_team_transcendence_timer > 0) m_team_transcendence_timer -= dt;
@@ -566,12 +574,25 @@ public:
     const Player& player() const { return m_squad[0]; }
     Player& player() { return m_squad[0]; }
     int current_wave() const { return m_wave_mgr.current_wave(); }
+    float run_duration() const { return m_run_duration; }
+    Difficulty difficulty() const { return m_difficulty; }
+    std::string difficulty_string() const {
+        switch (m_difficulty) {
+            case Difficulty::NOVICE: return "easy";
+            case Difficulty::KSHATRIYA: return "normal";
+            case Difficulty::ASURA_SLAYER: return "hard";
+            case Difficulty::CHAKRAVYUHA: return "endless";
+            default: return "normal";
+        }
+    }
 
 private:
     struct Star { float x, y, z; };
     ViewType m_next_view;
     bool m_is_paused;
     bool m_is_coop_mode;
+    Difficulty m_difficulty = Difficulty::KSHATRIYA;
+    float m_run_duration = 0.0f;
     int m_team_combo;
     float m_team_transcendence_timer;
     int m_total_team_score;

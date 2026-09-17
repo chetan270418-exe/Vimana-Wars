@@ -6,6 +6,7 @@
 #include "core/types.hpp"
 #include "views/view_interface.hpp"
 #include "systems/network_manager.hpp"
+#include "systems/account_system.hpp"
 #include "systems/db_system.hpp"
 #include "systems/asset_manager.hpp"
 #include "ui/button.hpp"
@@ -22,10 +23,13 @@ public:
           m_target_ip("127.0.0.1"),
           m_target_port("7704"),
           m_ip_focused(false),
-          m_btn_quick({ 580, 105, 260, 36 }, "QUICK MATCH (LOCAL)", COLOR_GOLD_BRIGHT),
-          m_btn_create({ 580, 150, 260, 36 }, "HOST LAN SERVER [7704]", COLOR_CYAN_BRIGHT),
-          m_btn_join_lan({ 580, 265, 260, 36 }, "JOIN LAN HOST >>", COLOR_GREEN_BRIGHT),
-          m_btn_duel({ 580, 310, 260, 36 }, "1V1 PVP ARENA DUEL", COLOR_ORANGE_BRIGHT),
+          m_cloud_status("Querying active online lobbies..."),
+          m_btn_quick({ 580, 100, 260, 34 }, "QUICK LOCAL SQUAD", COLOR_GOLD_BRIGHT),
+          m_btn_create_cloud({ 580, 142, 260, 34 }, "HOST ONLINE CLOUD LOBBY", COLOR_GOLD_BRIGHT),
+          m_btn_create({ 580, 184, 260, 32 }, "HOST LOCAL LAN [7704]", COLOR_CYAN_BRIGHT),
+          m_btn_join_lan({ 580, 280, 260, 34 }, "JOIN LAN HOST >>", COLOR_GREEN_BRIGHT),
+          m_btn_duel({ 580, 322, 260, 32 }, "1V1 ARENA DUEL", COLOR_ORANGE_BRIGHT),
+          m_btn_refresh_lobbies({ 420, 95, 115, 26 }, "REFRESH", COLOR_CYAN_BRIGHT),
           m_btn_ready({ 580, 390, 260, 42 }, "READY PILOT [SPACE]", COLOR_GREEN_BRIGHT),
           m_btn_start({ 580, 440, 260, 42 }, "DEPLOY SQUADRON", COLOR_GOLD_BRIGHT),
           m_btn_add_ai({ 580, 340, 260, 36 }, "+ ADD AI SQUADMATE", COLOR_PURPLE_BRIGHT),
@@ -39,12 +43,37 @@ public:
         m_in_room = false;
         m_is_ready = false;
         m_ip_focused = false;
+        m_cloud_status = "Querying live Sangha lobbies...";
 
         m_lobbies = {
-            { "VX82Q", "Swarga Assault (2/4)", "CO-OP PVE", "READY" },
-            { "LK99A", "Lanka Rift Incursion (1/4)", "CO-OP PVE", "WAITING" },
+            { "LAN01", "Swarga Assault (2/4)", "CO-OP PVE", "READY" },
+            { "LAN02", "Lanka Rift Incursion (1/4)", "CO-OP PVE", "WAITING" },
             { "DUEL1", "Celestial Colosseum (1/2)", "1V1 PVP", "CHALLENGE" }
         };
+
+        fetch_online_lobbies();
+    }
+
+    void fetch_online_lobbies() {
+        AccountSystem::instance().fetch_lobbies([this](bool success, const std::vector<nlohmann::json>& lobbies) {
+            if (success && !lobbies.empty()) {
+                m_lobbies.clear();
+                for (const auto& l : lobbies) {
+                    std::string code = l.value("code", "VMN");
+                    std::string mode = l.value("mode", "campaign");
+                    int max_p = l.value("max_players", 4);
+                    int current_p = l.contains("players") ? static_cast<int>(l["players"].size()) : 1;
+                    std::string status = l.value("status", "waiting");
+                    std::string name = (mode == "duel" ? "Celestial Duel (" : "Swarga Assault (") + std::to_string(current_p) + "/" + std::to_string(max_p) + ")";
+                    std::string mode_str = (mode == "duel" ? "1V1 PVP" : "CO-OP PVE");
+                    std::string status_str = (status == "waiting" ? "OPEN" : "IN COMBAT");
+                    m_lobbies.push_back({ code, name, mode_str, status_str });
+                }
+                m_cloud_status = "Cloud lobbies synced: " + std::to_string(m_lobbies.size()) + " rooms available";
+            } else {
+                m_cloud_status = "Showing standard LAN broadcast lobbies";
+            }
+        });
     }
 
     void update(float dt, Vector2 mouse_pos) override {
@@ -61,8 +90,24 @@ public:
         }
 
         if (!m_in_room) {
+            if (m_btn_refresh_lobbies.update(mouse_pos)) {
+                fetch_online_lobbies();
+            }
+
+            // Click lobby row to select
+            int ly = 158;
+            for (const auto& lob : m_lobbies) {
+                Rectangle row_rec = { 45, static_cast<float>(ly - 4), 490, 34 };
+                if (CheckCollisionPointRec(mouse_pos, row_rec) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                    m_in_room = true;
+                    NetworkManager::instance().join_session(m_target_ip, 7704, DBSystem::instance().player_name(), "pushpaka");
+                    break;
+                }
+                ly += 42;
+            }
+
             // IP Input interaction
-            Rectangle ip_rec = { 580, 225, 260, 32 };
+            Rectangle ip_rec = { 580, 240, 260, 32 };
             if (CheckCollisionPointRec(mouse_pos, ip_rec) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
                 m_ip_focused = true;
             } else if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
@@ -83,7 +128,12 @@ public:
             }
 
             // Browser View Actions
-            if (m_btn_create.update(mouse_pos)) {
+            if (m_btn_create_cloud.update(mouse_pos)) {
+                AccountSystem::instance().create_lobby("campaign", 4, "garuda", [this](bool success, const std::string& code, const std::string& msg) {
+                    m_in_room = true;
+                    NetworkManager::instance().host_session(DBSystem::instance().player_name(), "garuda", 7704);
+                });
+            } else if (m_btn_create.update(mouse_pos)) {
                 m_in_room = true;
                 NetworkManager::instance().host_session(DBSystem::instance().player_name(), "garuda", 7704);
             } else if (m_btn_join_lan.update(mouse_pos)) {
@@ -139,7 +189,8 @@ public:
         if (!m_in_room) {
             // -- BROWSER MODE --
             UI::DrawChamferedPanel({ 30, 85, 520, 420 }, COLOR_CYAN_BRIGHT, COLOR_SURFACE_LOW, 6.0f);
-            DrawTextEx(title_font, "OPEN SQUAD LAN PROTOCOLS", { 50, 100 }, 14, 1.0f, COLOR_GOLD_BRIGHT);
+            DrawTextEx(title_font, "OPEN SQUAD LOBBIES", { 50, 100 }, 14, 1.0f, COLOR_GOLD_BRIGHT);
+            m_btn_refresh_lobbies.draw(title_font);
 
             DrawTextEx(body_font, "ROOM", { 50, 125 }, 11, 1.0f, COLOR_MUTED);
             DrawTextEx(body_font, "MISSION / REALM", { 130, 125 }, 11, 1.0f, COLOR_MUTED);
@@ -159,16 +210,20 @@ public:
                 y += 42;
             }
 
+            // Cloud Status at bottom of browser panel
+            DrawTextEx(body_font, m_cloud_status.c_str(), { 50, 480 }, 11, 1.0f, COLOR_MUTED);
+
             // Right Actions
             UI::DrawChamferedPanel({ 560, 85, 310, 420 }, COLOR_GOLD, COLOR_SURFACE_LOW, 6.0f);
-            DrawTextEx(title_font, "LAN SQUAD SETUP", { 580, 95 }, 13, 1.0f, COLOR_MUTED);
+            DrawTextEx(title_font, "SQUAD DEPLOYMENT", { 580, 92 }, 12, 1.0f, COLOR_MUTED);
 
             m_btn_quick.draw(title_font);
+            m_btn_create_cloud.draw(title_font);
             m_btn_create.draw(title_font);
 
             // IP Entry box
-            DrawTextEx(body_font, "TARGET LAN HOST IP & PORT:", { 580, 205 }, 11, 1.0f, COLOR_PARCHMENT);
-            Rectangle ip_rec = { 580, 225, 260, 32 };
+            DrawTextEx(body_font, "TARGET LAN HOST IP & PORT:", { 580, 222 }, 11, 1.0f, COLOR_PARCHMENT);
+            Rectangle ip_rec = { 580, 240, 260, 32 };
             DrawRectangleRec(ip_rec, m_ip_focused ? COLOR_SURFACE_HIGH : COLOR_SURFACE_MID);
             DrawRectangleLinesEx(ip_rec, 1.5f, m_ip_focused ? COLOR_CYAN_BRIGHT : COLOR_SURFACE_HIGH);
             DrawTextEx(body_font, m_target_ip.c_str(), { 590, 233 }, 14, 1.0f, WHITE);
@@ -285,12 +340,15 @@ private:
     std::string m_target_ip;
     std::string m_target_port;
     bool m_ip_focused;
+    std::string m_cloud_status;
     std::vector<LobbyEntry> m_lobbies;
 
     UI::Button m_btn_quick;
+    UI::Button m_btn_create_cloud;
     UI::Button m_btn_create;
     UI::Button m_btn_join_lan;
     UI::Button m_btn_duel;
+    UI::Button m_btn_refresh_lobbies;
     UI::Button m_btn_ready;
     UI::Button m_btn_start;
     UI::Button m_btn_add_ai;

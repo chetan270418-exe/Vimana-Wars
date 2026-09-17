@@ -48,12 +48,25 @@ public:
         m_btn_scanlines = UI::Button({ cx + 20, 330, 190, 34 }, "TOGGLE SCANLINES", COLOR_GOLD_BRIGHT);
 
         m_btn_back = UI::Button({ 40, 520, 110, 36 }, "SAVE & BACK", COLOR_MUTED);
+        m_btn_reset_defaults = UI::Button({ SCREEN_WIDTH - 230, 520, 190, 36 }, "RESET DEFAULTS", COLOR_RED_BRIGHT);
     }
 
     void update(float dt, Vector2 mouse_pos) override {
         if (m_btn_back.update(mouse_pos) || IsKeyPressed(KEY_ESCAPE)) {
             DBSystem::instance().save_game();
             m_next_view = ViewType::MENU;
+        }
+
+        if (m_btn_reset_defaults.update(mouse_pos)) {
+            SoundSystem::instance().set_master_volume(1.0f);
+            SoundSystem::instance().set_sfx_volume(0.8f);
+            SoundSystem::instance().set_music_volume(0.7f);
+            SoundSystem::instance().set_ui_volume(0.8f);
+            SoundSystem::instance().set_boss_volume(0.9f);
+            g_colorblind_mode = false;
+            g_screen_shake_enabled = true;
+            g_scanlines_enabled = true;
+            DBSystem::instance().save_game();
         }
 
         // Tab Switching
@@ -216,6 +229,7 @@ public:
         }
 
         m_btn_back.draw(title_font);
+        m_btn_reset_defaults.draw(title_font);
         if (g_scanlines_enabled) UI::DrawScanlines();
     }
 
@@ -245,6 +259,7 @@ private:
     UI::Button m_btn_shake;
     UI::Button m_btn_scanlines;
     UI::Button m_btn_back;
+    UI::Button m_btn_reset_defaults;
 };
 
 } // namespace Vimana

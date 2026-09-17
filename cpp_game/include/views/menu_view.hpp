@@ -11,6 +11,7 @@
 #include "systems/asset_manager.hpp"
 #include "systems/currency_system.hpp"
 #include "systems/db_system.hpp"
+#include "systems/account_system.hpp"
 #include "entities/player.hpp"
 
 namespace Vimana {
@@ -112,9 +113,11 @@ public:
         bool badge_hover = CheckCollisionPointRec(GetMousePosition(), pilot_badge);
         UI::DrawYantraPanel(pilot_badge, badge_hover ? COLOR_GOLD_BRIGHT : COLOR_GOLD, COLOR_SURFACE_MID, 4.0f, badge_hover);
         DrawText("PILOT IDENTIFICATION RECORD (CLICK FOR DOSSIER):", static_cast<int>(pilot_badge.x + 12), static_cast<int>(pilot_badge.y + 7), 9, COLOR_MUTED);
-        std::string callsign_line = PILOT_ID + std::string(" // PILOT: ") + DBSystem::instance().player_name();
+        std::string callsign_line = AccountSystem::instance().game_id() + std::string(" // ") + DBSystem::instance().player_name();
         DrawTextEx(title_f, callsign_line.c_str(), { pilot_badge.x + 12, pilot_badge.y + 19 }, 13, 1.0f, COLOR_GOLD_BRIGHT);
-        DrawText(PILOT_SQUADRON, static_cast<int>(pilot_badge.x + 12), static_cast<int>(pilot_badge.y + 34), 10, COLOR_CYAN_BRIGHT);
+        std::string cloud_info = AccountSystem::instance().is_logged_in() ? "[☁ CLOUD SYNCED // ONLINE]" : "[☁ LOCAL GUEST // OFFLINE]";
+        Color cloud_col = AccountSystem::instance().is_logged_in() ? COLOR_GREEN_BRIGHT : COLOR_CYAN_BRIGHT;
+        DrawText(cloud_info.c_str(), static_cast<int>(pilot_badge.x + 12), static_cast<int>(pilot_badge.y + 34), 10, cloud_col);
 
         // Subtitle line
         DrawText("CELESTIAL ASTRAL COMBAT // THE 7 REALMS OF MAHAYUDDHA", 52, 160, 12, COLOR_CYAN_BRIGHT);
