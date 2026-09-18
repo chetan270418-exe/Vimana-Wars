@@ -6,6 +6,7 @@
 #include <fstream>
 #include <filesystem>
 #include <ctime>
+#include <cstdlib>
 #include <windows.h>
 #include "json.hpp"
 #include "core/types.hpp"
@@ -46,7 +47,12 @@ public:
     }
 
     void init() {
-        m_api_base = "http://127.0.0.1:5000";
+        // Keep local development as the safe default, while allowing packaged
+        // builds to use the deployed Flask API without a source-code edit.
+        const char* configured_api = std::getenv("VIMANA_API_URL");
+        m_api_base = (configured_api && *configured_api)
+            ? configured_api
+            : "http://127.0.0.1:5000";
         m_auth_state = AuthState::GUEST;
         m_sync_status = CloudSyncStatus::OFFLINE_LOCAL;
         m_sync_message = "Local mode (Guest)";

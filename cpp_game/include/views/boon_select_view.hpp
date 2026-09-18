@@ -21,6 +21,7 @@ public:
     void init() override {
         m_next_view = ViewType::BOON_SELECT;
         m_selected_card = 0;
+        m_hovered_card = -1;
         m_draft_boons = BoonSystem::generate_draft(m_current_boons);
     }
 
@@ -28,6 +29,7 @@ public:
         m_current_boons = current_boons;
         m_draft_boons = BoonSystem::generate_draft(m_current_boons);
         m_selected_card = 0;
+        m_hovered_card = -1;
     }
 
     static const char* get_boon_icon_file(BoonType type) {
@@ -46,6 +48,7 @@ public:
     }
 
     void update(float dt, Vector2 mouse_pos) override {
+        m_hovered_card = -1;
         float card_w = 246.0f;
         float card_h = 350.0f;
         float spacing = 24.0f;
@@ -56,6 +59,7 @@ public:
         // Mouse Selection
         for (size_t i = 0; i < m_draft_boons.size(); ++i) {
             Rectangle card_rec = { start_x + i * (card_w + spacing), start_y, card_w, card_h };
+            if (CheckCollisionPointRec(mouse_pos, card_rec)) m_hovered_card = static_cast<int>(i);
             if (CheckCollisionPointRec(mouse_pos, card_rec)) {
                 if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
                     m_selected_card = static_cast<int>(i);
@@ -160,6 +164,14 @@ public:
             // Description
             DrawTextEx(body_font, boon.description.c_str(), { card_rec.x + 16, content_y }, 11, 1.0f, COLOR_PARCHMENT);
 
+            if (m_hovered_card == static_cast<int>(i) && !completes_synergy) {
+                auto previews = BoonSystem::potential_synergies(m_current_boons, boon.type);
+                if (!previews.empty()) {
+                    std::string hint = "COMBINES WITH: " + previews.front().name;
+                    DrawTextEx(body_font, hint.c_str(), { card_rec.x + 16, content_y + 70.0f }, 9, 1.0f, previews.front().color);
+                }
+            }
+
             // If synergy, also describe the bonus combo
             if (completes_synergy) {
                 float syn_y = content_y + 70.0f;
@@ -192,6 +204,7 @@ public:
 private:
     ViewType m_next_view;
     int m_selected_card;
+    int m_hovered_card = -1;
     BoonType m_chosen_boon = BoonType::AGNI_SOLAR_FURY;
     std::vector<BoonInfo> m_draft_boons;
     std::vector<BoonType> m_current_boons;

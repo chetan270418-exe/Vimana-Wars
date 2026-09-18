@@ -7,6 +7,7 @@ const SCREENS = [
   { id: 'victory',     label: 'VICTORY' },
   { id: 'realm-map',   label: 'MAP' },
   { id: 'leaderboard', label: 'SCORES' },
+  { id: 'achievements', label: 'TROPHIES' },
   { id: 'sangha',      label: 'SANGHA' },
   { id: 'account',     label: 'ACCOUNT' },
   { id: 'settings',    label: 'CONFIG' },

@@ -45,11 +45,7 @@ public:
         m_ip_focused = false;
         m_cloud_status = "Querying live Sangha lobbies...";
 
-        m_lobbies = {
-            { "LAN01", "Swarga Assault (2/4)", "CO-OP PVE", "READY" },
-            { "LAN02", "Lanka Rift Incursion (1/4)", "CO-OP PVE", "WAITING" },
-            { "DUEL1", "Celestial Colosseum (1/2)", "1V1 PVP", "CHALLENGE" }
-        };
+        m_lobbies.clear();
 
         fetch_online_lobbies();
     }
@@ -71,7 +67,8 @@ public:
                 }
                 m_cloud_status = "Cloud lobbies synced: " + std::to_string(m_lobbies.size()) + " rooms available";
             } else {
-                m_cloud_status = "Showing standard LAN broadcast lobbies";
+                m_lobbies.clear();
+                m_cloud_status = success ? "No live lobbies found" : "Online lobby link unavailable — host a LAN room";
             }
         });
     }

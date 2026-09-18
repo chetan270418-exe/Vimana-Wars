@@ -41,6 +41,10 @@ int main() {
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, WINDOW_TITLE);
     SetTargetFPS(TARGET_FPS);
 
+    // Raylib's default exit key is ESC — which would steal our pause toggle.
+    // Disable it so ESC can drive the in-game pause menu instead.
+    SetExitKey(KEY_NULL);
+
     // 2. Initialize Engine Systems
     SoundSystem::instance().init();
     AssetManager::instance().init();

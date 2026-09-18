@@ -35,9 +35,10 @@ const REWARDS = [
 type Props = {
   onNavigate: (s: string) => void;
   result?: RunResult | null;
+  syncStatus?: 'idle' | 'syncing' | 'synced' | 'offline';
 };
 
-export default function Victory({ onNavigate, result }: Props) {
+export default function Victory({ onNavigate, result, syncStatus = 'idle' }: Props) {
   const stats = useMemo(() => {
     if (!result) return DEFAULT_STATS;
     const mins = Math.floor(result.durationSeconds / 60);
@@ -137,6 +138,12 @@ export default function Victory({ onNavigate, result }: Props) {
             </div>
           </div>
         </Panel>
+
+        {syncStatus !== 'idle' && (
+          <div className="mt-3 text-[10px] tracking-[0.18em]" style={{ color: syncStatus === 'synced' ? '#40E090' : syncStatus === 'offline' ? '#FF9650' : '#74F5FF' }}>
+            {syncStatus === 'synced' ? '● SCORE SYNCED TO CLOUD' : syncStatus === 'offline' ? '◌ SCORE KEPT LOCALLY · CLOUD LINK UNAVAILABLE' : '◌ SYNCING SCORE…'}
+          </div>
+        )}
 
         {/* Rewards */}
         <div className="flex gap-3 w-full mt-3" style={{ animation: 'slide-in-up 0.5s ease 0.35s both' }}>

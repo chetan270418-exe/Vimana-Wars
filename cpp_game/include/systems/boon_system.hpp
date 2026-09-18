@@ -78,6 +78,16 @@ public:
         }
         return false;
     }
+
+    static std::vector<BoonSynergy> potential_synergies(const std::vector<BoonType>& boons, BoonType candidate) {
+        std::vector<BoonSynergy> result;
+        for (const auto& syn : ALL_SYNERGIES) {
+            if (syn.req1 != candidate && syn.req2 != candidate) continue;
+            BoonType other = syn.req1 == candidate ? syn.req2 : syn.req1;
+            if (std::find(boons.begin(), boons.end(), other) == boons.end()) result.push_back(syn);
+        }
+        return result;
+    }
 };
 
 } // namespace Vimana

@@ -52,11 +52,15 @@ struct Powerup {
             case PowerupType::ASTRA_OVERDRIVE: primary = COLOR_PURPLE_BRIGHT; label = "O"; break;
         }
 
-        // Pulsing outer aura
-        float pulse = 1.0f + 0.15f * std::sin(lifetime * 6.0f);
+        // Pulsing outer aura and a gentle hover make cubes readable against
+        // busy realm backgrounds before the magnet effect begins.
+        float pulse = 1.0f + 0.18f * std::sin(lifetime * 6.0f);
+        float bob = std::sin(lifetime * 4.0f) * 2.5f;
+        float draw_y = pos.y + bob;
         Color aura = primary;
-        aura.a = 60;
-        DrawCircle(static_cast<int>(pos.x), static_cast<int>(pos.y), radius * pulse * 1.5f, aura);
+        aura.a = 72;
+        DrawCircle(static_cast<int>(pos.x), static_cast<int>(draw_y), radius * pulse * 1.65f, aura);
+        DrawCircleLines(static_cast<int>(pos.x), static_cast<int>(draw_y), radius * pulse * 1.9f, ColorAlpha(primary, 0.42f));
 
         // 3D Isometric Astral Cube effect
         float size = radius * 0.9f;
@@ -64,18 +68,19 @@ struct Powerup {
         float cos_r = std::cos(rad) * size;
         float sin_r = std::sin(rad) * size;
 
-        Vector2 top = { pos.x, pos.y - size };
-        Vector2 right = { pos.x + cos_r, pos.y + sin_r * 0.5f };
-        Vector2 bottom = { pos.x, pos.y + size };
-        Vector2 left = { pos.x - cos_r, pos.y - sin_r * 0.5f };
+        Vector2 top = { pos.x, draw_y - size };
+        Vector2 right = { pos.x + cos_r, draw_y + sin_r * 0.5f };
+        Vector2 bottom = { pos.x, draw_y + size };
+        Vector2 left = { pos.x - cos_r, draw_y - sin_r * 0.5f };
+        Vector2 center = { pos.x, draw_y };
 
-        DrawTriangle(top, right, pos, primary);
-        DrawTriangle(top, pos, left, ColorAlpha(primary, 0.7f));
-        DrawTriangle(left, pos, bottom, ColorAlpha(primary, 0.5f));
-        DrawTriangle(pos, right, bottom, ColorAlpha(primary, 0.85f));
+        DrawTriangle(top, right, center, primary);
+        DrawTriangle(top, center, left, ColorAlpha(primary, 0.7f));
+        DrawTriangle(left, center, bottom, ColorAlpha(primary, 0.5f));
+        DrawTriangle(center, right, bottom, ColorAlpha(primary, 0.85f));
 
-        DrawCircleLines(static_cast<int>(pos.x), static_cast<int>(pos.y), radius, COLOR_PARCHMENT);
-        DrawText(label, static_cast<int>(pos.x - 4), static_cast<int>(pos.y - 6), 12, COLOR_OBSIDIAN);
+        DrawCircleLines(static_cast<int>(pos.x), static_cast<int>(draw_y), radius, COLOR_PARCHMENT);
+        DrawText(label, static_cast<int>(pos.x - 4), static_cast<int>(draw_y - 6), 12, COLOR_OBSIDIAN);
     }
 };
 

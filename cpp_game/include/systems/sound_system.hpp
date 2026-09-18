@@ -58,14 +58,17 @@ public:
 
     // ── DYNAMIC BOSS PHASE ESCALATION ───────────────────────────────────────
     void set_boss_phase(int phase) {
+        if (phase == m_boss_phase) return;
         // Subtle pitch and intensity shift per boss phase
         m_boss_phase = phase;
         // Adjust music volume / tension dynamically
         if (phase == 2) {
             AssetManager::instance().set_music_volume(std::min(1.0f, m_music_volume * 1.15f) * m_master_volume);
+            play_boss("boss_roar.wav", 0.75f);
         } else if (phase == 3) {
             AssetManager::instance().set_music_volume(std::min(1.0f, m_music_volume * 1.25f) * m_master_volume);
             play_boss("warning_siren.wav", 0.8f);
+            play_boss("boss_roar.wav", 0.9f);
         } else {
             AssetManager::instance().set_music_volume(m_music_volume * m_master_volume);
         }

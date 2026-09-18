@@ -6,6 +6,7 @@ import GameOver from './components/GameOver';
 import Victory from './components/Victory';
 import RealmMap from './components/RealmMap';
 import Leaderboard from './components/Leaderboard';
+import Achievements from './components/Achievements';
 import Settings from './components/Settings';
 import Codex from './components/Codex';
 import Account from './components/Account';
@@ -28,6 +29,7 @@ export default function App() {
   const [activeBoons, setActiveBoons] = useState<string[]>([]);
   const [currentWave, setCurrentWave] = useState(1);
   const [lastResult, setLastResult] = useState<RunResult | null>(null);
+  const [scoreSyncStatus, setScoreSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'offline'>('idle');
 
   // 1v1 PvP Duel state
   const [duelConfig, setDuelConfig] = useState<DuelConfig | null>(null);
@@ -53,9 +55,35 @@ export default function App() {
     setCurrentWave(config.startWave || 1);
   }, []);
 
+  const handleQuit = useCallback(() => {
+    // Browsers only allow window.close() when this tab was opened by script.
+    // MainMenu shows a clear fallback message when the browser blocks it.
+    window.close();
+  }, []);
+
   const handleWaveComplete = useCallback((wave: number) => {
     setCurrentWave(wave);
     setScreen('boon-select');
+  }, []);
+
+  const submitRunScore = useCallback(async (result: RunResult, levelReached: number) => {
+    setScoreSyncStatus('syncing');
+    const session = getSession();
+    try {
+      await submitScore({
+        player_name: session?.user.player_name || 'Pilot',
+        score: result.score,
+        level_reached: levelReached,
+        difficulty: result.difficulty,
+        ship_class: result.shipId,
+        kills: result.kills,
+        total_damage: result.totalDamage,
+        duration_seconds: result.durationSeconds,
+      });
+      setScoreSyncStatus('synced');
+    } catch {
+      setScoreSyncStatus('offline');
+    }
   }, []);
 
   const handleClaimBoon = useCallback((boonId: string) => {
@@ -71,22 +99,10 @@ export default function App() {
     }
 
     // Submit score to backend
-    const session = getSession();
-    void submitScore({
-      player_name: session?.user.player_name || 'Pilot',
-      score: result.score,
-      level_reached: result.waveReached,
-      difficulty: result.difficulty,
-      ship_class: result.shipId,
-      kills: result.kills,
-      total_damage: result.totalDamage,
-      duration_seconds: result.durationSeconds,
-    }).catch(() => {
-      /* offline or network error allowed */
-    });
+    void submitRunScore(result, result.waveReached);
 
     setScreen('game-over');
-  }, []);
+  }, [submitRunScore]);
 
   const handleSingleVictory = useCallback((result: RunResult) => {
     setLastResult(result);
@@ -96,20 +112,10 @@ export default function App() {
       completedRealms: Array.from(new Set([...current.completedRealms, 'dandaka'])),
     });
 
-    const session = getSession();
-    void submitScore({
-      player_name: session?.user.player_name || 'Pilot',
-      score: result.score,
-      level_reached: 20,
-      difficulty: result.difficulty,
-      ship_class: result.shipId,
-      kills: result.kills,
-      total_damage: result.totalDamage,
-      duration_seconds: result.durationSeconds,
-    }).catch(() => {});
+    void submitRunScore(result, 20);
 
     setScreen('victory');
-  }, []);
+  }, [submitRunScore]);
 
   const handleStartDuel = useCallback((config: DuelConfig) => {
     setDuelConfig(config);
@@ -182,7 +188,7 @@ export default function App() {
           transition: 'opacity 0.14s ease',
         }}
       >
-        {screen === 'main-menu' && <MainMenu {...props} />}
+        {screen === 'main-menu' && <MainMenu {...props} onQuit={handleQuit} />}
         {screen === 'ship-select' && <ShipSelect {...props} onStartRun={handleStartRun} />}
         {screen === 'boon-select' && (
           <BoonSelect {...props} currentWave={currentWave} onClaimBoon={handleClaimBoon} />
@@ -198,10 +204,11 @@ export default function App() {
             onVictory={handleSingleVictory}
           />
         )}
-        {screen === 'game-over' && <GameOver {...props} result={lastResult} />}
-        {screen === 'victory' && <Victory {...props} result={lastResult} />}
+        {screen === 'game-over' && <GameOver {...props} result={lastResult} syncStatus={scoreSyncStatus} />}
+        {screen === 'victory' && <Victory {...props} result={lastResult} syncStatus={scoreSyncStatus} />}
         {screen === 'realm-map' && <RealmMap {...props} />}
         {screen === 'leaderboard' && <Leaderboard {...props} />}
+        {screen === 'achievements' && <Achievements {...props} />}
         {screen === 'account' && <Account {...props} />}
         {screen === 'sangha' && <SanghaNetwork {...props} onStartDuel={handleStartDuel} />}
         {screen === 'duel' && (

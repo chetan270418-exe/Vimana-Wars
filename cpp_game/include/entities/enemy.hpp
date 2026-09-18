@@ -53,6 +53,42 @@ struct Enemy {
             speed_mult *= ELITE_SPEED_MULT;
         }
 
+        // Compact role glyphs keep enemy behavior readable without requiring
+        // the player to memorize every sprite silhouette.
+        Vector2 glyph = { pos.x, pos.y - radius - (is_elite ? 28.0f : 10.0f) };
+        Color glyph_color = COLOR_RED_BRIGHT;
+        switch (type) {
+            case EnemyType::ASURA_CHASER:
+                glyph_color = COLOR_ORANGE_BRIGHT;
+                DrawTriangle({ glyph.x, glyph.y - 5 }, { glyph.x - 5, glyph.y + 4 }, { glyph.x + 5, glyph.y + 4 }, glyph_color);
+                break;
+            case EnemyType::ASURA_TANK:
+                glyph_color = COLOR_GOLD_BRIGHT;
+                DrawRectangle(static_cast<int>(glyph.x - 4), static_cast<int>(glyph.y - 4), 8, 8, glyph_color);
+                break;
+            case EnemyType::ASURA_HEALER:
+                glyph_color = COLOR_GREEN_BRIGHT;
+                DrawCircleLines(static_cast<int>(glyph.x), static_cast<int>(glyph.y), 5, glyph_color);
+                DrawLine(static_cast<int>(glyph.x - 3), static_cast<int>(glyph.y), static_cast<int>(glyph.x + 3), static_cast<int>(glyph.y), glyph_color);
+                DrawLine(static_cast<int>(glyph.x), static_cast<int>(glyph.y - 3), static_cast<int>(glyph.x), static_cast<int>(glyph.y + 3), glyph_color);
+                break;
+            case EnemyType::ASURA_SNIPER:
+                glyph_color = COLOR_CYAN_BRIGHT;
+                DrawCircleLines(static_cast<int>(glyph.x), static_cast<int>(glyph.y), 5, glyph_color);
+                DrawLine(static_cast<int>(glyph.x - 7), static_cast<int>(glyph.y), static_cast<int>(glyph.x + 7), static_cast<int>(glyph.y), glyph_color);
+                DrawLine(static_cast<int>(glyph.x), static_cast<int>(glyph.y - 7), static_cast<int>(glyph.x), static_cast<int>(glyph.y + 7), glyph_color);
+                break;
+            case EnemyType::ASURA_KAMIKAZE:
+                glyph_color = COLOR_RED_BRIGHT;
+                DrawCircle(static_cast<int>(glyph.x), static_cast<int>(glyph.y), 5, glyph_color);
+                DrawCircleLines(static_cast<int>(glyph.x), static_cast<int>(glyph.y), 8, COLOR_GOLD_BRIGHT);
+                break;
+            case EnemyType::ASURA_SHOOTER:
+                glyph_color = COLOR_PURPLE_BRIGHT;
+                DrawPoly(glyph, 4, 6.0f, 45.0f, glyph_color);
+                break;
+        }
+
         switch (type) {
             case EnemyType::ASURA_CHASER:
                 radius = 16.0f;

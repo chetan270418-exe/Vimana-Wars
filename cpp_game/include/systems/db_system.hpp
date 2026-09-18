@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <filesystem>
+#include <stdexcept>
 #include "sqlite3.h"
 #include "json.hpp"
 #include "core/types.hpp"
@@ -21,14 +22,27 @@ public:
     }
 
     void init() {
-        // Resolve database path
-        std::string db_file = "leaderboard.db";
-        if (!std::filesystem::exists(db_file)) {
-            if (std::filesystem::exists("../leaderboard.db")) {
-                db_file = "../leaderboard.db";
+        // Resolve beside the executable as a fallback so the desktop build
+        // does not silently create a second leaderboard based on CWD.
+        std::vector<std::filesystem::path> candidates = {
+            std::filesystem::path("leaderboard.db"),
+            std::filesystem::path("../leaderboard.db"),
+            std::filesystem::path("../../leaderboard.db")
+        };
+        std::filesystem::path app_dir = std::filesystem::path(GetApplicationDirectory());
+        candidates.push_back(app_dir / "leaderboard.db");
+        candidates.push_back(app_dir / ".." / "leaderboard.db");
+        candidates.push_back(app_dir / ".." / ".." / "leaderboard.db");
+
+        std::filesystem::path db_path = candidates.front();
+        for (const auto& candidate : candidates) {
+            if (std::filesystem::exists(candidate)) {
+                db_path = candidate;
+                break;
             }
         }
 
+        std::string db_file = db_path.lexically_normal().string();
         int rc = sqlite3_open(db_file.c_str(), &m_db);
         if (rc != SQLITE_OK) {
             std::cerr << "[DBSystem] Cannot open database: " << sqlite3_errmsg(m_db) << std::endl;
@@ -143,9 +157,16 @@ public:
             try {
                 auto now = std::chrono::system_clock::now().time_since_epoch().count();
                 std::string corrupt_backup = save_dir + "/save.json.corrupt." + std::to_string(now);
-                std::filesystem::copy_file(save_path, corrupt_backup, std::filesystem::copy_options::overwrite_existing);
-                std::cerr << "[DBSystem] Corrupt save backed up to: " << corrupt_backup << std::endl;
-            } catch (...) {}
+                std::error_code backup_error;
+                std::filesystem::copy_file(save_path, corrupt_backup, std::filesystem::copy_options::overwrite_existing, backup_error);
+                if (backup_error || !std::filesystem::exists(corrupt_backup)) {
+                    std::cerr << "[DBSystem] WARNING: corrupt save backup failed: " << backup_error.message() << std::endl;
+                } else {
+                    std::cerr << "[DBSystem] Corrupt save backed up to: " << corrupt_backup << std::endl;
+                }
+            } catch (const std::exception& backup_ex) {
+                std::cerr << "[DBSystem] WARNING: corrupt save backup failed: " << backup_ex.what() << std::endl;
+            }
         }
     }
 
@@ -187,8 +208,11 @@ public:
             j["screen_shake_enabled"] = g_screen_shake_enabled;
             j["scanlines_enabled"] = g_scanlines_enabled;
 
-            std::ofstream f(save_path);
+            std::ofstream f(save_path, std::ios::trunc);
+            if (!f) throw std::runtime_error("unable to open save file for writing");
             f << j.dump(2);
+            f.flush();
+            if (!f.good()) throw std::runtime_error("save file write was incomplete");
         } catch (const std::exception& ex) {
             std::cerr << "[DBSystem] Error saving save.json: " << ex.what() << std::endl;
         }

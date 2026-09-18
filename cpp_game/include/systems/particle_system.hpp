@@ -2,6 +2,8 @@
 #include <vector>
 #include <string>
 #include <cmath>
+#include <array>
+#include <algorithm>
 #include "raylib.h"
 #include "core/constants.hpp"
 #include "core/dsa/object_pool.hpp"
@@ -161,6 +163,37 @@ struct CoopAstraVFX {
     }
 };
 
+struct BossPhaseVFX {
+    bool active = false;
+    Vector2 center = { 0, 0 };
+    Color color = COLOR_GOLD_BRIGHT;
+    int phase = 2;
+    float timer = 0.0f;
+    float duration = 1.15f;
+
+    void update(float dt) {
+        if (!active) return;
+        timer += dt;
+        if (timer >= duration) active = false;
+    }
+
+    void draw() const {
+        if (!active) return;
+        float progress = std::clamp(timer / duration, 0.0f, 1.0f);
+        float radius = 34.0f + progress * 95.0f;
+        Color ring = color;
+        ring.a = static_cast<unsigned char>((1.0f - progress) * 220.0f);
+        DrawCircleLines(static_cast<int>(center.x), static_cast<int>(center.y), radius, ring);
+        DrawCircleLines(static_cast<int>(center.x), static_cast<int>(center.y), radius * 0.72f, ColorAlpha(ring, 0.55f));
+        for (int i = 0; i < 8; ++i) {
+            float angle = (i * 45.0f + timer * 110.0f) * (3.14159f / 180.0f);
+            Vector2 a = { center.x + std::cos(angle) * radius * 0.72f, center.y + std::sin(angle) * radius * 0.72f };
+            Vector2 b = { center.x + std::cos(angle) * radius, center.y + std::sin(angle) * radius };
+            DrawLineEx(a, b, 2.0f, ring);
+        }
+    }
+};
+
 class ParticleSystem {
 public:
     ParticleSystem() = default;
@@ -268,6 +301,17 @@ public:
         m_text_buffer.push(ft);
     }
 
+    void emit_boss_phase_transition(Vector2 pos, Color color, int phase) {
+        m_boss_phase_vfx.active = true;
+        m_boss_phase_vfx.center = pos;
+        m_boss_phase_vfx.color = color;
+        m_boss_phase_vfx.phase = phase;
+        m_boss_phase_vfx.timer = 0.0f;
+        m_boss_phase_vfx.duration = 1.15f;
+        add_floating_text({ pos.x - 72.0f, pos.y - 72.0f }, "PHASE " + std::to_string(phase) + " AWAKENED", COLOR_GOLD_BRIGHT);
+        trigger_screen_shake(12.0f, 0.45f);
+    }
+
     void trigger_screen_shake(float intensity, float duration) {
         m_shake_intensity = intensity;
         m_shake_duration = duration;
@@ -310,6 +354,8 @@ public:
             m_coop_astra.update(dt);
         }
 
+        m_boss_phase_vfx.update(dt);
+
         for (size_t i = 0; i < m_text_buffer.size(); ++i) {
             if (m_text_buffer[i].active) {
                 m_text_buffer[i].update(dt);
@@ -333,6 +379,8 @@ public:
             m_coop_astra.draw();
         }
 
+        m_boss_phase_vfx.draw();
+
         // Draw particles
         const auto& pool = m_particle_pool.raw_storage();
         for (const auto& p : pool) {
@@ -350,6 +398,7 @@ private:
     std::array<DashGhost, 16> m_dash_ghosts;
     std::array<ShieldRipple, 16> m_shield_ripples;
     CoopAstraVFX m_coop_astra;
+    BossPhaseVFX m_boss_phase_vfx;
     float m_shake_intensity = 0.0f;
     float m_shake_duration = 0.0f;
     float m_shake_timer = 0.0f;

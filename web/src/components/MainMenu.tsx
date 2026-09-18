@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import StarField from './ui/StarField';
-import { getApiHealth } from '../lib/api';
+import { getApiHealth, getSession } from '../lib/api';
 
 const ASSET = 'https://raw.githubusercontent.com/chetan270418-exe/Vimana-Wars/main/assets/images/';
 
@@ -8,10 +8,13 @@ const NAV = [
   { label: 'PLAY CAMPAIGN',    screen: 'ship-select', primary: true,  desc: 'Launch a new run' },
   { label: 'ARMORY',           screen: 'ship-select', primary: false, desc: 'Browse all Vimanas' },
   { label: 'REALM MAP',        screen: 'realm-map',   primary: false, desc: '7 realms · 20 waves' },
+  { label: 'LEADERBOARDS',     screen: 'leaderboard', primary: false, desc: 'Global pilot records' },
+  { label: 'ACHIEVEMENTS',     screen: 'achievements',primary: false, desc: 'Trophies · boss milestones' },
   { label: 'SANGHA NETWORK',   screen: 'sangha',      primary: false, desc: '1v1 rooms · matchmaking' },
-  { label: 'PILOT ACCOUNT',    screen: 'account',     primary: false, desc: 'Game ID · cloud progress' },
+  { label: 'ACCOUNT / SIGN IN',screen: 'account',     primary: false, desc: 'Sign in · Game ID · cloud progress' },
   { label: 'SETTINGS',         screen: 'settings',    primary: false, desc: 'Audio · Display · Controls' },
   { label: 'CODEX',            screen: 'codex',       primary: false, desc: 'Enemy & lore archive' },
+  { label: 'QUIT',             screen: '',            primary: false, desc: 'Close the game link', quit: true },
 ];
 
 const ORBIT_DOTS = Array.from({ length: 8 }, (_, i) => {
@@ -19,15 +22,17 @@ const ORBIT_DOTS = Array.from({ length: 8 }, (_, i) => {
   return { i, cx: Math.cos(angle), cy: Math.sin(angle), gold: i % 2 === 0 };
 });
 
-type Props = { onNavigate: (s: string) => void };
+type Props = { onNavigate: (s: string) => void; onQuit?: () => void };
 
-export default function MainMenu({ onNavigate }: Props) {
+export default function MainMenu({ onNavigate, onQuit }: Props) {
   const [apiOnline, setApiOnline] = useState<boolean | null>(null);
+  const [quitNotice, setQuitNotice] = useState(false);
+  const session = getSession();
 
   useEffect(() => {
     const controller = new AbortController();
     getApiHealth(controller.signal)
-      .then(payload => setApiOnline(payload.status === 'online'))
+      .then(payload => setApiOnline(payload.status === 'healthy'))
       .catch(() => setApiOnline(false));
     return () => controller.abort();
   }, []);
@@ -71,7 +76,14 @@ export default function MainMenu({ onNavigate }: Props) {
           {NAV.map(item => (
             <button
               key={item.label}
-              onClick={() => onNavigate(item.screen)}
+              onClick={() => {
+                if (item.quit) {
+                  onQuit?.();
+                  setQuitNotice(true);
+                } else {
+                  onNavigate(item.screen);
+                }
+              }}
               className="group flex items-center gap-4 py-3 pl-4 pr-3 text-left transition-all duration-200 hover:bg-white/[0.03]"
               style={{
                 borderLeft: `2px solid ${item.primary ? '#E9C400' : 'rgba(233,196,0,0.18)'}`,
@@ -106,6 +118,16 @@ export default function MainMenu({ onNavigate }: Props) {
           </div>
         </div>
       </div>
+
+      {quitNotice && (
+        <div className="absolute inset-0 z-40 flex items-center justify-center" style={{ background: 'rgba(4,5,9,0.82)' }}>
+          <div className="px-8 py-7 text-center" style={{ width: 360, background: '#141A28', border: '1px solid rgba(233,196,0,0.5)', boxShadow: '0 0 35px rgba(0,0,0,0.55)' }}>
+            <div className="text-[10px] tracking-[0.32em]" style={{ color: '#E9C400', fontFamily: '"Cinzel", serif' }}>MISSION LINK CLOSED</div>
+            <div className="text-xs mt-3" style={{ color: '#D0C6AB' }}>You can close this browser tab now.</div>
+            <button className="mt-5 px-5 py-2 text-[10px] tracking-[0.2em]" style={{ color: '#FFF6DF', border: '1px solid rgba(0,219,231,0.45)' }} onClick={() => setQuitNotice(false)}>RETURN TO MENU</button>
+          </div>
+        </div>
+      )}
 
       {/* RIGHT AREA — Hero Vimana */}
       <div className="absolute right-0 top-0 bottom-0 flex items-center justify-center z-10"
@@ -161,11 +183,25 @@ export default function MainMenu({ onNavigate }: Props) {
         </div>
       </div>
 
-      {/* Player chip top-right */}
+      {/* Account action and player chip top-right.  Keep sign-in visible without
+          requiring the user to discover the left navigation item. */}
       <div className="absolute top-5 right-6 z-20 flex items-center gap-3">
+        <button
+          onClick={() => onNavigate('account')}
+          className="px-3 py-2 text-[10px] tracking-[0.16em] transition-all duration-200 hover:brightness-125"
+          style={{
+            color: session ? '#74F5FF' : '#FFF6DF',
+            background: session ? 'rgba(0,219,231,0.08)' : 'rgba(233,196,0,0.12)',
+            border: `1px solid ${session ? 'rgba(0,219,231,0.45)' : 'rgba(233,196,0,0.6)'}`,
+            fontFamily: '"JetBrains Mono", monospace',
+            boxShadow: session ? '0 0 14px rgba(0,219,231,0.12)' : '0 0 18px rgba(233,196,0,0.16)',
+          }}
+        >
+          {session ? 'PILOT ACCOUNT' : 'SIGN IN / CREATE GAME ID'}
+        </button>
         <div className="text-right">
-          <div className="text-[10px] tracking-[0.3em]" style={{ fontFamily: '"JetBrains Mono", monospace', color: '#8F98A8' }}>PILOT</div>
-          <div className="text-sm tracking-widest" style={{ fontFamily: '"Cinzel", serif', color: '#FFF6DF' }}>DHRUVA KRISHNA</div>
+          <div className="text-[10px] tracking-[0.3em]" style={{ fontFamily: '"JetBrains Mono", monospace', color: '#8F98A8' }}>{session ? 'PILOT' : 'GUEST PILOT'}</div>
+          <div className="text-sm tracking-widest" style={{ fontFamily: '"Cinzel", serif', color: '#FFF6DF' }}>{(session?.user.player_name || 'LOCAL WARRIOR').toUpperCase()}</div>
         </div>
         <div
           className="w-9 h-9 flex items-center justify-center text-xs font-bold"

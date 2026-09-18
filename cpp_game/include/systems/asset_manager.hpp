@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <iostream>
 #include <filesystem>
+#include <vector>
 #include "raylib.h"
 
 namespace Vimana {
@@ -15,13 +16,24 @@ public:
     }
 
     void init() {
-        // Look for assets in common relative locations
-        m_base_path = "assets";
-        if (!std::filesystem::exists(m_base_path)) {
-            if (std::filesystem::exists("../assets")) {
-                m_base_path = "../assets";
-            } else if (std::filesystem::exists("../../assets")) {
-                m_base_path = "../../assets";
+        // Resolve from the executable as well as the working directory. The
+        // latter changes between IDE, bin/, packaged, and double-click runs.
+        std::vector<std::filesystem::path> candidates = {
+            std::filesystem::path("assets"),
+            std::filesystem::path("../assets"),
+            std::filesystem::path("../../assets")
+        };
+        std::filesystem::path app_dir = std::filesystem::path(GetApplicationDirectory());
+        candidates.push_back(app_dir / "assets");
+        candidates.push_back(app_dir / ".." / "assets");
+        candidates.push_back(app_dir / ".." / ".." / "assets");
+
+        for (const auto& candidate : candidates) {
+            std::error_code ec;
+            if (std::filesystem::is_directory(candidate, ec)) {
+                m_base_path = std::filesystem::weakly_canonical(candidate, ec).string();
+                if (m_base_path.empty()) m_base_path = candidate.lexically_normal().string();
+                break;
             }
         }
         std::cout << "[AssetManager] Resolved assets base path: " << m_base_path << std::endl;

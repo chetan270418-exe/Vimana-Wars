@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Panel from './ui/Panel';
 import StarField from './ui/StarField';
+import { loadSettings, resetSettings, saveSettings } from '../lib/settings';
+import type { UserSettings } from '../types/game';
 
 type Tab = 'audio' | 'display' | 'controls';
 
@@ -91,16 +93,15 @@ type Props = { onNavigate: (s: string) => void };
 
 export default function Settings({ onNavigate }: Props) {
   const [tab, setTab] = useState<Tab>('audio');
-  const [master, setMaster] = useState(80);
-  const [music, setMusic] = useState(65);
-  const [sfx, setSfx] = useState(90);
-  const [ambience, setAmbience] = useState(50);
-  const [fullscreen, setFullscreen] = useState(true);
-  const [vsync, setVsync] = useState(true);
-  const [particles, setParticles] = useState(true);
-  const [reduced, setReduced] = useState(false);
-  const [scanlines, setScanlines] = useState(true);
-  const [bloom, setBloom] = useState(true);
+  const [settings, setSettings] = useState<UserSettings>(() => loadSettings());
+
+  useEffect(() => {
+    saveSettings(settings);
+  }, [settings]);
+
+  const update = <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => {
+    setSettings(previous => ({ ...previous, [key]: value }));
+  };
 
   return (
     <div className="relative w-full h-full overflow-hidden" style={{ background: '#08090F', paddingBottom: 40 }}>
@@ -170,10 +171,10 @@ export default function Settings({ onNavigate }: Props) {
                     AUDIO LEVELS
                   </div>
                   <div className="flex flex-col gap-5">
-                    <Slider label="MASTER VOLUME" value={master} onChange={setMaster} color="#E9C400" />
-                    <Slider label="MUSIC" value={music} onChange={setMusic} color="#74F5FF" />
-                    <Slider label="SOUND EFFECTS" value={sfx} onChange={setSfx} color="#74F5FF" />
-                    <Slider label="AMBIENCE" value={ambience} onChange={setAmbience} color="#8F98A8" />
+                    <Slider label="MASTER VOLUME" value={settings.masterVolume} onChange={v => update('masterVolume', v)} color="#E9C400" />
+                    <Slider label="MUSIC" value={settings.musicVolume} onChange={v => update('musicVolume', v)} color="#74F5FF" />
+                    <Slider label="SOUND EFFECTS" value={settings.sfxVolume} onChange={v => update('sfxVolume', v)} color="#74F5FF" />
+                    <Slider label="AMBIENCE" value={settings.ambienceVolume} onChange={v => update('ambienceVolume', v)} color="#8F98A8" />
                   </div>
                 </div>
 
@@ -184,8 +185,8 @@ export default function Settings({ onNavigate }: Props) {
                     AUDIO OPTIONS
                   </div>
                   <div className="flex flex-col gap-4">
-                    <Toggle label="MUTE WHEN UNFOCUSED" desc="Silence audio when window loses focus" value={true} onChange={() => {}} />
-                    <Toggle label="DYNAMIC MUSIC" desc="Music intensity adapts to combat state" value={true} onChange={() => {}} />
+                    <Toggle label="MUTE WHEN UNFOCUSED" desc="Silence audio when window loses focus" value={settings.muteWhenUnfocused} onChange={v => update('muteWhenUnfocused', v)} />
+                    <Toggle label="DYNAMIC MUSIC" desc="Music intensity adapts to combat state" value={settings.dynamicMusic} onChange={v => update('dynamicMusic', v)} />
                   </div>
                 </div>
               </>
@@ -198,21 +199,22 @@ export default function Settings({ onNavigate }: Props) {
                     DISPLAY
                   </div>
                   <div className="flex flex-col gap-4">
-                    <Toggle label="FULLSCREEN" desc="Run in fullscreen mode" value={fullscreen} onChange={setFullscreen} />
-                    <Toggle label="VSYNC" desc="Cap frame rate to display refresh rate" value={vsync} onChange={setVsync} />
+                    <Toggle label="FULLSCREEN" desc="Run in fullscreen mode" value={settings.fullscreen} onChange={v => update('fullscreen', v)} />
+                    <Toggle label="VSYNC" desc="Cap frame rate to display refresh rate" value={settings.vsync} onChange={v => update('vsync', v)} />
                     <div className="flex flex-col gap-2">
                       <span className="text-xs tracking-[0.18em]" style={{ fontFamily: '"Cinzel", serif', color: '#D0C6AB' }}>RESOLUTION</span>
                       <div className="flex gap-2">
-                        {['1920×1080', '2560×1440', '3840×2160'].map(r => (
+                        {['1920 × 1080', '2560 × 1440', '3840 × 2160'].map(r => (
                           <button
                             key={r}
                             className="px-3 py-1.5 text-[10px] tracking-wider transition-all duration-150"
                             style={{
                               fontFamily: '"JetBrains Mono", monospace',
-                              color: r === '1920×1080' ? '#FFF6DF' : '#8F98A8',
-                              background: r === '1920×1080' ? 'rgba(233,196,0,0.1)' : 'transparent',
-                              border: `1px solid ${r === '1920×1080' ? 'rgba(233,196,0,0.4)' : 'rgba(143,152,168,0.2)'}`,
+                              color: r === settings.resolution ? '#FFF6DF' : '#8F98A8',
+                              background: r === settings.resolution ? 'rgba(233,196,0,0.1)' : 'transparent',
+                              border: `1px solid ${r === settings.resolution ? 'rgba(233,196,0,0.4)' : 'rgba(143,152,168,0.2)'}`,
                             }}
+                            onClick={() => update('resolution', r)}
                           >
                             {r}
                           </button>
@@ -229,10 +231,10 @@ export default function Settings({ onNavigate }: Props) {
                     VISUAL EFFECTS
                   </div>
                   <div className="flex flex-col gap-4">
-                    <Toggle label="PARTICLE EFFECTS" desc="Explosions, engine trails, debris" value={particles} onChange={setParticles} />
-                    <Toggle label="SCANLINE OVERLAY" desc="CRT scanline aesthetic on UI panels" value={scanlines} onChange={setScanlines} />
-                    <Toggle label="BLOOM EFFECT" desc="Glow on weapons and ship engines" value={bloom} onChange={setBloom} />
-                    <Toggle label="REDUCED FLASHING" desc="Minimizes rapid flash effects" value={reduced} onChange={setReduced} />
+                    <Toggle label="PARTICLE EFFECTS" desc="Explosions, engine trails, debris" value={settings.particles} onChange={v => update('particles', v)} />
+                    <Toggle label="SCANLINE OVERLAY" desc="CRT scanline aesthetic on UI panels" value={settings.scanlines} onChange={v => update('scanlines', v)} />
+                    <Toggle label="BLOOM EFFECT" desc="Glow on weapons and ship engines" value={settings.bloom} onChange={v => update('bloom', v)} />
+                    <Toggle label="REDUCED FLASHING" desc="Minimizes rapid flash effects" value={settings.reducedFlashes} onChange={v => update('reducedFlashes', v)} />
                   </div>
                 </div>
               </>
@@ -276,8 +278,15 @@ export default function Settings({ onNavigate }: Props) {
                       ));
                     })()}
                   </div>
+                  <button
+                    className="text-[10px] tracking-[0.18em] mt-3 px-3 py-2"
+                    style={{ color: '#E9C400', border: '1px solid rgba(233,196,0,0.3)' }}
+                    onClick={() => setSettings(resetSettings())}
+                  >
+                    RESET ALL SETTINGS
+                  </button>
                   <div className="text-[10px] tracking-wider mt-3" style={{ color: '#8F98A8' }}>
-                    Click any binding to rebind (gamepad support available)
+                    Settings are saved automatically on this device.
                   </div>
                 </div>
               </>

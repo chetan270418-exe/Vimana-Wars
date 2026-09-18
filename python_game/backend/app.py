@@ -50,8 +50,10 @@ if not DB_PATH.exists() and (Path(__file__).resolve().parent.parent / "leaderboa
     DB_PATH = Path(__file__).resolve().parent.parent / "leaderboard.db"
 elif not DB_PATH.exists() and (Path(__file__).resolve().parent.parent.parent / "leaderboard.db").exists():
     DB_PATH = Path(__file__).resolve().parent.parent.parent / "leaderboard.db"
-DEFAULT_POSTGRES_URL = "postgresql://postgres.wlergqltjdyzpqiucovr:CHetanamit37@aws-0-ap-southeast-2.pooler.supabase.com:6543/postgres"
-DATABASE_URL = os.environ.get("DATABASE_URL", DEFAULT_POSTGRES_URL).strip() or DEFAULT_POSTGRES_URL
+# PostgreSQL is opt-in through the environment. Never keep a database
+# password in source code: local development must remain zero-config and
+# production deployments must provide DATABASE_URL through their secret store.
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 SESSION_TTL_SECONDS = 30 * 24 * 60 * 60
 ACTION_TOKEN_TTL_SECONDS = 30 * 60
 REQUIRE_EMAIL_VERIFICATION = os.environ.get("REQUIRE_EMAIL_VERIFICATION", "0").lower() in ("1", "true", "yes")
@@ -70,7 +72,8 @@ _CORS_ORIGINS = {
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 _SHIP_IDS = (
     "pushpaka", "tripura", "garuda", "vajra", "naga",
-    "agneyastra", "soma", "kubera", "surya",
+    "agneyastra", "soma", "kubera", "surya", "airavata",
+    "kamadhenu", "narasimha",
 )
 _RATE_LIMITS = {
     "register": (5, 60),
@@ -90,27 +93,44 @@ _PROFILE_KEYS = {
     "endless_high_score",
 }
 
+ACHIEVEMENT_CATALOG = (
+    {"id": "first_blood", "name": "First Blood", "description": "Slay your first Asura.", "icon": "⚔️", "category": "combat"},
+    {"id": "chakram_master", "name": "Sudarshana Mastery", "description": "Defeat 3+ enemies with one Chakram throw.", "icon": "🪓", "category": "combat"},
+    {"id": "dash_phantom", "name": "Untouchable Phantom", "description": "Execute 8 Vayu Dashes in one run.", "icon": "💨", "category": "skill"},
+    {"id": "combo_god", "name": "Combo Maestro", "description": "Reach an ×8 combo multiplier.", "icon": "⚡", "category": "skill"},
+    {"id": "kumbhakarna_bane", "name": "Giant Slayer", "description": "Defeat Kumbhakarna on Wave 5.", "icon": "🛡️", "category": "boss"},
+    {"id": "ravana_vanquisher", "name": "Slayer of Lanka", "description": "Vanquish Ravana on Wave 10.", "icon": "👑", "category": "boss"},
+    {"id": "wave_5_veteran", "name": "Into the Deep", "description": "Reach Wave 5.", "icon": "🌊", "category": "campaign"},
+    {"id": "wave_10_breaker", "name": "Break Lanka's Gate", "description": "Reach Wave 10.", "icon": "🚪", "category": "campaign"},
+    {"id": "mahishasura_bane", "name": "Warlord Breaker", "description": "Defeat Mahishasura.", "icon": "🐂", "category": "boss"},
+    {"id": "wave_15_conqueror", "name": "Forge Walker", "description": "Reach Wave 15.", "icon": "🔥", "category": "campaign"},
+    {"id": "vritra_vanquisher", "name": "Storm Breaker", "description": "Defeat Vritra.", "icon": "⚡", "category": "boss"},
+    {"id": "boss_collector", "name": "Four Thrones Fall", "description": "Defeat all four campaign bosses.", "icon": "👑", "category": "boss"},
+    {"id": "campaign_conqueror", "name": "Conqueror of the Mahayuddha", "description": "Clear all 20 campaign waves.", "icon": "🏅", "category": "campaign"},
+    {"id": "hardcore_hero", "name": "Immortal Warrior", "description": "Complete the campaign on Hard.", "icon": "🔥", "category": "skill"},
+    {"id": "bomb_annihilator", "name": "Brahmastra Unleashed", "description": "Vaporize 8+ enemies with one Brahmastra.", "icon": "💥", "category": "combat"},
+    {"id": "boon_collector", "name": "Blessed by the Devas", "description": "Attain 4 Divine Astral Boons in one run.", "icon": "✨", "category": "collection"},
+    {"id": "high_scorer", "name": "Legend of the Realm", "description": "Score more than 25,000 points.", "icon": "🏆", "category": "score"},
+    {"id": "cube_collector", "name": "Astral Arsenal", "description": "Collect 10 ability cubes in one run.", "icon": "🔷", "category": "collection"},
+    {"id": "overdrive_online", "name": "Overdrive Online", "description": "Collect an Astra Overdrive cube.", "icon": "💗", "category": "collection"},
+)
+_ACHIEVEMENT_IDS = {item["id"] for item in ACHIEVEMENT_CATALOG}
+
 
 def get_db():
-    try:
-        import psycopg
-        from psycopg.rows import dict_row
-    except ImportError as exc:
-        raise RuntimeError("psycopg is required for PostgreSQL operation") from exc
+    if DATABASE_URL:
+        try:
+            import psycopg
+            from psycopg.rows import dict_row
+        except ImportError as exc:
+            raise RuntimeError("psycopg is required when DATABASE_URL is configured") from exc
+        connection = psycopg.connect(DATABASE_URL, row_factory=dict_row, connect_timeout=10)
+        return _PostgresConnection(connection)
 
-    target_url = DATABASE_URL or DEFAULT_POSTGRES_URL
-    try:
-        connection = psycopg.connect(target_url, row_factory=dict_row)
-    except psycopg.OperationalError:
-        if "db.wlergqltjdyzpqiucovr.supabase.co" in target_url:
-            target_url = target_url.replace(
-                "postgres:CHetanamit37@db.wlergqltjdyzpqiucovr.supabase.co:5432",
-                "postgres.wlergqltjdyzpqiucovr:CHetanamit37@aws-0-ap-southeast-2.pooler.supabase.com:6543"
-            )
-            connection = psycopg.connect(target_url, row_factory=dict_row)
-        else:
-            raise
-    return _PostgresConnection(connection)
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    connection = sqlite3.connect(DB_PATH, timeout=30)
+    connection.row_factory = sqlite3.Row
+    return connection
 
 
 class _PostgresConnection:
@@ -279,6 +299,8 @@ def index():
             "GET /account/profile": "Get cloud-synced progression and achievements",
             "PUT /account/profile": "Sync cloud-saved progression and achievements",
             "GET /account/stats": "Get personal online gameplay statistics",
+            "GET /achievements": "Get the achievement catalog and unlocked trophies",
+            "POST /achievements": "Award an achievement to the signed-in profile",
             "GET /multiplayer/lobbies": "Browse active multiplayer lobbies",
             "POST /multiplayer/lobbies": "Create a multiplayer lobby",
             "GET /scores/stats": "Global gameplay metrics",
@@ -288,10 +310,24 @@ def index():
 
 @app.route("/health", methods=["GET"])
 def health():
+    database = "postgresql" if DATABASE_URL else "sqlite"
+    try:
+        with get_db() as conn:
+            conn.execute("SELECT 1").fetchone()
+    except Exception as exc:
+        logger.exception("Database health check failed")
+        return jsonify({
+            "status": "degraded",
+            "service": "Vimana Wars Backend",
+            "database": database,
+            "database_error": str(exc)[:240],
+            "firebase_gsa": get_firebase_status(),
+            "timestamp": time.time(),
+        }), 503
     return jsonify({
         "status": "healthy",
         "service": "Vimana Wars Backend",
-        "database": "postgresql" if DATABASE_URL else "sqlite",
+        "database": database,
         "firebase_gsa": get_firebase_status(),
         "timestamp": time.time(),
     })
@@ -845,8 +881,32 @@ def update_profile():
     return jsonify({"success": True, "profile": current})
 
 
-@app.route("/achievements", methods=["POST"])
+@app.route("/achievements", methods=["GET", "POST"])
 def award_achievement():
+    if request.method == "GET":
+        user, _ = _require_user()
+        unlocked = set()
+        if user:
+            with get_db() as conn:
+                row = conn.execute(
+                    "SELECT profile_json FROM profiles WHERE user_id = ?", (user["id"],)
+                ).fetchone()
+            try:
+                unlocked = {
+                    item for item in json.loads(row["profile_json"]).get("achievements", [])
+                    if item in _ACHIEVEMENT_IDS
+                } if row else set()
+            except (TypeError, ValueError, AttributeError):
+                unlocked = set()
+        return jsonify({
+            "achievements": [
+                {**item, "unlocked": item["id"] in unlocked}
+                for item in ACHIEVEMENT_CATALOG
+            ],
+            "unlocked": sorted(unlocked),
+            "authenticated": bool(user),
+        })
+
     user, error = _require_user()
     if error:
         return jsonify({"success": False, "message": "Guest mode - achievement saved locally"}), 200
@@ -854,6 +914,8 @@ def award_achievement():
     achievement_id = str(data.get("achievement_id", "")).strip()
     if not achievement_id:
         return jsonify({"error": "achievement_id required"}), 400
+    if achievement_id not in _ACHIEVEMENT_IDS:
+        return jsonify({"error": "Unknown achievement"}), 422
     with get_db() as conn:
         row = conn.execute("SELECT profile_json FROM profiles WHERE user_id = ?", (user["id"],)).fetchone()
         try:
@@ -938,7 +1000,7 @@ def submit_score():
 
     # These are deliberately generous sanity limits. They stop accidental or
     # obviously forged payloads while leaving room for future balance changes.
-    max_wave = 10000 if difficulty == "endless" else 30
+    max_wave = 10000 if difficulty == "endless" else 20
     max_score = max(250_000, level_reached * 250_000)
     if level_reached < 1 or level_reached > max_wave:
         return jsonify({"error": "Invalid wave value"}), 422

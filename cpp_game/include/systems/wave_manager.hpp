@@ -14,6 +14,7 @@ struct SpawnInstruction {
     EnemyType type;
     float delay;
     Vector2 spawn_pos;
+    bool elite = false;
 };
 
 class WaveManager {
@@ -100,7 +101,9 @@ public:
 
             float spawn_x = 40.0f + static_cast<float>(std::rand() % (SCREEN_WIDTH - 80));
             Vector2 pos = { spawn_x, -30.0f };
-            m_spawn_queue.push({ type, current_delay, pos });
+            bool guaranteed_elite = (wave % ELITE_SPAWN_EVERY_N_WAVES == 0) && (i % 6 == 0);
+            bool chance_elite = (std::rand() % 100) < static_cast<int>((m_difficulty_profile.elite_chance_bonus + 0.04f * (m_player_count - 1)) * 100.0f);
+            m_spawn_queue.push({ type, current_delay, pos, guaranteed_elite || chance_elite });
             current_delay += 0.7f + (std::rand() % 7) / 10.0f;
         }
     }
@@ -128,15 +131,7 @@ public:
                 float spd_mult = (1.0f + (m_current_wave * 0.02f)) * m_difficulty_profile.bullet_speed_mult;
                 float hp_mult = (1.0f + (m_current_wave * 0.05f)) * m_difficulty_profile.enemy_hp_mult;
 
-                // Elite enemy roll: every 5 waves guaranteed 1-2 elites, plus difficulty chance
-                bool is_elite = false;
-                if ((m_current_wave % ELITE_SPAWN_EVERY_N_WAVES == 0) && (m_spawn_queue.size() % 6 == 0)) {
-                    is_elite = true;
-                } else if ((std::rand() % 100) < static_cast<int>((m_difficulty_profile.elite_chance_bonus + 0.04f * (m_player_count - 1)) * 100.0f)) {
-                    is_elite = true;
-                }
-
-                enemy.init(next_spawn.type, next_spawn.spawn_pos, spd_mult, hp_mult, is_elite);
+                enemy.init(next_spawn.type, next_spawn.spawn_pos, spd_mult, hp_mult, next_spawn.elite);
                 enemies.push_back(enemy);
                 m_spawn_queue.pop();
             }
@@ -174,7 +169,11 @@ public:
         } else if (m_current_wave == 30) {
             return "FINAL APOTHEOSIS // EMPEROR HIRANYAKASHIPU INVOKES HIS IMMORTAL PACT. STRIKE AT THE THRESHOLD TO SUMMON NARASIMHA!";
         }
-        return "";
+        if (m_boss_active) {
+            return "BOSS ENGAGEMENT // BREAK THE GUARDIAN'S PHASES TO ADVANCE.";
+        }
+        int goal = 8 + m_current_wave * 2 + m_difficulty_profile.min_enemies_bonus;
+        return "MISSION GOAL // PURGE " + std::to_string(goal) + " HOSTILES TO ADVANCE.";
     }
 
 private:

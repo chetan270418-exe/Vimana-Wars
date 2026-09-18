@@ -10,6 +10,7 @@
 #include "core/types.hpp"
 #include "core/constants.hpp"
 #include "systems/network_socket.hpp"
+#include "entities/ship_archetypes.hpp"
 
 namespace Vimana {
 
@@ -36,7 +37,7 @@ public:
     void init() {
         m_socket.close();
         m_role = NetworkRole::OFFLINE;
-        m_room_code = "VX82Q";
+        m_room_code.clear();
         m_ping_ms = 18;
         m_packet_loss_pct = 0.0f;
         m_tick = 0;
@@ -199,10 +200,11 @@ public:
 
             PacketHeader hdr;
             std::memcpy(&hdr, buffer, sizeof(PacketHeader));
-            if (hdr.magic != VW_PACKET_MAGIC) continue;
+            if (hdr.magic != VW_PACKET_MAGIC || hdr.version != VW_PACKET_VERSION) continue;
 
             const uint8_t* payload = buffer + sizeof(PacketHeader);
             int payload_len = bytes_read - sizeof(PacketHeader);
+            if (hdr.payload_size != static_cast<uint16_t>(payload_len)) continue;
 
             PacketType p_type = static_cast<PacketType>(hdr.packet_type);
 
@@ -276,14 +278,28 @@ public:
     }
 
 private:
+    static std::string bounded_text(const char* value, size_t capacity) {
+        size_t length = 0;
+        while (length < capacity && value[length] != '\0') ++length;
+        return std::string(value, length);
+    }
+
+    static bool is_valid_ship(const std::string& ship_id) {
+        return GetShipArchetype(ship_id)->id == ship_id;
+    }
+
     NetworkManager() 
-        : m_role(NetworkRole::OFFLINE), m_room_code("VX82Q"), m_ping_ms(18),
+        : m_role(NetworkRole::OFFLINE), m_room_code(), m_ping_ms(18),
           m_packet_loss_pct(0.0f), m_tick(0), m_seq(0), m_is_connected(false),
           m_local_player_id(0), m_target_host_ip("127.0.0.1"), m_target_host_port(DEFAULT_NET_PORT),
           m_connection_timer(0.0f) {}
 
     void handle_host_packet(PacketType type, const PacketHeader& hdr, const uint8_t* payload, int len, const std::string& ip, uint16_t port) {
         if (type == PacketType::JOIN_REQUEST) {
+            if (len != static_cast<int>(sizeof(LobbyMessage))) {
+                std::cerr << "[NetworkManager] Rejected malformed join packet from " << ip << std::endl;
+                return;
+            }
             if (m_players.size() >= MAX_CO_OP_PLAYERS) {
                 // Reject
                 PacketHeader reject_hdr;
@@ -293,15 +309,18 @@ private:
             }
 
             // Accept new player
-            uint8_t assigned_id = static_cast<uint8_t>(m_players.size());
-            std::string p_name = "Pilot-" + std::to_string(assigned_id);
-            std::string p_ship = "garuda";
-
-            if (len >= static_cast<int>(sizeof(LobbyMessage))) {
-                const LobbyMessage* msg = reinterpret_cast<const LobbyMessage*>(payload);
-                if (msg->player_name[0] != '\0') p_name = msg->player_name;
-                if (msg->ship_id[0] != '\0') p_ship = msg->ship_id;
+            const LobbyMessage* msg = reinterpret_cast<const LobbyMessage*>(payload);
+            if (msg->type != LobbyMessage::Type::JOIN) {
+                std::cerr << "[NetworkManager] Rejected non-join lobby packet" << std::endl;
+                return;
             }
+            std::string p_name = bounded_text(msg->player_name, sizeof(msg->player_name));
+            std::string p_ship = bounded_text(msg->ship_id, sizeof(msg->ship_id));
+            if (p_name.empty() || p_name.size() > sizeof(msg->player_name) - 1 || p_ship.empty() || p_ship.size() > sizeof(msg->ship_id) - 1 || !is_valid_ship(p_ship)) {
+                std::cerr << "[NetworkManager] Rejected join with invalid pilot identity or ship" << std::endl;
+                return;
+            }
+            uint8_t assigned_id = static_cast<uint8_t>(m_players.size());
 
             RemotePeer peer;
             peer.ip = ip;

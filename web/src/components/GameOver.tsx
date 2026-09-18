@@ -29,9 +29,10 @@ const DEFAULT_STATS = [
 type Props = {
   onNavigate: (s: string) => void;
   result?: RunResult | null;
+  syncStatus?: 'idle' | 'syncing' | 'synced' | 'offline';
 };
 
-export default function GameOver({ onNavigate, result }: Props) {
+export default function GameOver({ onNavigate, result, syncStatus = 'idle' }: Props) {
   const embers = useMemo(() => EMBERS, []);
   const stats = useMemo(() => {
     if (!result) return DEFAULT_STATS;
@@ -154,6 +155,12 @@ export default function GameOver({ onNavigate, result }: Props) {
             </div>
           </div>
         </Panel>
+
+        {syncStatus !== 'idle' && (
+          <div className="mt-3 text-[10px] tracking-[0.18em]" style={{ color: syncStatus === 'synced' ? '#40E090' : syncStatus === 'offline' ? '#FF9650' : '#74F5FF' }}>
+            {syncStatus === 'synced' ? '● SCORE SYNCED TO CLOUD' : syncStatus === 'offline' ? '◌ SCORE KEPT LOCALLY · CLOUD LINK UNAVAILABLE' : '◌ SYNCING SCORE…'}
+          </div>
+        )}
 
         {/* Buttons */}
         <div className="flex gap-4 mt-6" style={{ animation: 'fade-in 0.5s ease 0.6s both' }}>

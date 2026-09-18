@@ -10,6 +10,7 @@ export type ScreenId =
   | 'victory'
   | 'realm-map'
   | 'leaderboard'
+  | 'achievements'
   | 'account'
   | 'sangha'
   | 'settings'
@@ -73,6 +74,15 @@ export type UserSettings = {
   masterVolume: number;
   musicVolume: number;
   sfxVolume: number;
+  ambienceVolume: number;
+  fullscreen: boolean;
+  vsync: boolean;
+  particles: boolean;
+  scanlines: boolean;
+  bloom: boolean;
+  muteWhenUnfocused: boolean;
+  dynamicMusic: boolean;
+  resolution: string;
   screenShake: boolean;
   reducedMotion: boolean;
   reducedFlashes: boolean;
@@ -93,6 +103,15 @@ export const DEFAULT_SETTINGS: UserSettings = {
   masterVolume: 80,
   musicVolume: 70,
   sfxVolume: 80,
+  ambienceVolume: 50,
+  fullscreen: true,
+  vsync: true,
+  particles: true,
+  scanlines: true,
+  bloom: true,
+  muteWhenUnfocused: true,
+  dynamicMusic: true,
+  resolution: '1920 × 1080',
   screenShake: true,
   reducedMotion: false,
   reducedFlashes: false,

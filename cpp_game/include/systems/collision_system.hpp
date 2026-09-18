@@ -63,6 +63,7 @@ public:
                     }
                     particles.emit_explosion(b.pos, COLOR_GOLD_BRIGHT, 6, 90.0f);
                     particles.add_floating_text(b.pos, std::to_string(b.damage), COLOR_GOLD_BRIGHT);
+                    if (g_screen_shake_enabled) particles.trigger_screen_shake(2.0f, 0.06f);
                     SoundSystem::instance().play_sfx("hit.wav", 0.4f);
 
                     if (b.pierce_remaining > 0) {
@@ -113,6 +114,7 @@ public:
 
                     particles.emit_explosion(b.pos, is_crit ? COLOR_GOLD_BRIGHT : b.color, is_crit ? 10 : 5, is_crit ? 130.0f : 80.0f);
                     particles.add_floating_text(enemy.pos, std::to_string(final_dmg), is_crit ? COLOR_GOLD_BRIGHT : b.color);
+                    if (g_screen_shake_enabled) particles.trigger_screen_shake(is_crit ? 4.0f : 1.5f, is_crit ? 0.14f : 0.05f);
                     SoundSystem::instance().play_sfx("hit.wav", is_crit ? 0.6f : 0.35f);
 
                     // Chain lightning on hit (Indra boon)
@@ -144,6 +146,7 @@ public:
                         }
 
                         particles.emit_explosion(enemy.pos, enemy.is_elite ? COLOR_GOLD_BRIGHT : COLOR_ORANGE_BRIGHT, enemy.is_elite ? 35 : 22, 220.0f);
+                        if (g_screen_shake_enabled) particles.trigger_screen_shake(enemy.is_elite ? 9.0f : 5.0f, enemy.is_elite ? 0.24f : 0.12f);
                         SoundSystem::instance().play_sfx("explosion.wav", 0.6f);
 
                         // Drop Astral Ability Cube / Amrita (22% chance, 50% for elite)
@@ -174,10 +177,11 @@ public:
             for (auto* p : squad) {
                 if (!p || p->is_downed) continue;
                 if (Vector2Distance(b.pos, p->pos) < (b.radius + p->radius)) {
-                    p->take_damage(b.damage);
-                    particles.emit_explosion(b.pos, COLOR_RED_BRIGHT, 10, 110.0f);
-                    if (g_screen_shake_enabled) particles.trigger_screen_shake(7.0f, 0.25f);
-                    SoundSystem::instance().play_sfx("hit.wav", 0.8f);
+                    if (p->take_damage(b.damage)) {
+                        particles.emit_explosion(b.pos, COLOR_RED_BRIGHT, 10, 110.0f);
+                        if (g_screen_shake_enabled) particles.trigger_screen_shake(7.0f, 0.25f);
+                        SoundSystem::instance().play_sfx("hit.wav", 0.8f);
+                    }
                     b.active = false;
                     break;
                 }
@@ -194,9 +198,9 @@ public:
                 if (!enemy.active) continue;
 
                 if (Vector2Distance(p->pos, enemy.pos) < (p->radius + enemy.radius)) {
-                    p->take_damage(PLAYER_CONTACT_DAMAGE);
+                    bool damaged = p->take_damage(PLAYER_CONTACT_DAMAGE);
                     enemy.hp -= 30; // Contact recoil damage
-                    if (g_screen_shake_enabled) particles.trigger_screen_shake(8.0f, 0.3f);
+                    if (damaged && g_screen_shake_enabled) particles.trigger_screen_shake(8.0f, 0.3f);
                     if (enemy.hp <= 0) {
                         enemy.active = false;
                         p->kills++;

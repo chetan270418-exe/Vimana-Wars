@@ -42,6 +42,7 @@ public:
         m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 5, btn_w, btn_h }, "6. SQUADRON MULTIPLAYER", COLOR_PURPLE_BRIGHT, "[6]");
         m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 6, btn_w, btn_h }, "7. HALL OF VALOR (RANKS)", COLOR_GOLD, "[7]");
         m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 7, btn_w, btn_h }, "8. SYSTEM SETTINGS", COLOR_MUTED, "[8]");
+        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 8, btn_w, btn_h }, "9. SIGN IN / CREATE GAME ID", COLOR_GREEN_BRIGHT, "[9]");
 
         // Ambient starfield
         m_stars.clear();
@@ -78,7 +79,7 @@ public:
         // Animated Flagship Thruster
         m_ship_bob += dt * 2.5f;
 
-        // Button clicks or Keyboard shortcuts [1-8]
+        // Button clicks or keyboard shortcuts [1-9]
         if (m_buttons[0].update(mouse_pos) || IsKeyPressed(KEY_ONE)) m_next_view = ViewType::CAMPAIGN_MAP;
         else if (m_buttons[1].update(mouse_pos) || IsKeyPressed(KEY_TWO)) m_next_view = ViewType::SHIP_SELECT;
         else if (m_buttons[2].update(mouse_pos) || IsKeyPressed(KEY_THREE)) m_card_overlay.set_visible(true);
@@ -87,6 +88,7 @@ public:
         else if (m_buttons[5].update(mouse_pos) || IsKeyPressed(KEY_SIX)) m_next_view = ViewType::MULTIPLAYER_LOBBY;
         else if (m_buttons[6].update(mouse_pos) || IsKeyPressed(KEY_SEVEN)) m_next_view = ViewType::LEADERBOARD;
         else if (m_buttons[7].update(mouse_pos) || IsKeyPressed(KEY_EIGHT)) m_next_view = ViewType::SETTINGS;
+        else if (m_buttons[8].update(mouse_pos) || IsKeyPressed(KEY_NINE)) m_next_view = ViewType::AUTH;
 
         // Click on top-right Pilot Badge opens Player Card
         Rectangle pilot_badge = { SCREEN_WIDTH - 360, 25, 310, 48 };
@@ -198,7 +200,7 @@ public:
         DrawText(hs_str.c_str(), static_cast<int>(tile3.x + 250), static_cast<int>(tile3.y + 26), 12, COLOR_GOLD_BRIGHT);
 
         // Quick tip & keybind hint
-        DrawText("PRESS [1-8] NAVIGATE • [P] PILOT CARD DOSSIER • 60 FPS NATIVE", static_cast<int>(dash_box.x + 20), static_cast<int>(dash_box.y + 285), 10, COLOR_MUTED);
+        DrawText("PRESS [1-9] NAVIGATE • [P] PILOT CARD DOSSIER • 60 FPS NATIVE", static_cast<int>(dash_box.x + 20), static_cast<int>(dash_box.y + 285), 10, COLOR_MUTED);
 
         // Footer hint
         const char* footer = "VIMANA WARS // NATIVE C++20 ENGINE • ADVANCED DSA • WINSOCK2 UDP LAN NETWORKING";

@@ -84,6 +84,8 @@ public:
         m_milestone_text = "";
         m_milestone_timer = 0.0f;
         m_last_milestone = 0;
+        m_last_boss_phase = 1;
+        m_boss_phase_flash_timer = 0.0f;
         CoOpAstraSystem::instance().reset();
         ParallaxBackground::instance().init();
 
@@ -164,6 +166,8 @@ public:
         m_milestone_text = "";
         m_milestone_timer = 0.0f;
         m_last_milestone = 0;
+        m_last_boss_phase = 1;
+        m_boss_phase_flash_timer = 0.0f;
         CoOpAstraSystem::instance().reset();
     }
 
@@ -187,6 +191,8 @@ public:
 
             m_wave_start_hp = m_squad[0].hp;
             m_wave_kills = 0;
+            m_last_boss_phase = 1;
+            m_boss_phase_flash_timer = 0.0f;
         }
     }
 
@@ -196,12 +202,15 @@ public:
     int total_team_score() const { return m_total_team_score; }
 
     void update(float dt, Vector2 mouse_pos) override {
+        m_aim_pos = mouse_pos;
         NetworkManager::instance().update(dt);
         CoOpAstraSystem::instance().update(dt);
 
-        if (IsKeyPressed(KEY_ESCAPE)) {
+        // Pause toggle: ESC, P, or Enter — multiple keys so a flaky focus
+        // or non-US keyboard layout doesn't leave the player stuck in combat.
+        if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ENTER)) {
             m_is_paused = !m_is_paused;
-            m_confirm_abort = false; // reset confirm state on any ESC toggle
+            m_confirm_abort = false; // reset confirm state on any toggle
         }
 
         if (m_is_paused) {
@@ -335,6 +344,7 @@ public:
 
         // Team Transcendence countdown
         if (m_team_transcendence_timer > 0) m_team_transcendence_timer -= dt;
+        if (m_boss_phase_flash_timer > 0.0f) m_boss_phase_flash_timer -= dt;
 
         Boss* boss_ptr = m_wave_mgr.is_boss_wave() ? &m_wave_mgr.get_boss() : nullptr;
 
@@ -454,22 +464,28 @@ public:
 
         if (m_team_combo >= 50 && m_last_milestone < 50) {
             m_last_milestone = 50;
-            m_milestone_text = "? x50 MAHAYUDDHA SUPREME TRANSCENDENCE! ?";
+            m_milestone_text = "x50 MAHAYUDDHA SUPREME TRANSCENDENCE";
             m_milestone_timer = 2.4f;
             m_team_transcendence_timer = 8.0f;
-            SoundSystem::instance().play_sfx("wave_clear.wav");
+            SoundSystem::instance().play_transcendence();
             AchievementSystem::instance().check_and_award("COMBO_50");
         } else if (m_team_combo >= 25 && m_last_milestone < 25) {
             m_last_milestone = 25;
-            m_milestone_text = "? x25 SANGHA TRANSCENDENCE (+20% DMG)! ?";
+            m_milestone_text = "x25 SANGHA TRANSCENDENCE  //  +20% DMG";
             m_milestone_timer = 2.0f;
             m_team_transcendence_timer = 8.0f;
-            SoundSystem::instance().play_sfx("ui_click.wav");
+            SoundSystem::instance().play_ui_confirm();
             AchievementSystem::instance().check_and_award("COMBO_25");
         } else if (m_team_combo >= 10 && m_last_milestone < 10) {
             m_last_milestone = 10;
             m_milestone_text = "x10 SQUAD RHYTHM!";
             m_milestone_timer = 1.6f;
+            SoundSystem::instance().play_ui_confirm();
+        } else if (m_team_combo >= 5 && m_last_milestone < 5) {
+            m_last_milestone = 5;
+            m_milestone_text = "x5 COMBAT RHYTHM";
+            m_milestone_timer = 1.2f;
+            SoundSystem::instance().play_telemetry_chime();
         }
 
         if (m_milestone_timer > 0) m_milestone_timer -= dt;
@@ -491,6 +507,14 @@ public:
         if (boss_ptr && boss_ptr->active) {
             Vector2 target_pos = AIThreatTable::get_highest_threat_target(boss_ptr->pos, m_squad);
             boss_ptr->update(dt, target_pos, m_bullets);
+            if (boss_ptr->phase != m_last_boss_phase) {
+                m_last_boss_phase = boss_ptr->phase;
+                m_boss_phase_flash_timer = 1.4f;
+                m_particles.emit_boss_phase_transition(boss_ptr->pos, boss_ptr->theme_color, boss_ptr->phase);
+                SoundSystem::instance().set_boss_phase(boss_ptr->phase);
+            }
+        } else {
+            m_last_boss_phase = 1;
         }
 
         // -- 9. Powerups & Magnetism ---------------------------------------------
@@ -606,6 +630,19 @@ public:
             p.draw(p_tex);
         }
 
+        // Lightweight aim tracer: communicates the current firing direction
+        // without adding a permanent reticle over the cockpit HUD.
+        if (!m_squad.empty() && !m_squad[0].is_downed && !m_squad[0].is_spectator) {
+            Vector2 aim = Vector2Subtract(m_aim_pos, m_squad[0].pos);
+            if (Vector2Length(aim) > 1.0f) {
+                aim = Vector2Normalize(aim);
+                Vector2 start = Vector2Add(m_squad[0].pos, Vector2Scale(aim, m_squad[0].radius * 0.8f));
+                Vector2 end = Vector2Add(start, Vector2Scale(aim, 34.0f));
+                DrawLineEx(start, end, 2.0f, ColorAlpha(m_squad[0].archetype ? m_squad[0].archetype->accent_color : COLOR_CYAN_BRIGHT, 0.65f));
+                DrawCircleV(end, 2.5f, COLOR_PARCHMENT);
+            }
+        }
+
         // Draw Particles
         m_particles.draw();
 
@@ -618,6 +655,25 @@ public:
         Boss* boss_ptr = m_wave_mgr.is_boss_wave() ? &m_wave_mgr.get_boss() : nullptr;
         UI::HUD::draw(m_squad, m_wave_mgr.current_wave(), realm, boss_ptr, m_enemies, m_team_combo, m_team_transcendence_timer, title_f, body_f);
 
+        // Persistent [ESC] PAUSE reminder — always visible during active gameplay
+        // so pilots know how to suspend the run.
+        Rectangle esc_hint = { SCREEN_WIDTH - 130.0f, 8.0f, 122.0f, 18.0f };
+        DrawRectangleRec(esc_hint, ColorAlpha(COLOR_SURFACE_HIGH, 0.55f));
+        DrawRectangleLinesEx(esc_hint, 1.0f, ColorAlpha(COLOR_GOLD, 0.5f));
+        DrawText("[ESC] PAUSE", static_cast<int>(esc_hint.x + 12), static_cast<int>(esc_hint.y + 3), 11, COLOR_GOLD_BRIGHT);
+
+        // Pulsing PAUSED banner at top-center — guaranteed visibility even if
+        // the pause panel below somehow fails to render.
+        if (m_is_paused) {
+            float pulse = 0.5f + 0.5f * std::sin(GetTime() * 4.0f);
+            Rectangle banner = { SCREEN_WIDTH / 2.0f - 90.0f, 14.0f, 180.0f, 28.0f };
+            DrawRectangleRec(banner, ColorAlpha(COLOR_RED_BRIGHT, 0.25f + 0.20f * pulse));
+            DrawRectangleLinesEx(banner, 2.0f, COLOR_RED_BRIGHT);
+            const char* txt = "|| PAUSED ||";
+            Vector2 sz = MeasureTextEx(title_f, txt, 16, 1.0f);
+            DrawTextEx(title_f, txt, { SCREEN_WIDTH / 2.0f - sz.x / 2.0f, banner.y + 5 }, 16, 1.0f, COLOR_GOLD_BRIGHT);
+        }
+
         // -- Boss Attack Telegraph Warning Banner -------------------------------
         if (boss_ptr && boss_ptr->active && boss_ptr->is_telegraphing) {
             float pulse = 0.5f + 0.5f * std::sin(GetTime() * 18.0f);
@@ -626,6 +682,16 @@ public:
             std::string warn_msg = "[!] WARNING: TITAN CHARGING [" + boss_ptr->telegraph_warning + "] [!]";
             Vector2 w_sz = MeasureTextEx(title_f, warn_msg.c_str(), 13, 1.0f);
             DrawTextEx(title_f, warn_msg.c_str(), { (SCREEN_WIDTH - w_sz.x) / 2.0f, warn_bar.y + 10 }, 13, 1.0f, WHITE);
+        }
+
+        if (boss_ptr && boss_ptr->active && m_boss_phase_flash_timer > 0.0f) {
+            float pulse = 0.65f + 0.35f * std::sin(GetTime() * 14.0f);
+            float alpha = std::clamp(m_boss_phase_flash_timer / 0.45f, 0.0f, 1.0f);
+            Rectangle phase_box = { SCREEN_WIDTH / 2.0f - 210, 148, 420, 34 };
+            UI::DrawYantraPanel(phase_box, boss_ptr->theme_color, ColorAlpha(boss_ptr->theme_color, 0.18f + 0.20f * pulse), 4.0f, true);
+            std::string phase_msg = "BOSS PHASE " + std::to_string(boss_ptr->phase) + " // THREAT ESCALATED";
+            Vector2 phase_sz = MeasureTextEx(title_f, phase_msg.c_str(), 13, 1.0f);
+            DrawTextEx(title_f, phase_msg.c_str(), { (SCREEN_WIDTH - phase_sz.x) / 2.0f, phase_box.y + 10 }, 13, 1.0f, ColorAlpha(COLOR_GOLD_BRIGHT, alpha));
         }
 
         // -- Combo Milestone Banner ----------------------------------------------
@@ -750,6 +816,9 @@ private:
     std::string m_milestone_text;
     float m_milestone_timer = 0.0f;
     int m_last_milestone = 0;
+    int m_last_boss_phase = 1;
+    float m_boss_phase_flash_timer = 0.0f;
+    Vector2 m_aim_pos = { SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f };
 
     UI::Button m_btn_resume;
     UI::Button m_btn_restart_wave;
@@ -760,4 +829,5 @@ private:
     UI::Button m_btn_cancel_abort;
 };
 
-} // namespace Vimana
+} // namespace Vimana
+

@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <cmath>
+#include <algorithm>
 #include "raylib.h"
 #include "core/types.hpp"
 #include "core/constants.hpp"
@@ -282,11 +283,11 @@ struct Boss {
     }
 
     void take_damage(int amount) {
-        if (!active || is_invincible) return;
-        hp -= amount;
+        if (!active || amount <= 0) return;
+        if (is_invincible || invincibility_timer > 0.0f) return;
+        hp = std::max(0, hp - amount);
         hit_flash = 0.15f;
         if (hp <= 0) {
-            hp = 0;
             active = false;
         }
     }

@@ -20,6 +20,8 @@ Suggested search terms on Freesound:
   game_over.wav→ "game over sting"
   wave_clear.wav → "stage clear jingle"
 """
+from pathlib import Path
+
 import arcade
 _ASSETS = Path(__file__).resolve().parent.parent.parent / "assets" / "sounds"
 if not _ASSETS.exists():

@@ -268,7 +268,7 @@ struct Player {
         float cd = (buff_overdrive_timer > 0) ? shoot_cooldown * 0.45f : shoot_cooldown;
         if (shoot_timer > 0) return;
         shoot_timer = cd;
-        shot_counter++;
+        shot_counter = (shot_counter % 7) + 1;
 
         float rad = angle * (3.14159f / 180.0f);
         Vector2 nose = { pos.x + std::cos(rad) * radius, pos.y + std::sin(rad) * radius };
@@ -384,15 +384,15 @@ struct Player {
         }
     }
 
-    void take_damage(int amount) {
-        if (invincibility_timer > 0 || is_dashing) return;
+    bool take_damage(int amount) {
+        if (amount <= 0 || invincibility_timer > 0 || is_dashing || is_downed) return false;
 
         if (has_kavach_shield) {
             has_kavach_shield = false;
             invincibility_timer = 0.5f;
             SoundSystem::instance().play_sfx("online_impact_metal.ogg", 0.8f);
             SoundSystem::instance().play_force_field();
-            return;
+            return true;
         }
 
         // Check consumable Kavach Shield charge for fatal damage negation
@@ -403,13 +403,14 @@ struct Player {
             kavach_timer = 3.0f;
             invincibility_timer = 1.0f;
             SoundSystem::instance().play_sfx("synergy.wav", 1.0f);
-            return;
+            return true;
         }
 
         hp -= amount;
         invincibility_timer = PLAYER_INVINCIBILITY_TIME;
         SoundSystem::instance().play_hit();
         if (hp < 0) hp = 0;
+        return true;
     }
 
     void add_combo() {

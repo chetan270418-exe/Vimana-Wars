@@ -4,6 +4,8 @@ const SESSION_KEY = 'vimana-web-session';
 export type ApiHealth = {
   game?: string;
   status?: string;
+  database?: string;
+  firebase_gsa?: Record<string, unknown>;
   endpoints?: Record<string, string>;
 };
 
@@ -71,7 +73,7 @@ async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export async function getApiHealth(signal?: AbortSignal): Promise<ApiHealth> {
-  const response = await fetch(`${API_BASE_URL}/`, { signal, headers: { Accept: 'application/json' } });
+  const response = await fetch(`${API_BASE_URL}/health`, { signal, headers: { Accept: 'application/json' } });
   if (!response.ok) throw new Error(`API returned ${response.status}`);
   return response.json() as Promise<ApiHealth>;
 }
@@ -167,6 +169,26 @@ export async function submitScore(scoreData: ScoreSubmission) {
 
 export async function getAccountStats() {
   return apiFetch<Record<string, number | string>>('/account/stats');
+}
+
+export type Achievement = {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  category: string;
+  unlocked?: boolean;
+};
+
+export async function getAchievements() {
+  return apiFetch<{ achievements: Achievement[]; unlocked: string[]; authenticated: boolean }>('/achievements');
+}
+
+export async function awardAchievement(achievementId: string) {
+  return apiFetch<{ success: boolean; achievement_id?: string; awarded?: boolean }>('/achievements', {
+    method: 'POST',
+    body: JSON.stringify({ achievement_id: achievementId }),
+  });
 }
 
 export async function listLobbies(signal?: AbortSignal) {
