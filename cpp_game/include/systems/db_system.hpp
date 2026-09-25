@@ -138,6 +138,20 @@ public:
                 for (auto& s : j["unlocked_ships"]) ships.push_back(s.get<std::string>());
                 CurrencySystem::instance().set_unlocked_ships(ships);
             }
+            if (j.contains("ship_upgrades") && j["ship_upgrades"].is_object()) {
+                std::unordered_map<std::string, int> upgrades;
+                for (auto it = j["ship_upgrades"].begin(); it != j["ship_upgrades"].end(); ++it) {
+                    if (it.value().is_number_integer()) upgrades[it.key()] = it.value().get<int>();
+                }
+                CurrencySystem::instance().set_ship_upgrade_levels(upgrades);
+            }
+            if (j.contains("ship_sorties") && j["ship_sorties"].is_object()) {
+                std::unordered_map<std::string, int> sorties;
+                for (auto it = j["ship_sorties"].begin(); it != j["ship_sorties"].end(); ++it) {
+                    if (it.value().is_number_integer()) sorties[it.key()] = it.value().get<int>();
+                }
+                CurrencySystem::instance().set_ship_sortie_counts(sorties);
+            }
 
             // Audio channels
             if (j.contains("master_volume")) SoundSystem::instance().set_master_volume(j["master_volume"].get<float>());
@@ -150,6 +164,7 @@ public:
             if (j.contains("colorblind_mode")) g_colorblind_mode = j["colorblind_mode"].get<bool>();
             if (j.contains("screen_shake_enabled")) g_screen_shake_enabled = j["screen_shake_enabled"].get<bool>();
             if (j.contains("scanlines_enabled")) g_scanlines_enabled = j["scanlines_enabled"].get<bool>();
+            if (j.contains("tutorial_shown")) m_tutorial_shown = j["tutorial_shown"].get<bool>();
 
             std::cout << "[DBSystem] Loaded savegame: " << m_player_name << " HighScore: " << m_high_score << std::endl;
         } catch (const std::exception& ex) {
@@ -189,12 +204,15 @@ public:
                 } catch (...) {}
             }
 
-            j["version"] = 3;
+            j["version"] = SAVE_SCHEMA_VERSION;
             j["player_name"] = m_player_name;
             j["high_score"] = m_high_score;
             j["last_wave"] = m_max_wave;
+            j["tutorial_shown"] = m_tutorial_shown;
             j["prana_shards"] = CurrencySystem::instance().prana_shards();
             j["unlocked_ships"] = CurrencySystem::instance().unlocked_ships();
+            j["ship_upgrades"] = CurrencySystem::instance().ship_upgrade_levels();
+            j["ship_sorties"] = CurrencySystem::instance().ship_sortie_counts();
 
             // Audio channel volumes
             j["master_volume"] = SoundSystem::instance().master_volume();
@@ -224,6 +242,8 @@ public:
     void update_high_score(int score) { if (score > m_high_score) m_high_score = score; }
     int max_wave() const { return m_max_wave; }
     void update_max_wave(int wave) { if (wave > m_max_wave) m_max_wave = wave; }
+    bool tutorial_shown() const { return m_tutorial_shown; }
+    void set_tutorial_shown(bool shown) { m_tutorial_shown = shown; }
 
     std::vector<MatchRecord> fetch_match_history(int limit = 10) {
         std::vector<MatchRecord> records;
@@ -259,7 +279,7 @@ public:
     }
 
 private:
-    DBSystem() : m_db(nullptr), m_player_name("Warrior"), m_high_score(0), m_max_wave(1) {}
+    DBSystem() : m_db(nullptr), m_player_name("Warrior"), m_high_score(0), m_max_wave(1), m_tutorial_shown(false) {}
     ~DBSystem() = default;
 
     void ensure_tables() {
@@ -281,6 +301,7 @@ private:
     std::string m_player_name;
     int m_high_score;
     int m_max_wave;
+    bool m_tutorial_shown;
 };
 
 } // namespace Vimana

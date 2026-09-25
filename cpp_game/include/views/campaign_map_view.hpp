@@ -29,13 +29,13 @@ public:
         // Auto-select latest available realm
         m_selected_node = 0;
         for (size_t i = 0; i < CAMPAIGN_REALMS.size(); ++i) {
-            if (m_max_unlocked_wave >= CAMPAIGN_REALMS[i].start_wave) {
+            if (m_max_unlocked_wave >= CAMPAIGN_REALMS[i].start_wave - 1) {
                 m_selected_node = static_cast<int>(i);
             }
         }
         m_starting_wave = CAMPAIGN_REALMS[m_selected_node].start_wave;
 
-        m_btn_loadout = UI::Button({ SCREEN_WIDTH - 280, SCREEN_HEIGHT - 75, 250, 42 }, "CONFIGURE LOADOUT >>", COLOR_GOLD_BRIGHT);
+        m_btn_loadout = UI::Button({ SCREEN_WIDTH - 280, SCREEN_HEIGHT - 75, 250, 42 }, "SELECT DIFFICULTY >>", COLOR_GOLD_BRIGHT);
         m_btn_back = UI::Button({ 30, SCREEN_HEIGHT - 75, 180, 42 }, "<< MAIN MENU", COLOR_MUTED);
 
         // Ambient astral particles
@@ -64,7 +64,7 @@ public:
         // Check node selection
         for (size_t i = 0; i < CAMPAIGN_REALMS.size(); ++i) {
             const auto& node = CAMPAIGN_REALMS[i];
-            bool unlocked = (m_max_unlocked_wave >= node.start_wave);
+            bool unlocked = (m_max_unlocked_wave >= node.start_wave - 1);
 
             if (CheckCollisionPointCircle(mouse_pos, node.map_pos, 26.0f)) {
                 if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && unlocked) {
@@ -76,7 +76,7 @@ public:
         }
 
         if (m_btn_loadout.update(mouse_pos) || IsKeyPressed(KEY_ENTER)) {
-            m_next_view = ViewType::LOADOUT;
+            m_next_view = ViewType::DIFFICULTY_SELECT;
         } else if (m_btn_back.update(mouse_pos) || IsKeyPressed(KEY_ESCAPE)) {
             m_next_view = ViewType::MENU;
         }
@@ -92,7 +92,7 @@ public:
         }
 
         // Header
-        const char* title = "MAHAYUDDHA CAMPAIGN MAP // REALM PROGRESSION";
+        const char* title = "MAHAYUDDHA CAMPAIGN MAP // 10 ACTS · 300 WAVES";
         DrawTextEx(font, title, { 35, 25 }, 22, 1.0f, COLOR_GOLD_BRIGHT);
 
         std::string sub = "SELECT SECTOR DESTINATION • HIGHEST CONQUERED WAVE: " + std::to_string(m_max_unlocked_wave);
@@ -102,7 +102,7 @@ public:
         for (size_t i = 0; i < CAMPAIGN_REALMS.size() - 1; ++i) {
             Vector2 p1 = CAMPAIGN_REALMS[i].map_pos;
             Vector2 p2 = CAMPAIGN_REALMS[i+1].map_pos;
-            bool unlocked = (m_max_unlocked_wave >= CAMPAIGN_REALMS[i+1].start_wave);
+            bool unlocked = (m_max_unlocked_wave >= CAMPAIGN_REALMS[i+1].start_wave - 1);
 
             Color line_col = unlocked ? Color{ 80, 200, 255, 180 } : Color{ 60, 60, 80, 100 };
             DrawLineEx(p1, p2, unlocked ? 3.0f : 1.5f, line_col);
@@ -118,8 +118,8 @@ public:
         // Draw Nodes
         for (size_t i = 0; i < CAMPAIGN_REALMS.size(); ++i) {
             const auto& node = CAMPAIGN_REALMS[i];
-            bool unlocked = (m_max_unlocked_wave >= node.start_wave);
-            bool cleared = (m_max_unlocked_wave > node.end_wave);
+            bool unlocked = (m_max_unlocked_wave >= node.start_wave - 1);
+            bool cleared = (m_max_unlocked_wave >= node.end_wave);
             bool is_selected = (m_selected_node == static_cast<int>(i));
 
             float radius = is_selected ? 22.0f : 17.0f;
@@ -139,7 +139,7 @@ public:
             if (cleared) {
                 UI::DrawCheckmarkIcon(node.map_pos, 8.0f, COLOR_GOLD_BRIGHT);
             } else if (unlocked) {
-                std::string num_str = std::to_string(node.id);
+                std::string num_str = "A" + std::to_string(node.id);
                 DrawTextEx(font, num_str.c_str(), { node.map_pos.x - 4, node.map_pos.y - 7 }, 14, 1.0f, WHITE);
             } else {
                 UI::DrawLockIcon(node.map_pos, 7.0f, COLOR_MUTED);
@@ -167,6 +167,9 @@ public:
                 case 5: realm_tex_name = "realm_setu_expanse.png"; break;
                 case 6: realm_tex_name = "realm_naraka_forge.png"; break;
                 case 7: realm_tex_name = "realm_mahayuddha_citadel.png"; break;
+                case 8: realm_tex_name = "realm_kshira_sagara.png"; break;
+                case 9: realm_tex_name = "realm_dandaka_void.png"; break;
+                case 10: realm_tex_name = "realm_mahayuddha_citadel.png"; break;
             }
             Texture2D r_tex = AssetManager::instance().get_texture(realm_tex_name);
             if (r_tex.id > 0) {
@@ -176,7 +179,7 @@ public:
                 DrawRectangleLinesEx(r_dest, 1.0f, node.accent_color);
             }
 
-            std::string realm_hdr = "SECTOR " + std::to_string(node.id) + ": " + node.name + " (" + node.sanskrit_title + ")";
+            std::string realm_hdr = "ACT " + std::to_string(node.id) + ": " + node.name + " (" + node.sanskrit_title + ")";
             DrawTextEx(font, realm_hdr.c_str(), { dossier_rec.x + 16, dossier_rec.y + 10 }, 15, 1.0f, node.accent_color);
 
             std::string wave_rng = "WAVES: " + std::to_string(node.start_wave) + " - " + std::to_string(node.end_wave);

@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&amp;family=JetBrains+Mono:wght@500;600&amp;family=Space+Grotesk:wght@400;600&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+          "surface-dim": "#11131d",
+          "surface-container-high": "#272935",
+          "on-secondary-container": "#005c61",
+          "secondary-container": "#03dbe7",
+          "surface-bright": "#373944",
+          "background": "#11131d",
+          "on-tertiary-fixed-variant": "#5d4201",
+          "on-secondary": "#00363a",
+          "surface-tint": "#e9c400",
+          "surface-container": "#1d1f2a",
+          "on-surface": "#e1e1f1",
+          "on-background": "#e1e1f1",
+          "secondary-fixed": "#75f5ff",
+          "error-container": "#93000a",
+          "tertiary": "#ffdea5",
+          "on-primary-fixed": "#221b00",
+          "primary-container": "#e9c400",
+          "primary-fixed": "#ffe16e",
+          "inverse-on-surface": "#2e303b",
+          "primary": "#ffe16f",
+          "surface-variant": "#323440",
+          "on-primary-container": "#625100",
+          "on-secondary-fixed": "#002022",
+          "tertiary-container": "#e9c177",
+          "on-error": "#690005",
+          "secondary-fixed-dim": "#03dbe7",
+          "on-primary-fixed-variant": "#544600",
+          "tertiary-fixed-dim": "#e9c176",
+          "surface-container-lowest": "#0b0e18",
+          "on-tertiary": "#412d00",
+          "outline-variant": "#4d4632",
+          "on-primary": "#3a3000",
+          "on-tertiary-container": "#6a4e0d",
+          "outline": "#999078",
+          "on-surface-variant": "#d0c6ac",
+          "inverse-primary": "#705d00",
+          "on-tertiary-fixed": "#261900",
+          "inverse-surface": "#e1e1f1",
+          "on-secondary-fixed-variant": "#004f54",
+          "on-error-container": "#ffdad6",
+          "primary-fixed-dim": "#e9c400",
+          "surface-container-low": "#191b26",
+          "tertiary-fixed": "#ffdea5",
+          "surface": "#11131d",
+          "error": "#ffb4ab",
+          "secondary": "#75f5ff",
+          "surface-container-highest": "#323440"
+        },
+        "borderRadius": {
+          "DEFAULT": "0.25rem",
+          "lg": "0.5rem",
+          "xl": "0.75rem",
+          "full": "9999px"
+        },
+        "spacing": {
+          "space-xs": "0.25rem",
+          "space-md": "1rem",
+          "gutter-desktop": "1.5rem",
+          "margin": "1rem",
+          "space-sm": "0.5rem",
+          "margin-desktop": "2rem",
+          "gutter": "1rem",
+          "space-lg": "1.5rem",
+          "space-xl": "2rem"
+        },
+        "fontFamily": {
+          "title-sm": [
+            "Space Grotesk"
+          ],
+          "body-md": [
+            "Space Grotesk"
+          ],
+          "telemetry-sm": [
+            "JetBrains Mono"
+          ],
+          "title-md": [
+            "Space Grotesk"
+          ],
+          "headline-md": [
+            "Cinzel"
+          ],
+          "label-caps": [
+            "Cinzel"
+          ],
+          "display-lg": [
+            "Cinzel"
+          ],
+          "body-sm": [
+            "Space Grotesk"
+          ],
+          "headline-lg": [
+            "Cinzel"
+          ],
+          "body-lg": [
+            "Space Grotesk"
+          ],
+          "display-lg-mobile": [
+            "Cinzel"
+          ],
+          "telemetry-mono": [
+            "JetBrains Mono"
+          ]
+        },
+        "fontSize": {
+          "title-sm": [
+            "16px",
+            {
+              "lineHeight": "22px",
+              "letterSpacing": "0.04em",
+              "fontWeight": "600"
+            }
+          ],
+          "body-md": [
+            "14px",
+            {
+              "lineHeight": "20px",
+              "letterSpacing": "0.01em",
+              "fontWeight": "400"
+            }
+          ],
+          "telemetry-sm": [
+            "10px",
+            {
+              "lineHeight": "14px",
+              "letterSpacing": "0.12em",
+              "fontWeight": "500"
+            }
+          ],
+          "title-md": [
+            "18px",
+            {
+              "lineHeight": "24px",
+              "letterSpacing": "0.05em",
+              "fontWeight": "600"
+            }
+          ],
+          "headline-md": [
+            "24px",
+            {
+              "lineHeight": "32px",
+              "letterSpacing": "0.1em",
+              "fontWeight": "700"
+            }
+          ],
+          "label-caps": [
+            "12px",
+            {
+              "lineHeight": "16px",
+              "letterSpacing": "0.18em",
+              "fontWeight": "700"
+            }
+          ],
+          "display-lg": [
+            "48px",
+            {
+              "lineHeight": "56px",
+              "letterSpacing": "0.05em",
+              "fontWeight": "900"
+            }
+          ],
+          "body-sm": [
+            "12px",
+            {
+              "lineHeight": "18px",
+              "letterSpacing": "0.01em",
+              "fontWeight": "400"
+            }
+          ],
+          "headline-lg": [
+            "32px",
+            {
+              "lineHeight": "40px",
+              "letterSpacing": "0.08em",
+              "fontWeight": "700"
+            }
+          ],
+          "body-lg": [
+            "16px",
+            {
+              "lineHeight": "24px",
+              "letterSpacing": "0.02em",
+              "fontWeight": "400"
+            }
+          ],
+          "display-lg-mobile": [
+            "32px",
+            {
+              "lineHeight": "40px",
+              "letterSpacing": "0.05em",
+              "fontWeight": "900"
+            }
+          ],
+          "telemetry-mono": [
+            "11px",
+            {
+              "lineHeight": "16px",
+              "letterSpacing": "0.15em",
+              "fontWeight": "600"
+            }
+          ]
+        }
+      },
+    },
+  }</script></head><body class="bg-surface-container-lowest font-body-md text-body-md text-on-surface select-none"><header class="fixed top-0 w-full z-50 bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_4px_30px_rgba(0,0,0,0.8)]"><div class="h-20 w-full px-gutter-desktop flex items-center justify-between"><div class="flex items-center gap-space-md"><img alt="Vimana Wars Crest" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBhI8yS-KYD9gqpWZr3piKq3QJtYiAcabAsT2JCsgiRsgISNz5M2pLHAFmenOEfc9Yz2OtQUzN0K7FHdvjqq3J5Md9-HyCEhUi_GqrAdvZTk2i8imkYyBguANKBFZuDkVLNPwPWzppGI720I41DyRQJ5IbCmXCpWQtKyFf8txWcsEPaZvGmXq5MIUuirNp5fR8n60rRItCOgF51rmcHQnv-qShqcMCoOWKou1_CXyL-8_QkQBSltp0"/><div class="flex flex-col"><span class="font-headline-md text-title-sm tracking-widest text-primary font-bold uppercase">Vimana Wars</span><span class="font-label-caps text-telemetry-sm text-secondary tracking-widest uppercase">Celestial Conflict</span></div><div class="h-6 w-px bg-outline-variant/40 ml-space-xs hidden xl:block"></div><div class="hidden xl:flex items-center gap-space-xs px-space-sm py-space-xs rounded bg-surface-container-low"><span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span><span class="font-telemetry-mono text-telemetry-sm text-secondary tracking-wider">ASIA-INDRA-01</span><span class="font-telemetry-mono text-telemetry-sm text-on-surface-variant">[24ms]</span></div></div><nav class="hidden lg:flex items-center gap-space-sm bg-surface-container-low/70 px-space-sm py-space-xs rounded" data-active-classes="bg-primary-container text-on-primary-container font-bold"><a class="font-label-caps text-label-caps px-space-md py-space-xs text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" data-path="main-menu" href="#">Main Menu</a><a class="font-label-caps text-label-caps px-space-md py-space-xs text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" data-path="vimana-hangar" href="#">Vimana Hangar</a><a aria-current="page" class="px-space-md py-space-xs transition-colors bg-primary-container text-on-primary-container font-bold" data-path="combat-hud" href="#">Combat HUD</a><a class="font-label-caps text-label-caps px-space-md py-space-xs text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" data-path="mission-debrief" href="#">Mission Debrief</a></nav><div class="flex items-center gap-space-md"><div class="hidden md:flex flex-col items-end"><div class="flex items-center gap-space-xs mb-space-xs"><span class="font-label-caps text-telemetry-sm text-tertiary uppercase">Astra Core</span><span class="font-telemetry-mono text-telemetry-sm text-primary font-bold">94%</span></div><div class="flex gap-[2px] p-[2px] bg-surface-container rounded"><div class="w-2.5 h-1.5 bg-secondary"></div><div class="w-2.5 h-1.5 bg-secondary"></div><div class="w-2.5 h-1.5 bg-secondary"></div><div class="w-2.5 h-1.5 bg-secondary"></div><div class="w-2.5 h-1.5 bg-secondary"></div><div class="w-2.5 h-1.5 bg-secondary"></div><div class="w-2.5 h-1.5 bg-secondary"></div><div class="w-2.5 h-1.5 bg-surface-variant"></div></div></div><div class="flex items-center gap-space-xs bg-surface-container-low p-space-xs rounded"><button class="w-7 h-7 flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors rounded"><span class="material-symbols-outlined text-[16px]">volume_up</span></button><button class="w-7 h-7 flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors rounded"><span class="material-symbols-outlined text-[16px]">music_note</span></button></div><div class="flex items-center gap-space-sm pl-space-xs"><div class="hidden sm:flex flex-col text-right"><span class="font-title-sm text-body-sm text-primary font-bold uppercase tracking-wider">Cdr. Arjuna</span><span class="font-telemetry-mono text-telemetry-sm text-on-surface-variant">LVL 48 // VEDIC ACE</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></div></header><main class="w-full pt-20 bg-surface-container-lowest min-h-screen"><div class="flex flex-col w-full relative select-none overflow-hidden font-body-md text-on-surface">
+<!-- Background Space Canvas with Temple Megastructures & Asteroid Belt Battle -->
+<div class="relative w-full h-[940px] overflow-hidden bg-surface-container-lowest">
+<!-- Realistic Deep Space Battle Vista Background Image -->
+<div class="absolute inset-0 w-full h-full bg-cover bg-center opacity-85" data-alt="Epic first-person perspective cosmic dogfight view from a high-tech Vedic Vimana fighter cockpit. Vast outer space with shattered glowing asteroid field, colossal floating golden ancient Indian Dravidian temple space megastructures orbiting a celestial nebula star. Glowing neon turquoise energy beams, particle tracer fire, distant exploding Asura gunships, radiant astral dust clouds, ultra-detailed Vedic sci-fi space dogfight aesthetic." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuC9XQoEVEmSGwbe2WEUOkDDl8kmWDyNW8VOe-Ytmb7X4Lq3g284Nn_dQ3oqd-Z0D9aI7ctEJe5KYHGUSpMjTIrj-DgGCNHKNM2E5SZKKEPY8Ug1WB-hGOm2aO8J5OEzlbdjXcQF6PaSjmI3iU7fYYr5uCElOWJhpeenfbRMPYiD914ZMOCuFQJk6K8J7DS633rwn1cj_O1zr015TN8u42x5tCtjIIC-YJHxDWH1gRMW2rNMK5uwbwk')">
+</div>
+<!-- Cockpit Glass Overlay & Vignette -->
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-lowest via-transparent to-surface-container-lowest/80 pointer-events-none"></div>
+<div class="absolute inset-0 bg-radial from-transparent via-surface-container-lowest/20 to-surface-container-lowest/90 pointer-events-none"></div>
+<!-- Holographic Cockpit Structural Struts / Polygonal Canopy Framing -->
+<div class="absolute inset-x-0 top-0 h-10 flex justify-between items-start px-space-xl pointer-events-none z-20">
+<div class="h-6 w-72 bg-surface-container-high/60 backdrop-blur-md rounded-b flex items-center justify-between px-space-sm shadow-md">
+<span class="font-telemetry-mono text-telemetry-sm text-secondary tracking-widest uppercase">HUD MATRIX // PRANA-OS V8.9</span>
+<span class="font-telemetry-mono text-telemetry-sm text-primary font-bold">CALIBRATED</span>
+</div>
+<div class="h-8 w-96 bg-surface-container-high/80 backdrop-blur-md rounded-b flex items-center justify-around px-space-md shadow-md">
+<span class="font-label-caps text-label-caps text-primary tracking-widest">SECTOR: VARUNA GATEWAY</span>
+<span class="w-2 h-2 rounded-full bg-secondary animate-ping"></span>
+<span class="font-telemetry-mono text-telemetry-sm text-tertiary">DEFCON-1</span>
+</div>
+<div class="h-6 w-72 bg-surface-container-high/60 backdrop-blur-md rounded-b flex items-center justify-between px-space-sm shadow-md">
+<span class="font-telemetry-mono text-telemetry-sm text-on-surface-variant">YAW 142.8°</span>
+<span class="font-telemetry-mono text-telemetry-sm text-secondary font-bold">SYNC: 99.8%</span>
+</div>
+</div>
+<!-- Top Center: Celestial Boss / Enemy Formation Alert Banner -->
+<div class="absolute top-12 left-1/2 -translate-x-1/2 z-20 w-[580px] pointer-events-none">
+<div class="bg-surface-container-low/85 backdrop-blur-xl p-space-sm rounded shadow-2xl flex flex-col gap-space-xs">
+<div class="flex items-center justify-between px-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[18px]">warning</span>
+<span class="font-label-caps text-label-caps text-primary uppercase tracking-widest">TARGET ENGAGED: RAKSHASA TITAN VIMANA</span>
+</div>
+<span class="font-telemetry-mono text-telemetry-sm text-secondary bg-surface-container px-space-xs py-[2px] rounded">PHASE II // ACTIVE</span>
+</div>
+<!-- Segmented Boss Health Bar -->
+<div class="flex gap-1 h-2 bg-surface-container-lowest p-[2px] rounded">
+<div class="flex-1 bg-secondary rounded-sm"></div>
+<div class="flex-1 bg-secondary rounded-sm"></div>
+<div class="flex-1 bg-secondary rounded-sm"></div>
+<div class="flex-1 bg-secondary rounded-sm"></div>
+<div class="flex-1 bg-secondary rounded-sm"></div>
+<div class="flex-1 bg-primary rounded-sm animate-pulse"></div>
+<div class="flex-1 bg-surface-variant rounded-sm"></div>
+<div class="flex-1 bg-surface-variant rounded-sm"></div>
+</div>
+<div class="flex justify-between text-telemetry-sm font-telemetry-mono text-on-surface-variant px-space-xs">
+<span>HULL RESISTANCE: VEDIC REINFORCED</span>
+<span class="text-primary font-bold">68.4% INTEGRITY</span>
+</div>
+</div>
+</div>
+<!-- CENTER HUD STAGE: Sacred Mandala Crosshair & Target Reticle -->
+<div class="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+<!-- Central Flight Pitch Ladders -->
+<div class="absolute w-[460px] h-[340px] flex justify-between items-center opacity-40">
+<!-- Pitch Scale Left -->
+<div class="flex flex-col gap-4 text-right font-telemetry-mono text-telemetry-sm text-secondary">
+<div class="flex items-center gap-1 justify-end"><span>+20</span><div class="w-6 h-[2px] bg-secondary"></div></div>
+<div class="flex items-center gap-1 justify-end"><span>+10</span><div class="w-4 h-[1px] bg-secondary"></div></div>
+<div class="flex items-center gap-1 justify-end"><span class="text-primary font-bold">00</span><div class="w-8 h-[2px] bg-primary"></div></div>
+<div class="flex items-center gap-1 justify-end"><span>-10</span><div class="w-4 h-[1px] bg-secondary"></div></div>
+<div class="flex items-center gap-1 justify-end"><span>-20</span><div class="w-6 h-[2px] bg-secondary"></div></div>
+</div>
+<!-- Pitch Scale Right -->
+<div class="flex flex-col gap-4 text-left font-telemetry-mono text-telemetry-sm text-secondary">
+<div class="flex items-center gap-1"><div class="w-6 h-[2px] bg-secondary"></div><span>+20</span></div>
+<div class="flex items-center gap-1"><div class="w-4 h-[1px] bg-secondary"></div><span>+10</span></div>
+<div class="flex items-center gap-1"><div class="w-8 h-[2px] bg-primary"></div><span class="text-primary font-bold">00</span></div>
+<div class="flex items-center gap-1"><div class="w-4 h-[1px] bg-secondary"></div><span>-10</span></div>
+<div class="flex items-center gap-1"><div class="w-6 h-[2px] bg-secondary"></div><span>-20</span></div>
+</div>
+</div>
+<!-- Rotating Sacred Yantra Target Lock-On Mandala -->
+<div class="relative w-80 h-80 flex items-center justify-center">
+<!-- Outer Rotating Vedic Mandala Ring (SVG) -->
+<svg class="absolute inset-0 w-full h-full animate-[spin_24s_linear_infinite] text-primary/70" fill="none" viewbox="0 0 200 200">
+<circle cx="100" cy="100" r="92" stroke="currentColor" stroke-dasharray="4 6" stroke-width="0.8"></circle>
+<circle cx="100" cy="100" r="82" stroke="currentColor" stroke-width="0.5"></circle>
+<!-- 8-Point Yantra Star Flakes -->
+<polygon fill="none" opacity="0.4" points="100,10 112,40 142,40 118,60 128,90 100,72 72,90 82,60 58,40 88,40" stroke="currentColor" stroke-width="0.7"></polygon>
+<polygon fill="none" opacity="0.4" points="100,190 112,160 142,160 118,140 128,110 100,128 72,110 82,140 58,160 88,160" stroke="currentColor" stroke-width="0.7"></polygon>
+<circle cx="100" cy="10" fill="currentColor" r="2"></circle>
+<circle cx="100" cy="190" fill="currentColor" r="2"></circle>
+<circle cx="10" cy="100" fill="currentColor" r="2"></circle>
+<circle cx="190" cy="100" fill="currentColor" r="2"></circle>
+</svg>
+<!-- Inner Counter-Rotating Reticle Wheel -->
+<svg class="absolute w-56 h-56 animate-[spin_12s_linear_infinite_reverse] text-secondary/80" fill="none" viewbox="0 0 100 100">
+<circle cx="50" cy="50" r="44" stroke="currentColor" stroke-dasharray="8 4" stroke-width="1"></circle>
+<polygon fill="none" opacity="0.6" points="50,15 80,75 20,75" stroke="currentColor" stroke-width="0.8"></polygon>
+<polygon fill="none" opacity="0.6" points="50,85 80,25 20,25" stroke="currentColor" stroke-width="0.8"></polygon>
+<circle cx="50" cy="50" r="30" stroke="currentColor" stroke-width="0.5"></circle>
+</svg>
+<!-- Central Laser Bore Sights & Diamond Lock -->
+<div class="relative flex flex-col items-center justify-center">
+<div class="w-12 h-12 rotate-45 bg-primary/10 rounded-sm flex items-center justify-center shadow-lg">
+<div class="w-2 h-2 rounded-full bg-primary animate-ping"></div>
+</div>
+<div class="w-px h-6 bg-secondary/70 absolute -top-8"></div>
+<div class="w-px h-6 bg-secondary/70 absolute -bottom-8"></div>
+<div class="h-px w-6 bg-secondary/70 absolute -left-8"></div>
+<div class="h-px w-6 bg-secondary/70 absolute -right-8"></div>
+</div>
+<!-- Target Tracking Lead Box (Off-center tracking hostile) -->
+<div class="absolute top-8 right-6 flex flex-col items-start bg-surface-container-high/90 backdrop-blur-md p-space-xs rounded shadow-lg">
+<div class="flex items-center gap-space-xs">
+<span class="w-2 h-2 rounded-full bg-error animate-pulse"></span>
+<span class="font-label-caps text-telemetry-sm text-error font-bold uppercase tracking-wider">LOCK ACQUIRED</span>
+</div>
+<span class="font-title-sm text-body-sm text-on-surface font-semibold tracking-wide">RAKSHASA HEAVY FIGHTER</span>
+<div class="flex items-center gap-space-sm font-telemetry-mono text-telemetry-sm text-secondary">
+<span>RNG: <strong class="text-primary">420m</strong></span>
+<span>VEL: <strong>760 m/s</strong></span>
+<span class="text-tertiary">LEAD: 1.2s</span>
+</div>
+</div>
+</div>
+</div>
+<!-- LEFT HUD WING: Vitality, Shield Matrix, Engines & Throttle -->
+<div class="absolute left-6 top-16 bottom-16 w-80 flex flex-col justify-between z-20 pointer-events-auto">
+<!-- Throttle & Flight Velocity Gauge -->
+<div class="bg-surface-container-low/90 backdrop-blur-xl p-space-md rounded shadow-xl flex flex-col gap-space-sm">
+<div class="flex justify-between items-center">
+<span class="font-label-caps text-label-caps text-secondary uppercase tracking-wider">IMPULSE VELOCITY</span>
+<span class="font-telemetry-mono text-title-sm text-primary font-bold">890 <span class="text-telemetry-sm text-on-surface-variant font-normal">M/S</span></span>
+</div>
+<!-- Vertical Throttle Display -->
+<div class="flex items-end gap-space-sm h-20 bg-surface-container-lowest p-space-xs rounded">
+<div class="flex-1 flex flex-col-reverse gap-1 h-full">
+<div class="h-2 bg-secondary rounded-xs"></div>
+<div class="h-2 bg-secondary rounded-xs"></div>
+<div class="h-2 bg-secondary rounded-xs"></div>
+<div class="h-2 bg-secondary rounded-xs"></div>
+<div class="h-2 bg-secondary rounded-xs"></div>
+<div class="h-2 bg-primary rounded-xs animate-pulse"></div>
+<div class="h-2 bg-surface-variant rounded-xs"></div>
+</div>
+<div class="flex flex-col justify-between h-full font-telemetry-mono text-telemetry-sm text-on-surface-variant">
+<span>WARP MAX</span>
+<span class="text-primary font-bold">CRUISE 82%</span>
+<span>IDLE</span>
+</div>
+</div>
+<!-- Boost Capacitor -->
+<div class="flex items-center justify-between font-telemetry-mono text-telemetry-sm">
+<span class="text-on-surface-variant">PRANA BOOST [SHIFT]</span>
+<span class="text-secondary font-bold">READY (100%)</span>
+</div>
+</div>
+<!-- Kavacha 4-Quadrant Shield Matrix System -->
+<div class="bg-surface-container-low/90 backdrop-blur-xl p-space-md rounded shadow-xl flex flex-col gap-space-md">
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-secondary text-[20px]">shield</span>
+<span class="font-label-caps text-label-caps text-on-surface font-bold tracking-wider">KAVACHA MATRIX</span>
+</div>
+<span class="font-telemetry-mono text-telemetry-sm text-secondary bg-surface-container px-space-xs py-[2px] rounded">STABLE</span>
+</div>
+<!-- Shield Cross Grid Visualization -->
+<div class="relative w-full h-36 bg-surface-container-lowest rounded flex items-center justify-center p-space-sm">
+<!-- Center Vessel Hologram Glyph -->
+<div class="w-12 h-16 rounded-sm bg-surface-container-high flex flex-col items-center justify-center z-10 shadow-md">
+<span class="material-symbols-outlined text-primary text-[24px]">navigation</span>
+<span class="font-telemetry-mono text-[9px] text-on-surface-variant">MY-01</span>
+</div>
+<!-- Shield Quadrant Indicators -->
+<!-- Front Shield -->
+<div class="absolute top-2 inset-x-8 flex flex-col items-center">
+<span class="font-telemetry-mono text-telemetry-sm text-secondary font-bold">FORE 84%</span>
+<div class="w-32 h-1.5 bg-secondary rounded-full shadow-sm mt-1"></div>
+</div>
+<!-- Rear Shield -->
+<div class="absolute bottom-2 inset-x-8 flex flex-col items-center">
+<div class="w-32 h-1.5 bg-secondary rounded-full shadow-sm mb-1"></div>
+<span class="font-telemetry-mono text-telemetry-sm text-secondary font-bold">AFT 92%</span>
+</div>
+<!-- Left Shield -->
+<div class="absolute left-2 inset-y-6 flex flex-col items-center justify-center">
+<span class="font-telemetry-mono text-telemetry-sm text-secondary font-bold [writing-mode:vertical-lr] rotate-180">PORT 76%</span>
+</div>
+<!-- Right Shield -->
+<div class="absolute right-2 inset-y-6 flex flex-col items-center justify-center">
+<span class="font-telemetry-mono text-telemetry-sm text-secondary font-bold [writing-mode:vertical-rl]">STARBOARD 81%</span>
+</div>
+</div>
+<!-- Hull Integrity Meter -->
+<div class="flex flex-col gap-1">
+<div class="flex justify-between font-telemetry-mono text-telemetry-sm">
+<span class="text-on-surface-variant">ADAMANTINE HULL</span>
+<span class="text-secondary font-bold">100% VITAL</span>
+</div>
+<div class="w-full h-2 bg-surface-container-lowest rounded-full overflow-hidden p-[1px]">
+<div class="w-full h-full bg-secondary rounded-full shadow-sm"></div>
+</div>
+</div>
+<!-- Prana Power Tri-Distribution System -->
+<div class="flex flex-col gap-space-xs pt-space-xs">
+<span class="font-label-caps text-telemetry-sm text-on-surface-variant uppercase tracking-wider">TRISHULA POWER ROUTING</span>
+<div class="grid grid-cols-3 gap-space-xs font-telemetry-mono text-telemetry-sm text-center">
+<div class="bg-surface-container p-space-xs rounded flex flex-col">
+<span class="text-on-surface-variant text-[10px]">WEAPONS</span>
+<span class="text-primary font-bold">40%</span>
+</div>
+<div class="bg-surface-container p-space-xs rounded flex flex-col">
+<span class="text-on-surface-variant text-[10px]">ENGINES</span>
+<span class="text-secondary font-bold">40%</span>
+</div>
+<div class="bg-surface-container p-space-xs rounded flex flex-col">
+<span class="text-on-surface-variant text-[10px]">SHIELDS</span>
+<span class="text-tertiary font-bold">20%</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- RIGHT HUD WING: Armament, Tactical Astra Meters & Comms Chatter -->
+<div class="absolute right-6 top-16 bottom-16 w-88 flex flex-col justify-between z-20 pointer-events-auto">
+<!-- Celestial Comms & Tactical Mission Feed -->
+<div class="bg-surface-container-low/90 backdrop-blur-xl p-space-md rounded shadow-xl flex flex-col gap-space-sm">
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-space-xs">
+<span class="w-2 h-2 rounded-full bg-primary animate-ping"></span>
+<span class="font-label-caps text-label-caps text-primary tracking-widest uppercase">COMMS // DEVA-LINK</span>
+</div>
+<span class="font-telemetry-mono text-telemetry-sm text-on-surface-variant">CH-07</span>
+</div>
+<div class="flex flex-col gap-space-xs bg-surface-container-lowest p-space-sm rounded">
+<div class="flex items-start gap-space-sm">
+<span class="material-symbols-outlined text-secondary text-[16px] mt-[2px]">record_voice_over</span>
+<div class="flex flex-col">
+<span class="font-title-sm text-body-sm text-primary font-bold">Cdr. Arjuna</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant">"Target locked on Rakshasa flagship core. Maintain flanking vector!"</p>
+</div>
+</div>
+<div class="h-px bg-surface-variant my-1"></div>
+<div class="flex items-center justify-between font-telemetry-mono text-telemetry-sm">
+<span class="text-error font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">crisis_alert</span> ASURA REINFORCEMENTS
+            </span>
+<span class="text-error animate-pulse">WARPING [00:08]</span>
+</div>
+</div>
+<!-- Active Directive -->
+<div class="bg-surface-container p-space-xs rounded flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-tertiary text-[18px]">verified</span>
+<div class="flex flex-col">
+<span class="font-label-caps text-[10px] text-tertiary uppercase tracking-wider">PRIMARY DIRECTIVE</span>
+<span class="font-title-sm text-body-sm text-on-surface font-semibold">Defend the Celestial Gateway of Varuna</span>
+</div>
+</div>
+</div>
+<!-- Armament & Astra Superweapon Ordinance Panel -->
+<div class="bg-surface-container-low/90 backdrop-blur-xl p-space-md rounded shadow-xl flex flex-col gap-space-md">
+<div class="flex justify-between items-center">
+<span class="font-label-caps text-label-caps text-on-surface font-bold tracking-wider">ASTRA ORDNANCE</span>
+<span class="font-telemetry-mono text-telemetry-sm text-primary">FIRE READY</span>
+</div>
+<!-- Primary Weapon: Agneyastra Hyper-Cannons -->
+<div class="bg-surface-container-lowest p-space-sm rounded flex flex-col gap-space-xs">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-body-sm text-secondary font-bold">AGNEYASTRA (PLASMA CANNON)</span>
+<span class="font-telemetry-mono text-telemetry-sm text-on-surface-variant">HEAT: 34%</span>
+</div>
+<!-- Heat Bar -->
+<div class="w-full h-1.5 bg-surface-variant rounded-full overflow-hidden">
+<div class="w-1/3 h-full bg-secondary rounded-full"></div>
+</div>
+<div class="flex justify-between items-center font-telemetry-mono text-telemetry-sm text-on-surface-variant">
+<span>MAGAZINE: <strong class="text-secondary">∞ PRANA CELL</strong></span>
+<span class="text-primary">[L-CLICK]</span>
+</div>
+</div>
+<!-- Secondary Weapon: Pashupatastra Micro-Missiles -->
+<div class="bg-surface-container-lowest p-space-sm rounded flex flex-col gap-space-xs">
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-body-sm text-tertiary font-bold">PASHUPATASTRA (SWARM)</span>
+<span class="font-telemetry-mono text-telemetry-sm text-primary font-bold">8 / 12 REMAINING</span>
+</div>
+<!-- Missile Pip Inventory -->
+<div class="grid grid-cols-6 gap-1">
+<div class="h-2 bg-primary rounded-xs shadow-xs"></div>
+<div class="h-2 bg-primary rounded-xs shadow-xs"></div>
+<div class="h-2 bg-primary rounded-xs shadow-xs"></div>
+<div class="h-2 bg-primary rounded-xs shadow-xs"></div>
+<div class="h-2 bg-primary rounded-xs shadow-xs"></div>
+<div class="h-2 bg-primary rounded-xs shadow-xs"></div>
+<div class="h-2 bg-primary rounded-xs shadow-xs"></div>
+<div class="h-2 bg-primary rounded-xs shadow-xs"></div>
+<div class="h-2 bg-surface-variant rounded-xs"></div>
+<div class="h-2 bg-surface-variant rounded-xs"></div>
+<div class="h-2 bg-surface-variant rounded-xs"></div>
+<div class="h-2 bg-surface-variant rounded-xs"></div>
+</div>
+<div class="flex justify-between items-center font-telemetry-mono text-telemetry-sm text-on-surface-variant">
+<span>SEEKER RADAR: ONLINE</span>
+<span class="text-tertiary">[R-CLICK]</span>
+</div>
+</div>
+<!-- Ultimate Divine Astra Button / Brahmashira -->
+<div class="relative overflow-hidden bg-gradient-to-r from-primary-container via-surface-container-high to-primary-container p-space-sm rounded shadow-2xl flex items-center justify-between group cursor-pointer">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-on-primary shadow-lg animate-spin">
+<span class="material-symbols-outlined text-[24px]">flare</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-md text-title-sm text-primary font-bold uppercase tracking-wider">BRAHMASHIRA</span>
+<span class="font-telemetry-mono text-telemetry-sm text-on-surface">COSMIC PURGE READY</span>
+</div>
+</div>
+<button class="bg-primary text-on-primary font-label-caps text-label-caps px-space-md py-space-xs rounded font-bold shadow-md hover:scale-105 active:scale-95 transition-transform flex items-center gap-1">
+<span>RELEASE</span>
+<span class="font-telemetry-mono text-telemetry-sm font-bold bg-on-primary/20 px-1 rounded">[F]</span>
+</button>
+</div>
+</div>
+</div>
+<!-- BOTTOM BAR: 3D Spherical Radar, Speed Telemetry & Countermeasures -->
+<div class="absolute bottom-4 inset-x-8 flex items-end justify-between pointer-events-none z-20">
+<!-- Bottom-Left: 3D Tactical Sensor Sphere (Radar) -->
+<div class="bg-surface-container-low/95 backdrop-blur-xl p-space-md rounded shadow-2xl w-80 pointer-events-auto flex flex-col gap-space-xs">
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-secondary text-[18px]">radar</span>
+<span class="font-label-caps text-label-caps text-on-surface font-bold tracking-wider">3D VEDIC RADAR</span>
+</div>
+<span class="font-telemetry-mono text-telemetry-sm text-secondary">R: 8.0 KM</span>
+</div>
+<!-- Circular Radar Scope with Glowing Blips -->
+<div class="relative w-full h-44 bg-surface-container-lowest rounded-full overflow-hidden flex items-center justify-center p-2 shadow-inner">
+<!-- Concentric Distance Rings -->
+<div class="absolute inset-4 rounded-full border border-surface-variant/30"></div>
+<div class="absolute inset-10 rounded-full border border-surface-variant/40"></div>
+<div class="absolute inset-16 rounded-full border border-secondary/30"></div>
+<!-- Radar Sweep Line -->
+<div class="absolute inset-0 origin-center animate-[spin_4s_linear_infinite] bg-gradient-to-r from-transparent via-transparent to-secondary/15 rounded-full pointer-events-none"></div>
+<!-- Crosshairs -->
+<div class="absolute inset-x-0 h-px bg-surface-variant/40"></div>
+<div class="absolute inset-y-0 w-px bg-surface-variant/40"></div>
+<!-- Player Center Point -->
+<div class="w-3 h-3 rounded-full bg-primary z-10 flex items-center justify-center shadow-md">
+<div class="w-1 h-1 rounded-full bg-on-primary"></div>
+</div>
+<!-- Friendly Blip (Cyan) -->
+<div class="absolute top-10 left-16 flex items-center gap-1">
+<span class="w-2.5 h-2.5 rounded-full bg-secondary animate-pulse shadow-sm"></span>
+<span class="font-telemetry-mono text-[9px] text-secondary">ALLY-02</span>
+</div>
+<!-- Hostile Blip 1 (Agni Red) -->
+<div class="absolute top-8 right-14 flex items-center gap-1">
+<span class="w-2.5 h-2.5 rounded-full bg-error animate-ping"></span>
+<span class="font-telemetry-mono text-[9px] text-error font-bold">ASURA-X</span>
+</div>
+<!-- Hostile Blip 2 (Agni Red) -->
+<div class="absolute bottom-12 right-20 flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-error shadow-sm"></span>
+</div>
+<!-- Objective Marker (Gold Diamond) -->
+<div class="absolute bottom-8 left-20 flex items-center gap-1">
+<div class="w-2.5 h-2.5 rotate-45 bg-primary shadow-sm"></div>
+<span class="font-telemetry-mono text-[9px] text-primary">PORTAL</span>
+</div>
+</div>
+<div class="flex justify-between font-telemetry-mono text-telemetry-sm text-on-surface-variant pt-1 px-1">
+<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-secondary inline-block"></span> 4 ALLIES</span>
+<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-error inline-block"></span> 8 HOSTILES</span>
+</div>
+</div>
+<!-- Bottom Center: Quick Action Wheel & Flare System -->
+<div class="flex items-center gap-space-md bg-surface-container-low/90 backdrop-blur-xl px-space-lg py-space-sm rounded shadow-2xl pointer-events-auto">
+<!-- Chaff / Flares -->
+<button class="flex flex-col items-center gap-1 bg-surface-container hover:bg-surface-container-high px-space-md py-space-xs rounded transition-all active:scale-95">
+<span class="font-label-caps text-label-caps text-on-surface font-bold">SURYA FLARES</span>
+<div class="flex items-center gap-1">
+<span class="font-telemetry-mono text-telemetry-sm text-primary font-bold">4 / 4</span>
+<span class="font-telemetry-mono text-telemetry-sm text-on-surface-variant bg-surface-container-lowest px-1 rounded">[X]</span>
+</div>
+</button>
+<!-- Divine Astral Barrier -->
+<button class="flex flex-col items-center gap-1 bg-surface-container hover:bg-surface-container-high px-space-md py-space-xs rounded transition-all active:scale-95">
+<span class="font-label-caps text-label-caps text-secondary font-bold">CHAKRA BARRIER</span>
+<div class="flex items-center gap-1">
+<span class="font-telemetry-mono text-telemetry-sm text-secondary font-bold">READY</span>
+<span class="font-telemetry-mono text-telemetry-sm text-on-surface-variant bg-surface-container-lowest px-1 rounded">[C]</span>
+</div>
+</button>
+<!-- Autopilot Drift Vector -->
+<button class="flex flex-col items-center gap-1 bg-surface-container hover:bg-surface-container-high px-space-md py-space-xs rounded transition-all active:scale-95">
+<span class="font-label-caps text-label-caps text-tertiary font-bold">PRANA DRIFT</span>
+<div class="flex items-center gap-1">
+<span class="font-telemetry-mono text-telemetry-sm text-tertiary font-bold">ENGAGED</span>
+<span class="font-telemetry-mono text-telemetry-sm text-on-surface-variant bg-surface-container-lowest px-1 rounded">[V]</span>
+</div>
+</button>
+</div>
+<!-- Bottom-Right: Flight Telemetry Readouts -->
+<div class="bg-surface-container-low/95 backdrop-blur-xl p-space-md rounded shadow-2xl w-80 pointer-events-auto flex flex-col gap-space-xs">
+<span class="font-label-caps text-label-caps text-primary font-bold uppercase tracking-wider">FLIGHT DYNAMICS</span>
+<div class="grid grid-cols-2 gap-space-xs bg-surface-container-lowest p-space-sm rounded font-telemetry-mono text-telemetry-sm">
+<div class="flex flex-col">
+<span class="text-on-surface-variant text-[10px]">GRAV-SHEAR</span>
+<span class="text-secondary font-bold">0.04 G</span>
+</div>
+<div class="flex flex-col">
+<span class="text-on-surface-variant text-[10px]">ELEVATION</span>
+<span class="text-primary font-bold">+18,450 KM</span>
+</div>
+<div class="flex flex-col">
+<span class="text-on-surface-variant text-[10px]">PRANA DRIFT</span>
+<span class="text-on-surface font-bold">STABLE</span>
+</div>
+<div class="flex flex-col">
+<span class="text-on-surface-variant text-[10px]">CORE HEAT</span>
+<span class="text-tertiary font-bold">428° K</span>
+</div>
+</div>
+<div class="flex items-center justify-between text-telemetry-sm font-telemetry-mono text-on-surface-variant px-1">
+<span>ORBIT: INDRA-7</span>
+<span class="text-secondary font-bold">LAT: 28.61° N</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Interactive Flight Control Script -->
+<script>
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'f' || e.key === 'F') {
+        const btn = document.querySelector('button:has(span:contains("[F]"))');
+        alert('BRAHMASHIRA DIVINE PURGE DISCHARGED: All enemy target locks vaporized!');
+      }
+    });
+  </script>
+</div></main><footer class="w-full bg-surface-container-lowest py-space-md shadow-[0_-4px_20px_rgba(0,0,0,0.5)]"><div class="w-full px-gutter-desktop flex flex-col md:flex-row items-center justify-between gap-space-sm"><div class="flex items-center gap-space-md"><span class="font-telemetry-mono text-telemetry-sm text-outline uppercase">SYS CONCORDIA V4.19</span><span class="font-telemetry-mono text-telemetry-sm text-on-surface-variant">//</span><span class="font-telemetry-mono text-telemetry-sm text-on-surface-variant">QUANTUM YANTRA NAV: ONLINE</span></div><div class="text-center font-telemetry-mono text-telemetry-sm text-on-surface-variant">© CELESTIAL REALM COMMAND. BRAHMASTRA DEFENSE SYSTEMS.</div><div class="flex items-center gap-space-md"><span class="font-telemetry-mono text-telemetry-sm text-secondary">FPS: 144</span><span class="font-telemetry-mono text-telemetry-sm text-tertiary">PRANA: STABLE</span></div></div></footer></body></html>

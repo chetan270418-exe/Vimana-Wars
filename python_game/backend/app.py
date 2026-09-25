@@ -90,7 +90,7 @@ _PROFILE_KEYS = {
     "last_realm", "realm_unlock_seen", "total_kills", "games_played",
     "total_damage", "best_combo", "total_boons", "bosses_defeated",
     "playtime_seconds", "ships_mastered", "achievements", "endless_high_wave",
-    "endless_high_score",
+    "endless_high_score", "ship_mastery",
 }
 
 ACHIEVEMENT_CATALOG = (
@@ -106,13 +106,34 @@ ACHIEVEMENT_CATALOG = (
     {"id": "wave_15_conqueror", "name": "Forge Walker", "description": "Reach Wave 15.", "icon": "🔥", "category": "campaign"},
     {"id": "vritra_vanquisher", "name": "Storm Breaker", "description": "Defeat Vritra.", "icon": "⚡", "category": "boss"},
     {"id": "boss_collector", "name": "Four Thrones Fall", "description": "Defeat all four campaign bosses.", "icon": "👑", "category": "boss"},
-    {"id": "campaign_conqueror", "name": "Conqueror of the Mahayuddha", "description": "Clear all 20 campaign waves.", "icon": "🏅", "category": "campaign"},
+    {"id": "campaign_conqueror", "name": "Conqueror of the Mahayuddha", "description": "Clear all 300 waves across the ten campaign acts.", "icon": "🏅", "category": "campaign"},
     {"id": "hardcore_hero", "name": "Immortal Warrior", "description": "Complete the campaign on Hard.", "icon": "🔥", "category": "skill"},
     {"id": "bomb_annihilator", "name": "Brahmastra Unleashed", "description": "Vaporize 8+ enemies with one Brahmastra.", "icon": "💥", "category": "combat"},
     {"id": "boon_collector", "name": "Blessed by the Devas", "description": "Attain 4 Divine Astral Boons in one run.", "icon": "✨", "category": "collection"},
     {"id": "high_scorer", "name": "Legend of the Realm", "description": "Score more than 25,000 points.", "icon": "🏆", "category": "score"},
     {"id": "cube_collector", "name": "Astral Arsenal", "description": "Collect 10 ability cubes in one run.", "icon": "🔷", "category": "collection"},
     {"id": "overdrive_online", "name": "Overdrive Online", "description": "Collect an Astra Overdrive cube.", "icon": "💗", "category": "collection"},
+    # Native C++ achievement IDs. Keep these lowercase to match the shared API
+    # contract; the endpoint also normalizes IDs from older uppercase clients.
+    {"id": "wave_5", "name": "Survivor of Swarga", "description": "Clear wave 5 and penetrate the astral defenses.", "icon": "🌊", "category": "campaign"},
+    {"id": "wave_15", "name": "Kshatriya Vanguard", "description": "Reach wave 15 deep in the cosmic void.", "icon": "🔥", "category": "campaign"},
+    {"id": "wave_30", "name": "Act I Vanguard", "description": "Clear the first 30-wave act of Mahayuddha.", "icon": "🏅", "category": "campaign"},
+    {"id": "boss_1", "name": "Kumbhakarna Defeated", "description": "Defeat the first act's guardian titan.", "icon": "🛡️", "category": "boss"},
+    {"id": "boss_5", "name": "Ravana Overthrown", "description": "Defeat Emperor Ravana in a boss encounter.", "icon": "👑", "category": "boss"},
+    {"id": "perfect_wave", "name": "Untouched Warrior", "description": "Clear an entire wave taking zero damage.", "icon": "✨", "category": "skill"},
+    {"id": "combo_25", "name": "Combo Disciple", "description": "Build a sustained x25 combat strike streak.", "icon": "⚡", "category": "combat"},
+    {"id": "combo_50", "name": "Divya Astra Resonance", "description": "Achieve the legendary x50 maximum combo.", "icon": "💫", "category": "combat"},
+    {"id": "brahmastra", "name": "Celestial Cataclysm", "description": "Detonate the ultimate Brahmastra celestial nuke.", "icon": "💥", "category": "weapon"},
+    {"id": "coop_revive", "name": "Brother's Keeper", "description": "Revive a downed squadmate in combat.", "icon": "🤝", "category": "co-op"},
+    {"id": "coop_dual_astra", "name": "Thunder Tempest", "description": "Execute a synchronized dual-Astra attack.", "icon": "🌩️", "category": "co-op"},
+    {"id": "all_boons", "name": "Deva Blessed", "description": "Equip all divine boons during a run.", "icon": "🙏", "category": "build"},
+    {"id": "unlock_ship", "name": "Astral Shipwright", "description": "Commission a new Vimana.", "icon": "🚀", "category": "progression"},
+    {"id": "all_ships", "name": "Supreme Armada", "description": "Command all 60 Vimanas in the celestial fleet.", "icon": "🛸", "category": "progression"},
+    {"id": "daily_win", "name": "Daily Devotion", "description": "Complete a daily cosmic challenge sortie.", "icon": "📅", "category": "event"},
+    {"id": "iron_mode", "name": "Iron Ascetic", "description": "Survive a sortie on Chakravyuha tier.", "icon": "🔥", "category": "mastery"},
+    {"id": "leaderboard_top10", "name": "Sangha Vanguard", "description": "Enter the top 10 cloud leaderboard rankings.", "icon": "🏆", "category": "online"},
+    {"id": "register", "name": "Sangha Commissioned", "description": "Create an authenticated pilot account.", "icon": "🪪", "category": "account"},
+    {"id": "play_10", "name": "Veteran of the Void", "description": "Deploy on 10 combat sorties across the 10 acts.", "icon": "🎖️", "category": "career"},
 )
 _ACHIEVEMENT_IDS = {item["id"] for item in ACHIEVEMENT_CATALOG}
 
@@ -369,6 +390,7 @@ def _default_profile() -> dict:
         "total_damage": 0, "best_combo": 1, "total_boons": 0,
         "bosses_defeated": [], "playtime_seconds": 0, "ships_mastered": [],
         "achievements": [], "endless_high_wave": 0, "endless_high_score": 0,
+        "ship_mastery": {},
     }
 
 
@@ -379,6 +401,15 @@ def _profile_from_payload(value) -> dict:
     for key in _PROFILE_KEYS:
         if key in value:
             profile[key] = value[key]
+    if "ship_mastery" in profile:
+        raw_mastery = profile["ship_mastery"]
+        profile["ship_mastery"] = {
+            str(ship_id)[:48]: max(0, min(50, int(count)))
+            for ship_id, count in raw_mastery.items()
+            if isinstance(raw_mastery, dict)
+            and isinstance(count, int) and not isinstance(count, bool)
+            and str(ship_id).strip()
+        } if isinstance(raw_mastery, dict) else {}
     # Prevent a malformed client from creating unbounded profile data.
     encoded = json.dumps(profile, separators=(",", ":"))
     return profile if len(encoded) <= 100_000 else {}
@@ -862,7 +893,51 @@ def update_profile():
             current = json.loads(row["profile_json"]) if row else _default_profile()
         except (TypeError, ValueError):
             current = _default_profile()
+        if not isinstance(current, dict):
+            current = _default_profile()
+        previous_profile = current.copy()
+        previous_mastery = current.get("ship_mastery", {})
+        if not isinstance(previous_mastery, dict):
+            previous_mastery = {}
         current.update(incoming)
+        # Progress is cumulative: an older desktop save must not roll back a
+        # newer cloud profile when a player signs in on another machine.
+        for key in (
+            "high_score", "last_wave", "total_kills", "games_played",
+            "total_damage", "best_combo", "total_boons", "playtime_seconds",
+            "endless_high_wave", "endless_high_score",
+        ):
+            previous = previous_profile.get(key, 0)
+            submitted = incoming.get(key)
+            if (isinstance(submitted, int) and not isinstance(submitted, bool)
+                    and isinstance(previous, int) and not isinstance(previous, bool)):
+                current[key] = max(previous, submitted)
+            elif not isinstance(submitted, int) or isinstance(submitted, bool):
+                current[key] = previous
+        for key in ("ships_mastered", "bosses_defeated", "achievements", "realm_unlock_seen"):
+            if key in incoming:
+                previous_items = previous_profile.get(key, [])
+                submitted_items = incoming.get(key, [])
+                if isinstance(previous_items, list) and isinstance(submitted_items, list):
+                    current[key] = list(dict.fromkeys(
+                        item for item in previous_items + submitted_items
+                        if isinstance(item, str) and item.strip()
+                    ))
+        if "ship_mastery" in incoming:
+            incoming_mastery = incoming["ship_mastery"]
+            current["ship_mastery"] = {
+                ship_id: max(
+                    previous_mastery.get(ship_id, 0)
+                    if isinstance(previous_mastery.get(ship_id, 0), int)
+                    and not isinstance(previous_mastery.get(ship_id, 0), bool) else 0,
+                    count,
+                )
+                for ship_id, count in incoming_mastery.items()
+            }
+            for ship_id, count in previous_mastery.items():
+                if (ship_id not in current["ship_mastery"] and isinstance(count, int)
+                        and not isinstance(count, bool)):
+                    current["ship_mastery"][ship_id] = count
         if "player_name" in current:
             current["player_name"] = str(current["player_name"]).strip()[:20] or "Warrior"
         encoded = json.dumps(current, separators=(",", ":"))
@@ -911,7 +986,7 @@ def award_achievement():
     if error:
         return jsonify({"success": False, "message": "Guest mode - achievement saved locally"}), 200
     data = request.get_json(silent=True) or {}
-    achievement_id = str(data.get("achievement_id", "")).strip()
+    achievement_id = str(data.get("achievement_id", "")).strip().lower()
     if not achievement_id:
         return jsonify({"error": "achievement_id required"}), 400
     if achievement_id not in _ACHIEVEMENT_IDS:
@@ -1000,7 +1075,8 @@ def submit_score():
 
     # These are deliberately generous sanity limits. They stop accidental or
     # obviously forged payloads while leaving room for future balance changes.
-    max_wave = 10000 if difficulty == "endless" else 20
+    # The native campaign contains ten acts of thirty waves each.
+    max_wave = 10000 if difficulty == "endless" else 300
     max_score = max(250_000, level_reached * 250_000)
     if level_reached < 1 or level_reached > max_wave:
         return jsonify({"error": "Invalid wave value"}), 422

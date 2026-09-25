@@ -9,6 +9,7 @@
 #include "systems/asset_manager.hpp"
 #include "systems/sound_system.hpp"
 #include "systems/currency_system.hpp"
+#include "entities/ship_archetypes.hpp"
 #include "ui/button.hpp"
 #include "ui/vedic_theme.hpp"
 
@@ -30,14 +31,17 @@ public:
         m_sfx_played = false;
     }
 
-    void set_results(const WaveResult& result, bool is_final_wave = false) {
+    void set_results(const WaveResult& result, bool is_final_wave = false, bool campaign_complete = false) {
         m_result = result;
         m_is_final = is_final_wave;
+        m_campaign_complete = campaign_complete;
         m_timer = 0.0f;
         m_sfx_played = false;
 
-        if (m_is_final) {
-            m_btn_continue = UI::Button({ SCREEN_WIDTH / 2.0f - 140, SCREEN_HEIGHT - 80, 280, 44 }, "CELESTIAL VICTORY >>", COLOR_GOLD_BRIGHT);
+        if (m_campaign_complete) {
+            m_btn_continue = UI::Button({ SCREEN_WIDTH / 2.0f - 140, SCREEN_HEIGHT - 80, 280, 44 }, "CELESTIAL VICTORY // DEBRIEF >>", COLOR_GOLD_BRIGHT);
+        } else if (m_is_final) {
+            m_btn_continue = UI::Button({ SCREEN_WIDTH / 2.0f - 140, SCREEN_HEIGHT - 80, 280, 44 }, "ENTER NEXT ACT // DRAFT >>", COLOR_GOLD_BRIGHT);
         } else {
             m_btn_continue = UI::Button({ SCREEN_WIDTH / 2.0f - 140, SCREEN_HEIGHT - 80, 280, 44 }, "DRAFT DIVINE BOON >>", COLOR_GOLD_BRIGHT);
         }
@@ -54,11 +58,7 @@ public:
         }
 
         if (m_btn_continue.update(mouse_pos) || IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
-            if (m_is_final) {
-                m_next_view = ViewType::VICTORY;
-            } else {
-                m_next_view = ViewType::BOON_SELECT;
-            }
+            m_next_view = m_campaign_complete ? ViewType::VICTORY : ViewType::BOON_SELECT;
         }
     }
 
@@ -68,11 +68,16 @@ public:
         Font body_font = AssetManager::instance().body_font();
 
         // Banner Title
-        std::string title = "WAVE " + std::to_string(m_result.wave_num) + " CLEARED // SECTOR CONQUERED";
+        const int act = CampaignActForWave(m_result.wave_num);
+        const int act_wave = CampaignWaveWithinAct(m_result.wave_num);
+        std::string title = (m_is_final ? "ACT " + std::to_string(act) + " COMPLETE // " : "ACT " + std::to_string(act) + " · ") +
+                            "WAVE " + std::to_string(act_wave) + " CLEARED";
         Vector2 t_sz = MeasureTextEx(title_font, title.c_str(), 22, 1.0f);
         DrawTextEx(title_font, title.c_str(), { (SCREEN_WIDTH - t_sz.x) / 2.0f, 38 }, 22, 1.0f, COLOR_GOLD_BRIGHT);
 
-        const char* sub = "ASTRAL TELEMETRY BREAKDOWN - COMBAT COMMENDATIONS";
+        const char* sub = m_campaign_complete ? "ALL 10 ACTS CONQUERED // CELESTIAL ARMADA VICTORY" :
+                          m_is_final ? "ACT COMPLETE // HOSTILE ARMADA ESCALATION INCOMING" :
+                                       "ASTRAL TELEMETRY BREAKDOWN - COMBAT COMMENDATIONS";
         Vector2 s_sz = MeasureTextEx(body_font, sub, 11, 1.0f);
         DrawTextEx(body_font, sub, { (SCREEN_WIDTH - s_sz.x) / 2.0f, 68 }, 11, 1.0f, COLOR_CYAN_BRIGHT);
 
@@ -153,6 +158,14 @@ public:
         DrawTextEx(body_font, "PRANA SHARDS HARVESTED:", { px, py }, 13, 1.0f, COLOR_CYAN_BRIGHT);
         DrawTextEx(title_font, ("+" + std::to_string(display_prana) + " SHARDS").c_str(), { px + 225, py - 1 }, 15, 1.0f, COLOR_CYAN_BRIGHT);
 
+        if (!m_result.boss_ship_unlocked.empty()) {
+            const ShipArchetype* reward = GetShipArchetype(m_result.boss_ship_unlocked);
+            const std::string reward_text = "BOSS SALVAGE UNLOCKED // " + reward->name + "  ·  HANGAR READY";
+            UI::DrawChamferedPanel({ panel.x + 25, panel.y + 286, panel.width - 50, 38 }, COLOR_GOLD_BRIGHT, COLOR_SURFACE_MID, 4.0f);
+            const Vector2 reward_size = MeasureTextEx(title_font, reward_text.c_str(), 11, 1.0f);
+            DrawTextEx(title_font, reward_text.c_str(), { panel.x + (panel.width - reward_size.x) / 2.0f, panel.y + 298 }, 11, 1.0f, COLOR_GOLD_BRIGHT);
+        }
+
         // Action button
         m_btn_continue.draw(title_font);
 
@@ -166,6 +179,7 @@ private:
     ViewType m_next_view;
     WaveResult m_result;
     bool m_is_final = false;
+    bool m_campaign_complete = false;
     float m_timer = 0.0f;
     bool m_sfx_played = false;
 

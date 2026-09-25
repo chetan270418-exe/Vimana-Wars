@@ -23,9 +23,7 @@ public:
 
     void init() override {
         m_next_view = ViewType::DIFFICULTY_SELECT;
-        m_tier_cards.clear();
-
-        float start_x = 50.0f;
+        m_tier_cards.clear();        float start_x = 50.0f;
         float card_w = 185.0f;
         float card_h = 360.0f;
         float gap = 20.0f;
@@ -119,6 +117,8 @@ public:
     ViewType next_view() const override { return m_next_view; }
     void reset_next_view() override { m_next_view = ViewType::DIFFICULTY_SELECT; }
     Difficulty selected_difficulty() const { return m_selected_difficulty; }
+    void set_starting_wave(int wave) { m_starting_wave = wave; }
+    int starting_wave() const { return m_starting_wave; }
 
 private:
     struct TierCard {
@@ -129,6 +129,7 @@ private:
 
     ViewType m_next_view;
     Difficulty m_selected_difficulty;
+    int m_starting_wave = 1;
     std::vector<TierCard> m_tier_cards;
     UI::Button m_btn_back;
 };

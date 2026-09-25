@@ -139,6 +139,75 @@ def test_cloud_profile_and_personal_stats(client):
     assert stats.get_json()["achievements_unlocked"] == 2
 
 
+def test_cloud_progression_merge_keeps_best_and_unions_unlocks(client):
+    account = client.post("/auth/register", json={
+        "email": "progress-merge@example.com",
+        "password": "celestial123",
+        "player_name": "Progress Pilot",
+    }).get_json()
+    headers = {"Authorization": f"Bearer {account['token']}"}
+
+    client.put("/account/profile", headers=headers, json={"profile": {
+        "high_score": 90_000,
+        "last_wave": 88,
+        "ships_mastered": ["pushpaka", "garuda"],
+        "achievements": ["first_blood"],
+    }})
+    client.put("/account/profile", headers=headers, json={"profile": {
+        "high_score": 500,
+        "last_wave": 5,
+        "ships_mastered": ["tripura"],
+        "achievements": ["wave_5"],
+    }})
+
+    profile = client.get("/account/profile", headers=headers).get_json()["profile"]
+    assert profile["high_score"] == 90_000
+    assert profile["last_wave"] == 88
+    assert set(profile["ships_mastered"]) == {"pushpaka", "garuda", "tripura"}
+    assert set(profile["achievements"]) == {"first_blood", "wave_5"}
+
+
+def test_cpp_achievement_ids_are_normalized_and_synced(client):
+    account = client.post("/auth/register", json={
+        "email": "native-achievements@example.com",
+        "password": "celestial123",
+        "player_name": "Native Pilot",
+    }).get_json()
+    headers = {"Authorization": f"Bearer {account['token']}"}
+
+    for achievement_id in ("FIRST_BLOOD", "WAVE_5", "BOSS_1"):
+        response = client.post("/achievements", headers=headers, json={
+            "achievement_id": achievement_id,
+        })
+        assert response.status_code == 200
+        assert response.get_json()["achievement_id"] == achievement_id.lower()
+
+    gallery = client.get("/achievements", headers=headers)
+    assert gallery.status_code == 200
+    assert {"first_blood", "wave_5", "boss_1"}.issubset(gallery.get_json()["unlocked"])
+
+
+def test_cloud_ship_mastery_never_regresses(client):
+    account = client.post("/auth/register", json={
+        "email": "mastery@example.com",
+        "password": "celestial123",
+        "player_name": "Mastery Pilot",
+    }).get_json()
+    headers = {"Authorization": f"Bearer {account['token']}"}
+
+    first = client.put("/account/profile", headers=headers, json={
+        "profile": {"ship_mastery": {"pushpaka": 37, "garuda": 12}},
+    })
+    assert first.status_code == 200
+    stale = client.put("/account/profile", headers=headers, json={
+        "profile": {"ship_mastery": {"pushpaka": 4, "garuda": 8, "tripura": 5}},
+    })
+    assert stale.status_code == 200
+
+    profile = client.get("/account/profile", headers=headers).get_json()["profile"]
+    assert profile["ship_mastery"] == {"pushpaka": 37, "garuda": 12, "tripura": 5}
+
+
 def test_password_reset_token_flow(client, monkeypatch):
     monkeypatch.setattr("backend.app.SHOW_DEV_AUTH_TOKENS", True)
     client.post("/auth/register", json={
@@ -193,8 +262,13 @@ def test_score_sanity_validation(client):
     })
     assert negative.status_code == 422
 
+    campaign_completion = client.post("/scores", json={
+        "score": 100, "level_reached": 300, "difficulty": "normal",
+    })
+    assert campaign_completion.status_code == 201
+
     impossible_wave = client.post("/scores", json={
-        "score": 100, "level_reached": 21, "difficulty": "normal",
+        "score": 100, "level_reached": 301, "difficulty": "normal",
     })
     assert impossible_wave.status_code == 422
 

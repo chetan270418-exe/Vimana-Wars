@@ -133,7 +133,7 @@ public:
                     auto j = nlohmann::json::parse(resp.body);
                     if (j.contains("user")) {
                         auto u = j["user"];
-                        m_user.game_id = u.value("game_id", "VMN-7704");
+                        m_user.game_id = u.value("game_id", generate_guest_game_id());
                         m_user.email = u.value("email", "");
                         m_user.player_name = u.value("player_name", "Warrior");
                         m_user.email_verified = u.value("email_verified", false);
@@ -181,7 +181,7 @@ public:
                     m_auth_token = j.value("token", "");
                     if (j.contains("user")) {
                         auto u = j["user"];
-                        m_user.game_id = u.value("game_id", "VMN-7704");
+                        m_user.game_id = u.value("game_id", generate_guest_game_id());
                         m_user.email = u.value("email", "");
                         m_user.player_name = u.value("player_name", "Warrior");
                         m_user.email_verified = u.value("email_verified", false);
@@ -231,7 +231,7 @@ public:
                     m_auth_token = j.value("token", "");
                     if (j.contains("user")) {
                         auto u = j["user"];
-                        m_user.game_id = u.value("game_id", "VMN-7704");
+                        m_user.game_id = u.value("game_id", generate_guest_game_id());
                         m_user.email = u.value("email", "");
                         m_user.player_name = u.value("player_name", player_name);
                         m_user.email_verified = u.value("email_verified", !needs_verify);
@@ -398,6 +398,13 @@ public:
                                 CurrencySystem::instance().unlock_ship(ship_id);
                             }
                         }
+                        if (prof.contains("ship_mastery") && prof["ship_mastery"].is_object()) {
+                            std::unordered_map<std::string, int> mastery;
+                            for (auto it = prof["ship_mastery"].begin(); it != prof["ship_mastery"].end(); ++it) {
+                                if (it.value().is_number_integer()) mastery[it.key()] = it.value().get<int>();
+                            }
+                            CurrencySystem::instance().merge_ship_sortie_counts(mastery);
+                        }
 
                         DBSystem::instance().save_game();
                         m_sync_status = CloudSyncStatus::SYNCED;
@@ -437,6 +444,7 @@ public:
         prof["high_score"] = DBSystem::instance().high_score();
         prof["last_wave"] = DBSystem::instance().max_wave();
         prof["ships_mastered"] = all_unlocked;
+        prof["ship_mastery"] = CurrencySystem::instance().ship_sortie_counts();
 
         nlohmann::json root;
         root["profile"] = prof;
@@ -637,7 +645,7 @@ private:
                 fi >> j;
             }
 
-            j["version"] = 3;
+            j["version"] = SAVE_SCHEMA_VERSION;
             j["auth_token"] = m_auth_token;
             j["auth_game_id"] = m_user.game_id;
             j["auth_email"] = m_user.email;

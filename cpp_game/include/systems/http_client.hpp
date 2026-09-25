@@ -4,6 +4,7 @@
 #include <iostream>
 #include <functional>
 #include <thread>
+#include <chrono>
 #include <mutex>
 #include <queue>
 #include <sstream>
@@ -202,7 +203,15 @@ public:
                        const std::string& path, const std::string& body, bool use_https,
                        const std::string& auth, std::function<void(Response)> callback) {
         std::thread([this, method, host, port, path, body, use_https, auth, callback]() {
-            Response resp = this->request(method, host, port, path, body, use_https, auth);
+            const bool safe_to_retry = method == L"GET" || method == L"PUT" || method == L"DELETE" ||
+                                       (method == L"POST" && path.rfind("/achievements", 0) == 0);
+            Response resp;
+            for (int attempt = 0; ; ++attempt) {
+                resp = this->request(method, host, port, path, body, use_https, auth);
+                const bool transient_failure = resp.status_code == 0 || resp.status_code >= 500;
+                if (!safe_to_retry || !transient_failure || attempt >= 2) break;
+                std::this_thread::sleep_for(std::chrono::milliseconds(250 * (1 << attempt)));
+            }
             std::lock_guard<std::mutex> lock(this->m_queue_mutex);
             this->m_callback_queue.push([callback, resp]() {
                 if (callback) callback(resp);

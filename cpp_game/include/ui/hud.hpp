@@ -27,26 +27,27 @@ public:
         if (squad.empty()) return;
         const Player& player = squad[0];
 
-        // ── Top Header Panel ────────────────────────────────────────────────
-        DrawYantraPanel({ 15, 12, 870, 48 }, COLOR_GOLD, COLOR_SURFACE_LOW, 6.0f, true);
+        // ── Top Header: single line WAVE · SCORE · COMBO ────────────────
+        DrawYantraPanel({ 15, 12, 870, 36 }, COLOR_GOLD, COLOR_SURFACE_LOW, 6.0f, true);
 
-        // Score & Realm info
-        std::string score_str = "SCORE: " + std::to_string(player.score);
-        DrawTextEx(title_font, score_str.c_str(), { 30, 24 }, 18, 1.0f, COLOR_GOLD_BRIGHT);
-
-        std::string realm_str = std::string(realm.name) + " // WAVE " + std::to_string(wave);
-        Vector2 realm_sz = MeasureTextEx(title_font, realm_str.c_str(), 18, 1.0f);
-        DrawTextEx(title_font, realm_str.c_str(), { (SCREEN_WIDTH - realm_sz.x) / 2.0f, 24 }, 18, 1.0f, realm.accent_color);
-
-        // Team Combo Multiplier (with animated pulse at milestones)
         int display_combo = team_combo > player.combo ? team_combo : player.combo;
+        std::string top_line = "WAVE " + std::to_string(wave) + "  ·  " + std::to_string(player.score);
+        DrawTextEx(title_font, top_line.c_str(), { 30, 22 }, 16, 1.0f, COLOR_GOLD_BRIGHT);
         if (display_combo > 1) {
-            float pulse = (display_combo >= 10) ? (0.8f + 0.2f * std::sin(GetTime() * 12.0f)) : 1.0f;
-            Color combo_col = (display_combo >= 25) ? COLOR_GOLD_BRIGHT : ((display_combo >= 10) ? COLOR_ORANGE_BRIGHT : COLOR_CYAN_BRIGHT);
-            std::string combo_str = "x" + std::to_string(display_combo) + " SQUAD COMBO";
-            Vector2 c_sz = MeasureTextEx(title_font, combo_str.c_str(), 16 * pulse, 1.0f);
-            DrawTextEx(title_font, combo_str.c_str(), { SCREEN_WIDTH - c_sz.x - 30, 25 }, 16 * pulse, 1.0f, combo_col);
+            const Vector2 top_size = MeasureTextEx(title_font, top_line.c_str(), 16, 1.0f);
+            const float pulse = 1.0f + 0.08f * std::sin(GetTime() * 8.0);
+            const float combo_size = 16.0f * pulse;
+            const Color combo_color = display_combo >= 25 ? COLOR_RED_BRIGHT :
+                                     display_combo >= 10 ? COLOR_GOLD_BRIGHT : COLOR_CYAN_BRIGHT;
+            const std::string combo_text = "x" + std::to_string(display_combo);
+            DrawTextEx(title_font, combo_text.c_str(),
+                       { 30.0f + top_size.x + 12.0f, 22.0f - (combo_size - 16.0f) * 0.5f },
+                       combo_size, 1.0f, combo_color);
         }
+
+        std::string realm_str = std::string(realm.name);
+        Vector2 realm_sz = MeasureTextEx(body_font, realm_str.c_str(), 12, 1.0f);
+        DrawTextEx(body_font, realm_str.c_str(), { SCREEN_WIDTH - realm_sz.x - 30, 23 }, 12, 1.0f, realm.accent_color);
 
         // ── Co-op Squadron Widget (Top Right below header) ──────────────────
         if (squad.size() > 1) {
@@ -68,34 +69,30 @@ public:
                     std::string down_str = "[DOWNED " + std::to_string(static_cast<int>(mate.downed_timer)) + "s]";
                     DrawText(down_str.c_str(), static_cast<int>(sx + 115), static_cast<int>(sy + 6), 9, d_col);
                 } else {
-                    float hp_pct = std::clamp(static_cast<float>(mate.hp) / mate.max_hp, 0.0f, 1.0f);
-                    Rectangle hp_f = { sx + 105, sy + 7, 95 * hp_pct, 12 };
-                    Color bar_col = hp_pct > 0.3f ? COLOR_GREEN_BRIGHT : COLOR_RED_BRIGHT;
-                    DrawRectangleRec(hp_f, bar_col);
-                    DrawRectangleLinesEx({ sx + 105, sy + 7, 95, 12 }, 1.0f, COLOR_SURFACE_HIGH);
+                    // Use segmented gauge for squadmate hull integrity
+                    Rectangle hp_f = { sx + 105, sy + 7, 95, 12 };
+                    DrawSegmentedHealthGauge(hp_f, static_cast<float>(mate.hp), static_cast<float>(mate.max_hp), 8, GetTime());
                 }
                 sy += 30.0f;
             }
         }
 
-        // ── Boss Health Bar with Phase Tick Marks ───────────────────────────
+        // ── Boss Health Bar (boss waves only), attack name UNDER bar ─────
         if (boss && boss->active) {
             float boss_hp_ratio = std::clamp(static_cast<float>(boss->hp) / boss->max_hp, 0.0f, 1.0f);
-            Rectangle boss_panel = { 180, 68, 540, 38 };
-            DrawYantraPanel(boss_panel, boss->theme_color, COLOR_SURFACE_LOW, 4.0f, true);
+            const float boss_panel_width = squad.size() > 1 ? 450.0f : 540.0f;
+            Rectangle boss_panel = { 180, 56, boss_panel_width, 46 };
+            DrawBossThreatBanner(boss_panel, boss->name, static_cast<float>(boss->hp), static_cast<float>(boss->max_hp), 3, 3, false, GetTime());
 
-            DrawTextEx(title_font, boss->name.c_str(), { 200, 72 }, 13, 1.0f, boss->theme_color);
-            DrawText(boss->attack_name.c_str(), 450, 73, 10, COLOR_GOLD);
+            // Boss name on top of banner
+            DrawTextEx(title_font, boss->name.c_str(), { 200, 60 }, 13, 1.0f, boss->theme_color);
 
-            // Health bar container
-            Rectangle bar_rec = { 200, 89, 500, 11 };
-            DrawRectangleRec(bar_rec, { 40, 15, 20, 255 });
-            DrawRectangle(static_cast<int>(bar_rec.x), static_cast<int>(bar_rec.y), static_cast<int>(bar_rec.width * boss_hp_ratio), static_cast<int>(bar_rec.height), boss->theme_color);
-            DrawRectangleLinesEx(bar_rec, 1.0f, COLOR_GOLD_BRIGHT);
-
-            // Phase division notches at 50% and 20%
+            // Phase division notches at 50% and 20% (kept from original for clarity)
+            Rectangle bar_rec = { 200, 77, boss_panel_width - 40.0f, 11 };
             DrawLineEx({ bar_rec.x + bar_rec.width * 0.50f, bar_rec.y - 2 }, { bar_rec.x + bar_rec.width * 0.50f, bar_rec.y + bar_rec.height + 2 }, 2.0f, COLOR_GOLD);
             DrawLineEx({ bar_rec.x + bar_rec.width * 0.20f, bar_rec.y - 2 }, { bar_rec.x + bar_rec.width * 0.20f, bar_rec.y + bar_rec.height + 2 }, 2.0f, COLOR_RED_BRIGHT);
+            // Attack name UNDER bar, not beside name
+            DrawText(boss->attack_name.c_str(), 200, 90, 10, COLOR_GOLD);
         }
 
         // ── Bottom Cockpit Instruments ──────────────────────────────────────
@@ -103,14 +100,14 @@ public:
 
         // 1. Health Bar & Life Tokens
         float hp_ratio = std::clamp(static_cast<float>(player.hp) / player.max_hp, 0.0f, 1.0f);
-        Color hp_col = (hp_ratio > 0.5f) ? COLOR_GREEN_BRIGHT : (hp_ratio > 0.25f ? COLOR_GOLD : COLOR_RED_BRIGHT);
 
         std::string lives_txt = "LIVES: " + std::to_string(player.lives) + "/3";
         DrawText("HULL INTEGRITY", 30, SCREEN_HEIGHT - 58, 9, COLOR_MUTED);
         DrawText(lives_txt.c_str(), 140, SCREEN_HEIGHT - 58, 9, (player.lives > 1) ? COLOR_GOLD_BRIGHT : COLOR_RED_BRIGHT);
-        DrawRectangle(30, SCREEN_HEIGHT - 44, 180, 18, { 25, 30, 45, 255 });
-        DrawRectangle(30, SCREEN_HEIGHT - 44, static_cast<int>(180 * hp_ratio), 18, hp_col);
-        DrawRectangleLines(30, SCREEN_HEIGHT - 44, 180, 18, COLOR_GOLD);
+
+        // Segmented gauge (chromatic state machine: green/amber/crimson pulse)
+        Rectangle player_hp_rect = { 30, SCREEN_HEIGHT - 44, 180, 18 };
+        DrawSegmentedHealthGauge(player_hp_rect, static_cast<float>(player.hp), static_cast<float>(player.max_hp), 16, GetTime());
 
         std::string hp_text = std::to_string(player.hp) + "/" + std::to_string(player.max_hp);
         DrawText(hp_text.c_str(), 95, SCREEN_HEIGHT - 41, 11, COLOR_OBSIDIAN);
@@ -128,33 +125,83 @@ public:
         DrawText((chakram_ratio >= 1.0f) ? "READY" : "CHARGING", 360, SCREEN_HEIGHT - 41, 10, COLOR_OBSIDIAN);
 
         // 4. Brahmastra Bomb
-        DrawText("BRAHMASTRA [F]", 460, SCREEN_HEIGHT - 58, 9, COLOR_MUTED);
+        DrawText("BOMB [F]", 460, SCREEN_HEIGHT - 58, 9, COLOR_MUTED);
         std::string bomb_str = "x" + std::to_string(player.brahmastra_bombs);
         DrawTextEx(title_font, bomb_str.c_str(), { 490, SCREEN_HEIGHT - 44 }, 16, 1.0f, COLOR_GOLD_BRIGHT);
 
-        // 5. Consumables (Soma Vial 'C', Vajra Flare 'V', Kavach Shield 'S')
-        DrawText("TACTICAL CONSUMABLES", 575, SCREEN_HEIGHT - 58, 9, COLOR_MUTED);
+        // 5. Consumables - hidden unless owned
+        if (player.inventory.soma_vials > 0 || player.inventory.vajra_flares > 0 || player.inventory.kavach_charges > 0) {
+            DrawText("ITEMS", 575, SCREEN_HEIGHT - 58, 9, COLOR_MUTED);
+            float ix = 575;
+            if (player.inventory.soma_vials > 0) {
+                std::string soma_str = "[C]" + std::to_string(player.inventory.soma_vials);
+                DrawText(soma_str.c_str(), (int)ix, SCREEN_HEIGHT - 43, 11, COLOR_GREEN_BRIGHT);
+                ix += 55;
+            }
+            if (player.inventory.vajra_flares > 0) {
+                std::string vajra_str = "[V]" + std::to_string(player.inventory.vajra_flares);
+                DrawText(vajra_str.c_str(), (int)ix, SCREEN_HEIGHT - 43, 11, COLOR_CYAN_BRIGHT);
+                ix += 55;
+            }
+            if (player.inventory.kavach_charges > 0) {
+                std::string kavach_str = "K" + std::to_string(player.inventory.kavach_charges);
+                DrawText(kavach_str.c_str(), (int)ix, SCREEN_HEIGHT - 43, 11, COLOR_GOLD_BRIGHT);
+            }
+        }
 
-        // Soma [C]
-        std::string soma_str = "[C] SOMA: " + std::to_string(player.inventory.soma_vials);
-        DrawText(soma_str.c_str(), 575, SCREEN_HEIGHT - 43, 11, (player.inventory.soma_vials > 0) ? COLOR_GREEN_BRIGHT : COLOR_MUTED);
+        // ── Co-op squad minimap ─────────────────────────────────────────────
+        if (squad.size() > 1) {
+            const Rectangle radar = { 755.0f, SCREEN_HEIGHT - 166.0f, 120.0f, 92.0f };
+            const Rectangle field = { radar.x + 7.0f, radar.y + 19.0f, radar.width - 14.0f, radar.height - 26.0f };
+            DrawChamferedPanel(radar, COLOR_CYAN_BRIGHT, COLOR_SURFACE_LOW, 4.0f);
+            DrawTextEx(body_font, "SQUAD RADAR", { radar.x + 8.0f, radar.y + 5.0f }, 9.0f, 1.0f, COLOR_CYAN_BRIGHT);
+            DrawRectangleRec(field, ColorAlpha(COLOR_SURFACE_MID, 0.9f));
+            DrawRectangleLinesEx(field, 1.0f, COLOR_SURFACE_HIGH);
+            DrawLine(static_cast<int>(field.x + field.width * 0.5f), static_cast<int>(field.y),
+                     static_cast<int>(field.x + field.width * 0.5f), static_cast<int>(field.y + field.height), COLOR_SURFACE_HIGH);
+            DrawLine(static_cast<int>(field.x), static_cast<int>(field.y + field.height * 0.5f),
+                     static_cast<int>(field.x + field.width), static_cast<int>(field.y + field.height * 0.5f), COLOR_SURFACE_HIGH);
 
-        // Vajra [V]
-        std::string vajra_str = "[V] FLARE: " + std::to_string(player.inventory.vajra_flares);
-        DrawText(vajra_str.c_str(), 680, SCREEN_HEIGHT - 43, 11, (player.inventory.vajra_flares > 0) ? COLOR_CYAN_BRIGHT : COLOR_MUTED);
+            const auto radar_pos = [&field](Vector2 world_pos) {
+                return Vector2{
+                    field.x + std::clamp(world_pos.x / SCREEN_WIDTH, 0.0f, 1.0f) * field.width,
+                    field.y + std::clamp(world_pos.y / SCREEN_HEIGHT, 0.0f, 1.0f) * field.height
+                };
+            };
 
-        // Kavach [S]
-        std::string kavach_str = "KAVACH: " + std::to_string(player.inventory.kavach_charges);
-        DrawText(kavach_str.c_str(), 785, SCREEN_HEIGHT - 43, 11, (player.inventory.kavach_charges > 0) ? COLOR_GOLD_BRIGHT : COLOR_MUTED);
+            for (const auto& enemy : enemies) {
+                if (!enemy.active) continue;
+                const Vector2 dot = radar_pos(enemy.pos);
+                DrawCircleV(dot, enemy.is_elite ? 2.8f : 1.8f, enemy.is_elite ? COLOR_GOLD_BRIGHT : COLOR_RED_BRIGHT);
+            }
+            if (boss && boss->active) {
+                const Vector2 dot = radar_pos(boss->pos);
+                DrawCircleV(dot, 4.0f, COLOR_GOLD_BRIGHT);
+                DrawCircleLines(static_cast<int>(dot.x), static_cast<int>(dot.y), 6.0f, COLOR_ORANGE_BRIGHT);
+            }
+            for (size_t i = 0; i < squad.size(); ++i) {
+                const auto& mate = squad[i];
+                const Vector2 dot = radar_pos(mate.pos);
+                const Color marker = mate.is_downed ? COLOR_RED_BRIGHT : (i == 0 ? COLOR_GREEN_BRIGHT : COLOR_CYAN_BRIGHT);
+                if (mate.is_spectator) {
+                    DrawCircleLines(static_cast<int>(dot.x), static_cast<int>(dot.y), 3.5f, COLOR_MUTED);
+                } else {
+                    DrawCircleV(dot, i == 0 ? 3.0f : 2.5f, marker);
+                }
+            }
+        }
 
-        // ── Off-screen Threat Radar Arrows ──────────────────────────────────
+        // ── Off-screen Threat Radar: edge triangles pointing at threat ───
         for (const auto& enemy : enemies) {
             if (!enemy.active) continue;
             if (enemy.pos.x < 30 || enemy.pos.x > SCREEN_WIDTH - 30 || enemy.pos.y < 70 || enemy.pos.y > SCREEN_HEIGHT - 70) {
                 float cx = std::clamp(enemy.pos.x, 35.0f, SCREEN_WIDTH - 35.0f);
                 float cy = std::clamp(enemy.pos.y, 75.0f, SCREEN_HEIGHT - 75.0f);
-                DrawCircle(static_cast<int>(cx), static_cast<int>(cy), 5, COLOR_RED_BRIGHT);
-                DrawCircleLines(static_cast<int>(cx), static_cast<int>(cy), 8, COLOR_GOLD);
+                float ang = std::atan2(enemy.pos.y - cy, enemy.pos.x - cx);
+                Vector2 tip = { cx + std::cos(ang) * 10.0f, cy + std::sin(ang) * 10.0f };
+                Vector2 l = { cx + std::cos(ang + 2.5f) * 7.0f, cy + std::sin(ang + 2.5f) * 7.0f };
+                Vector2 r = { cx + std::cos(ang - 2.5f) * 7.0f, cy + std::sin(ang - 2.5f) * 7.0f };
+                DrawTriangle(tip, l, r, enemy.is_elite ? COLOR_GOLD_BRIGHT : COLOR_RED_BRIGHT);
             }
         }
     }

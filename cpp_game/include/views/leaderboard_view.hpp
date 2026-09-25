@@ -62,7 +62,7 @@ public:
             case 1: return "easy";
             case 2: return "normal";
             case 3: return "hard";
-            case 4: return "endless";
+            case 4: return "hard";
             default: return "all";
         }
     }
@@ -72,7 +72,7 @@ public:
             case 1: return "DIFF: NOVICE";
             case 2: return "DIFF: KSHATRIYA";
             case 3: return "DIFF: ASURA SLAYER";
-            case 4: return "DIFF: ENDLESS";
+            case 4: return "DIFF: CHAKRAVYUHA";
             default: return "DIFF: ALL TIERS";
         }
     }

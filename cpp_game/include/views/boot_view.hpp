@@ -195,7 +195,7 @@ public:
             DrawTextEx(font, title, { (SCREEN_WIDTH - tsz.x) / 2.0f, 140 }, 60, 2.0f, COLOR_GOLD_BRIGHT);
         }
 
-        const char* tagline = "CELESTIAL ASTRAL COMBAT // THE 7 REALMS OF MAHAYUDDHA";
+        const char* tagline = "CELESTIAL ASTRAL COMBAT // 10 ACTS · 300 WAVES";
         Vector2 tl_sz = MeasureTextEx(font, tagline, 13, 1.0f);
         DrawTextEx(font, tagline, { (SCREEN_WIDTH - tl_sz.x) / 2.0f, 310 }, 13, 1.0f, COLOR_CYAN_BRIGHT);
 
@@ -204,9 +204,9 @@ public:
         std::string p_name = DBSystem::instance().player_name();
         std::string g_id = AccountSystem::instance().game_id();
         int max_w = DBSystem::instance().max_wave();
-        std::string rank_title = (max_w >= 25) ? "MAHAYUDDHA LEGEND" :
-                                 (max_w >= 15) ? "ARJUNA ACE" :
-                                 (max_w >= 8)  ? "KSHATRIYA VANGUARD" : "ASTRAL PILOT";
+        std::string rank_title = (max_w >= 300) ? "MAHAYUDDHA LEGEND" :
+                                 (max_w >= 210) ? "ARJUNA ACE" :
+                                 (max_w >= 90)  ? "KSHATRIYA VANGUARD" : "ASTRAL PILOT";
         std::string pilot_line = "PILOT: " + p_name + "  //  " + g_id + "  //  " + rank_title;
         Vector2 pl_sz = MeasureTextEx(font, pilot_line.c_str(), 11, 1.0f);
         DrawTextEx(font, pilot_line.c_str(), { (SCREEN_WIDTH - pl_sz.x) / 2.0f, 359 }, 11, 1.0f, COLOR_GOLD_BRIGHT);

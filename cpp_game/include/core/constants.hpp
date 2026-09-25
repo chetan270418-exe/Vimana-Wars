@@ -14,8 +14,6 @@ constexpr const char* WINDOW_TITLE = "Vimana Wars // Celestial Combat";
 constexpr int TARGET_FPS = 60;
 
 // ── Pilot Identity ────────────────────────────────────────────────────────────
-constexpr const char* PILOT_ID       = "VMN-7704";
-constexpr const char* PILOT_NAME     = "CHETAN";
 constexpr const char* PILOT_SQUADRON = "ARJUNA CELESTIAL ACE";
 
 // ── Combat & Physics ──────────────────────────────────────────────────────────
@@ -73,6 +71,7 @@ constexpr float ELITE_SPEED_MULT         = 1.15f;
 // ── Co-op: Downed & Revive ────────────────────────────────────────────────────
 constexpr float REVIVE_TIME          = 3.5f;   // 3.5 seconds to fully revive
 constexpr float REVIVE_RANGE         = 80.0f;  // pixels — must be this close
+constexpr float LAST_STAND_REVIVE_TIME = 10.0f; // auto-revive before the 15s bleed-out
 constexpr float DOWNED_TIMER         = 15.0f;  // seconds before eliminated
 
 // ── Co-op: Team Combo ─────────────────────────────────────────────────────────
@@ -124,7 +123,7 @@ inline Color COLOR_CB_ACCENT_1        = { 255, 255, 255, 255 };
 inline Color COLOR_CB_ACCENT_2        = { 255, 230,  50, 255 };
 inline bool  g_colorblind_mode        = false;
 inline bool  g_screen_shake_enabled   = true;
-inline bool  g_scanlines_enabled      = true;
+inline bool  g_scanlines_enabled      = false;
 
 // ── Difficulty Profiles ───────────────────────────────────────────────────────
 inline const std::array<DifficultyProfile, 4> DIFFICULTY_PROFILES = {{
@@ -184,27 +183,37 @@ struct CampaignRealm {
     Color             accent_color;
 };
 
-inline const std::array<CampaignRealm, 7> CAMPAIGN_REALMS = {{
-    { 1, "Swarga Outpost",     "Gate of Indra",                 1,  3,  0, "None",                   RealmModifierType::SWARGA_AETHER,     "Celestial Aether (+15% Speed)",       "Outer orbital sanctuary guarding the celestial gateway. Light Asura reconnaissance forces.", { 140, 420 }, COLOR_CYAN_BRIGHT },
-    { 2, "Kshira Sagara",      "Ocean of Celestial Nectar",     4,  6,  5, "Titan Kumbhakarna",      RealmModifierType::KSHIRA_VORTEX,     "Vortex Currents & Drift",             "Astral sea of luminescent nebulae. Beware the awakened Slumbering Mountain at wave 5.",        { 250, 310 }, { 100, 220, 255, 255 } },
-    { 3, "Dandaka Void",       "Forest of Eternal Shadows",     7,  9,  0, "None",                   RealmModifierType::DANDAKA_JAMMING,   "Sensor Jamming & Stealth",            "Perilous asteroid expanse infested with cloaked Rakshasa raiders and plasma minefields.",      { 390, 360 }, COLOR_PURPLE_BRIGHT },
-    { 4, "Lanka Approach",     "The Molten Bastion",           10, 12, 10, "Emperor Ravana",         RealmModifierType::LANKA_MOLTEN_FIRE, "Molten Void Fire (+15% Dmg)",        "Outer planetary defense network surrounding the demon fortress. Emperor Ravana commands wave 10.", { 510, 260 }, COLOR_GOLD_BRIGHT },
-    { 5, "Setu Expanse",       "Bridge of Floating Spheres",   13, 15, 15, "Warlord Mahishasura",    RealmModifierType::SETU_DRIFT,        "Hyperlane Drift (+20% Dash)",         "Cosmic bridge of magnetized meteors. Guarded by the unyielding Buffalo Warlord at wave 15.",    { 630, 330 }, COLOR_GREEN_BRIGHT },
-    { 6, "Naraka Forge",       "Foundry of Asura Warships",    16, 25, 25, "Conqueror Indrajit",     RealmModifierType::NARAKA_FLAK,       "Heavy Flak Shrapnel",                 "Volcanic underworld foundry where demon dreadnoughts are forged. Conqueror Indrajit strikes at wave 25.", { 730, 220 }, COLOR_RED_BRIGHT },
-    { 7, "Mahayuddha Citadel", "Throne of the Demon Sovereign",26, 30, 30, "Tyrant Hiranyakashipu", RealmModifierType::MAHAYUDDHA_DISTORT, "Reality Distortion Field",            "Epicenter of the Asura Dominion. Confront the immortal tyrant Hiranyakashipu in the final wave 30 clash.", { 820, 140 }, COLOR_ORANGE_BRIGHT }
+constexpr int WAVES_PER_ACT = 30;
+inline const std::array<CampaignRealm, 10> CAMPAIGN_REALMS = {{
+    { 1, "Swarga Outpost",      "Gate of Indra",                1,   30,  30, "TYRANT HIRANYAKASHIPU",  RealmModifierType::SWARGA_AETHER,     "Celestial Aether // +15% speed",       "Act I: break the Asura blockade around Indra's orbital sanctuary. Thirty escalating fleet waves culminate in six boss encounters.", { 110, 155 }, COLOR_CYAN_BRIGHT },
+    { 2, "Kshira Sagara",       "Ocean of Celestial Nectar",   31,   60,  60, "MEGHNADA, STORM ILLUSIONIST", RealmModifierType::KSHIRA_VORTEX,     "Vortex currents // drifting fire",      "Act II: cross the luminous ocean while hostile fleets attack in coordinated waves and storm craft contest the route.", { 278, 155 }, { 100, 220, 255, 255 } },
+    { 3, "Dandaka Void",        "Forest of Eternal Shadows",   61,   90,  90, "VRITRA, SKY-SEALING SERPENT", RealmModifierType::DANDAKA_JAMMING,   "Sensor jamming // stealth raiders",     "Act III: hunt through a shadowed asteroid forest filled with ambush wings, mines, and elite hunter squadrons.", { 446, 155 }, COLOR_PURPLE_BRIGHT },
+    { 4, "Lanka Approach",      "The Molten Bastion",          91,  120, 120, "TITAN KUMBHAKARNA",       RealmModifierType::LANKA_MOLTEN_FIRE, "Molten void // +15% fire damage",      "Act IV: assault the outer planetary defense network of Ravana's citadel under volleys of molten flak.", { 614, 155 }, COLOR_GOLD_BRIGHT },
+    { 5, "Setu Expanse",        "Bridge of Floating Spheres", 121,  150, 150, "EMPEROR RAVANA",          RealmModifierType::SETU_DRIFT,        "Hyperlane drift // +20% dash",          "Act V: fight across a fractured bridge of magnetized worlds as enemy formations try to push your fleet into the void.", { 782, 155 }, COLOR_GREEN_BRIGHT },
+    { 6, "Naraka Forge",        "Foundry of Asura Warships",  151,  180, 180, "WARLORD MAHISHASURA",     RealmModifierType::NARAKA_FLAK,       "Forge flak // extra shrapnel",          "Act VI: penetrate the underworld shipyards and survive mass-produced dreadnought squadrons.", { 782, 315 }, COLOR_RED_BRIGHT },
+    { 7, "Mahayuddha Citadel",  "Throne of the Demon Sovereign",181, 210, 210, "MAKARA, ABYSSAL LEVIATHAN", RealmModifierType::MAHAYUDDHA_DISTORT, "Reality distortion field",             "Act VII: break the command fleets defending the Asura throne and face the immortal sovereign.", { 614, 315 }, COLOR_ORANGE_BRIGHT },
+    { 8, "Indra's Thunderhead", "Storm Crown of Amaravati",  211,  240, 240, "CONQUEROR INDRAJIT",      RealmModifierType::KSHIRA_VORTEX,     "Charged atmosphere // drifting fire",   "Act VIII: climb into a planet-sized electrical storm where whole interceptor wings dive from the cloud sea.", { 446, 315 }, { 130, 190, 255, 255 } },
+    { 9, "Ananta Rift",         "The Serpent Between Stars",  241,  270, 270, "TYRANT HIRANYAKASHIPU",  RealmModifierType::DANDAKA_JAMMING,   "Rift interference // sensor jamming",  "Act IX: navigate unstable portals and coordinated ambush fleets at the edge of known space.", { 278, 315 }, { 100, 245, 205, 255 } },
+    { 10,"Dharma's Last Stand", "The Eternal Armada",         271,  300, 300, "MEGHNADA, STORM ILLUSIONIST", RealmModifierType::MAHAYUDDHA_DISTORT, "Cosmic distortion // final escalation", "Act X: the final thirty-wave campaign. Every Asura armada converges for the climactic defense of the celestial realms.", { 110, 315 }, COLOR_GOLD_BRIGHT }
 }};
 
 inline const CampaignRealm& GetCampaignRealmForWave(int wave) {
-    int effective = ((wave - 1) % 30) + 1;
-    for (const auto& realm : CAMPAIGN_REALMS) {
-        if (effective >= realm.start_wave && effective <= realm.end_wave) return realm;
-    }
-    return CAMPAIGN_REALMS[6];
+    const int raw_act_index = wave > 0 ? (wave - 1) / WAVES_PER_ACT : 0;
+    const int act_index = raw_act_index < static_cast<int>(CAMPAIGN_REALMS.size())
+        ? raw_act_index : static_cast<int>(CAMPAIGN_REALMS.size()) - 1;
+    return CAMPAIGN_REALMS[act_index];
+}
+
+inline int CampaignActForWave(int wave) {
+    return wave > 0 ? ((wave - 1) / WAVES_PER_ACT) + 1 : 1;
+}
+inline int CampaignWaveWithinAct(int wave) {
+    return wave > 0 ? ((wave - 1) % WAVES_PER_ACT) + 1 : 1;
 }
 
 // Backward-compatibility alias for legacy code
 using RealmData = CampaignRealm;
-inline const std::array<CampaignRealm, 7>& REALMS = CAMPAIGN_REALMS;
+inline const std::array<CampaignRealm, 10>& REALMS = CAMPAIGN_REALMS;
 inline const CampaignRealm& GetRealmForWave(int wave) { return GetCampaignRealmForWave(wave); }
 
 // ── Currency & Armory ─────────────────────────────────────────────────────────

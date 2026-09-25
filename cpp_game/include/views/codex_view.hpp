@@ -113,10 +113,10 @@ public:
 private:
     int get_item_count() const {
         switch (m_active_tab) {
-            case CodexTab::REALMS: return 7;
+            case CodexTab::REALMS: return static_cast<int>(CAMPAIGN_REALMS.size());
             case CodexTab::VIMANAS: return static_cast<int>(SHIP_FLEET.size());
             case CodexTab::ASURAS: return 5;
-            case CodexTab::BOSSES: return 5;
+            case CodexTab::BOSSES: return 8;
             case CodexTab::SYNERGIES: return static_cast<int>(ALL_SYNERGIES.size());
         }
         return 0;
@@ -129,13 +129,16 @@ private:
         if (m_active_tab == CodexTab::REALMS) {
             struct RInfo { const char* name; const char* waves; const char* boss; const char* lore; const char* tactic; };
             static const RInfo realms[] = {
-                { "Swarga Outpost", "Waves 1-3", "None", "Indra's orbital gate protecting the higher planes. Scouting waves test perimeter defenses.", "High agility skiffs. Focus on keeping combos active." },
-                { "Kshira Sagara", "Waves 4-6", "Makara Leviathan", "The celestial Ocean of Milk. Glowing tides of stellar dust and ancient relics.", "Flank Makara when he coils to discharge vortex orbs." },
-                { "Dandaka Void", "Waves 7-10", "Indrajit Ravana", "Dark nebulas filled with asteroid mines and camouflaged demon raiders.", "Avoid colliding with dark matter clusters; conserve dash charges." },
-                { "Lanka Approach", "Waves 11-15", "Kumbhakarna", "The outer perimeter of Ravana's golden citadel, guarded by heavy siege engines.", "Kumbhakarna deploys wide flak barriers; target his core vents." },
-                { "Setu Expanse", "Waves 16-20", "Meghnada Stormlord", "A colossal bridge of floating planetary cores woven with electromagnetic webs.", "Meghnada conjures illusions; look for the true radar ping." },
-                { "Naraka Forge", "Waves 21-25", "None", "Subterranean magma pits generating legions of biomechanical Asuras.", "Thermal aura gradually heats hull; pick up Amrita promptly." },
-                { "Mahayuddha Citadel", "Waves 26-30", "Emperor Hiranyakashipu", "The throne of darkness. The ultimate clash for universal cosmic dharma.", "Immortal aura requires shattering solar beacons to inflict harm." }
+                { "Swarga Outpost", "Waves 1-30", "Tyrant Hiranyakashipu", "Act I: break the Asura blockade around Indra's orbital sanctuary. Fleet formations intensify through thirty waves.", "Move between attack lanes; save dash charges for the boss volleys." },
+                { "Kshira Sagara", "Waves 31-60", "Meghnada", "Act II: cross the luminous ocean while coordinated storm craft contest the route.", "Keep moving through the drifting projectile currents." },
+                { "Dandaka Void", "Waves 61-90", "Vritra", "Act III: shadowed asteroid forests hide mines, ambush wings, and elite hunter squadrons.", "Track the full formation and avoid getting pinned at the edge." },
+                { "Lanka Approach", "Waves 91-120", "Titan Kumbhakarna", "Act IV: assault the outer planetary defense network of Ravana's citadel under molten flak.", "Prioritize shooter ships before they create crossfire." },
+                { "Setu Expanse", "Waves 121-150", "Emperor Ravana", "Act V: fight across a fractured bridge of magnetized worlds as armadas push from both flanks.", "Use the open lanes between siege formations." },
+                { "Naraka Forge", "Waves 151-180", "Warlord Mahishasura", "Act VI: penetrate underworld shipyards and survive mass-produced dreadnought squadrons.", "Take down support ships before engaging armored targets." },
+                { "Mahayuddha Citadel", "Waves 181-210", "Makara Leviathan", "Act VII: break command fleets defending the Asura throne and face the deep's leviathan.", "Watch the boss telegraph and reposition before its ring attack." },
+                { "Indra's Thunderhead", "Waves 211-240", "Conqueror Indrajit", "Act VIII: climb a planet-sized electrical storm as interceptor wings dive from the cloud sea.", "Keep moving; Indrajit's mirage volleys punish stationary pilots." },
+                { "Ananta Rift", "Waves 241-270", "Tyrant Hiranyakashipu", "Act IX: navigate unstable portals and coordinated ambush fleets at the edge of known space.", "Read the warning markers and preserve a clear escape route." },
+                { "Dharma's Last Stand", "Waves 271-300", "Meghnada", "Act X: the final thirty-wave campaign. Every Asura armada converges for the celestial realms.", "Use upgrades and boons together; the final act is the toughest fleet gauntlet." }
             };
 
             static const char* realm_bg_files[] = {
@@ -145,10 +148,13 @@ private:
                 "realm_lanka_approach.png",
                 "realm_setu_expanse.png",
                 "realm_naraka_forge.png",
+                "realm_mahayuddha_citadel.png",
+                "realm_kshira_sagara.png",
+                "realm_dandaka_void.png",
                 "realm_mahayuddha_citadel.png"
             };
 
-            for (int i = 0; i < 7; ++i) {
+            for (int i = 0; i < static_cast<int>(CAMPAIGN_REALMS.size()); ++i) {
                 Rectangle item_rec = { list_box.x + 8, list_box.y + 10 + i * 36.0f, list_box.width - 16, 32 };
                 bool sel = (m_selected_index == i);
                 if (sel) DrawRectangleRec(item_rec, COLOR_SURFACE_HIGH);
@@ -247,14 +253,17 @@ private:
         else if (m_active_tab == CodexTab::BOSSES) {
             struct BossIntel { const char* name; const char* wave; const char* title; const char* telegraph; const char* strat; const char* sprite; };
             static const BossIntel bosses[] = {
-                { "Makara Leviathan", "Wave 6 Boss", "Terror of Kshira Sagara", "1.2s warning banner before discharging concentric Void Orbs.", "Maintain distance during vortex charge; attack during recovery cool-down.", "boss_makara" },
-                { "Indrajit Ravana", "Wave 10 Boss", "Lord of Lanka & Sorcery", "Invisibility cloaking followed by illusion clones and poison darts.", "Track true radar ping; detonate Chakram to dispel illusion doubles.", "boss_indrajit.png" },
-                { "Kumbhakarna", "Wave 15 Boss", "The Sleeping Colossus", "Audible siren and red targeting laser preceding mega-beam discharge.", "Heavy armor deflects frontal shots. Maneuver behind the titan to hit exhaust vents.", "boss_kumbhakarna" },
-                { "Meghnada Stormlord", "Wave 20 Boss", "Master of Illusion & Thunder", "Lightning arc telegraph creates glowing danger zones before striking.", "Use Vajra Flares to dissolve lightning traps and reveal his genuine position.", "boss_indrajit.png" },
-                { "Hiranyakashipu", "Wave 30 Final Boss", "Immortal Demon Emperor", "Charges apocalyptic Brahmashira cannon with full-screen crimson reticle.", "Deploy Brahmastra bombs to break invulnerability shield; prioritize dodging over DPS.", "boss_hiranyakashipu.png" }
+                { "Kumbhakarna", "Boss waves in every act", "The Sleeping Colossus", "Seismic stomp and broad, heavy projectile arcs pressure the whole squadron.", "Keep moving and use the gaps between volleys to attack.", "boss_kumbhakarna.png" },
+                { "Ravana", "Boss waves in every act", "Tenfold Emperor of Lanka", "Void spiral rings sweep across the arena and accelerate at low health.", "Read the rotation and dash through a safe lane instead of retreating to the edge.", "boss_ravana.png" },
+                { "Mahishasura", "Boss waves in every act", "The Unyielding Buffalo King", "A heavy targeted lance fan follows the telegraphed charge.", "Break formation and sidestep the center line before the burst lands.", "boss_mahishasura.png" },
+                { "Makara Leviathan", "Boss waves in every act", "Terror of the Celestial Deep", "Tidal lance spreads and rotating ocean rings leave a moving safe lane.", "Track the opening in the ring and attack during its recovery.", "boss_makara.png" },
+                { "Conqueror Indrajit", "Boss waves in every act", "Master of Illusions & Astras", "Phase-shift cloak precedes a teleport and a serpent-arrow fan.", "Avoid firing into the cloak; reposition when the new attack marker appears.", "boss_indrajit.png" },
+                { "Hiranyakashipu", "Boss waves in every act", "Immortal Demon Sovereign", "An invulnerability pact guards his radial wrath burst in the final phase.", "Survive the burst, then punish the recovery window.", "boss_hiranyakashipu.png" },
+                { "Meghnada", "Boss waves in every act", "Storm Illusionist of Lanka", "A lightning fan and teleporting crossfire target the pilot's last position.", "Keep moving during the warning and avoid the marked firing lane.", "boss_meghnada.png" },
+                { "Vritra", "Boss waves in every act", "Sky-Sealing Serpent", "Heavy storm bolts precede a descending wall with a telegraphed safe corridor.", "Move into the highlighted corridor before the wall reaches the arena.", "boss_vritra.png" }
             };
 
-            for (int i = 0; i < 5; ++i) {
+            for (int i = 0; i < 8; ++i) {
                 Rectangle item_rec = { list_box.x + 8, list_box.y + 10 + i * 36.0f, list_box.width - 16, 32 };
                 bool sel = (m_selected_index == i);
                 if (sel) DrawRectangleRec(item_rec, COLOR_SURFACE_HIGH);

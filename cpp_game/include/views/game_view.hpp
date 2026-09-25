@@ -45,13 +45,13 @@ public:
           m_team_transcendence_timer(0.0f),
           m_total_team_score(0),
           m_net_snapshot_timer(0.0f),
-          m_btn_resume(      { SCREEN_WIDTH / 2.0f - 130, 242, 260, 34 }, "RESUME COMBAT",       COLOR_GOLD_BRIGHT),
-          m_btn_restart_wave({ SCREEN_WIDTH / 2.0f - 130, 284, 260, 34 }, "RESTART WAVE",        COLOR_CYAN_BRIGHT),
-          m_btn_exit(        { SCREEN_WIDTH / 2.0f - 130, 326, 260, 34 }, "ABORT TO CAMPAIGN",   COLOR_RED_BRIGHT),
-          m_btn_quit_title(  { SCREEN_WIDTH / 2.0f - 130, 368, 260, 34 }, "QUIT TO TITLE",       COLOR_ORANGE_BRIGHT),
-          m_btn_quit_desktop({ SCREEN_WIDTH / 2.0f - 130, 410, 260, 34 }, "QUIT TO DESKTOP",     COLOR_MUTED),
-          m_btn_confirm_abort({ SCREEN_WIDTH / 2.0f - 135, 340, 130, 32 }, "CONFIRM",            COLOR_RED_BRIGHT),
-          m_btn_cancel_abort( { SCREEN_WIDTH / 2.0f +   5, 340, 130, 32 }, "CANCEL",             COLOR_CYAN_BRIGHT)
+          m_btn_resume(      { SCREEN_WIDTH / 2.0f - 130, 262, 260, 34 }, "RESUME COMBAT",       COLOR_GOLD_BRIGHT, "", UI::ButtonKind::PRIMARY),
+          m_btn_restart_wave({ SCREEN_WIDTH / 2.0f - 130, 304, 260, 34 }, "RESTART WAVE",        COLOR_CYAN_BRIGHT, "", UI::ButtonKind::SECONDARY),
+          m_btn_exit(        { SCREEN_WIDTH / 2.0f - 130, 346, 260, 34 }, "ABORT TO MAP",        COLOR_RED_BRIGHT, "", UI::ButtonKind::DESTRUCTIVE),
+          m_btn_quit_title(  { 0, 0, 0, 0 }, "QUIT TO TITLE",       COLOR_ORANGE_BRIGHT, "", UI::ButtonKind::TERTIARY),
+          m_btn_quit_desktop({ 0, 0, 0, 0 }, "QUIT TO DESKTOP",     COLOR_MUTED, "", UI::ButtonKind::GHOST),
+          m_btn_confirm_abort({ SCREEN_WIDTH / 2.0f - 135, 340, 130, 32 }, "CONFIRM",            COLOR_RED_BRIGHT, "", UI::ButtonKind::DESTRUCTIVE),
+          m_btn_cancel_abort( { SCREEN_WIDTH / 2.0f +   5, 340, 130, 32 }, "CANCEL",             COLOR_CYAN_BRIGHT, "", UI::ButtonKind::SECONDARY)
     {
         init();
     }
@@ -100,9 +100,8 @@ public:
         int squad_size = 1
     ) {
         m_difficulty = diff;
-        if (starting_wave <= 1) {
-            m_run_duration = 0.0f;
-        }
+        m_run_duration = 0.0f;
+        m_run_recorded = false;
         m_is_coop_mode = (squad_size > 1 || NetworkManager::instance().role() != NetworkRole::OFFLINE);
         int num_players = m_is_coop_mode ? std::max(squad_size, (int)NetworkManager::instance().players().size()) : 1;
         if (num_players < 1) num_players = 1;
@@ -176,24 +175,28 @@ public:
         m_next_view = ViewType::GAMEPLAY;
 
         int next_w = m_wave_mgr.current_wave() + 1;
-        if (next_w > 30) {
-            m_next_view = m_is_coop_mode ? ViewType::MULTIPLAYER_RESULT : ViewType::VICTORY;
-        } else {
-            m_bullets.clear();
-            m_enemies.clear();
-            m_wave_mgr.prepare_wave(next_w);
-
-            // Boss scaling for co-op
-            if (m_wave_mgr.is_boss_wave() && m_wave_mgr.get_boss().active && m_squad.size() > 1) {
-                m_wave_mgr.get_boss().max_hp = static_cast<int>(m_wave_mgr.get_boss().max_hp * (1.0f + 0.50f * (m_squad.size() - 1)));
-                m_wave_mgr.get_boss().hp = m_wave_mgr.get_boss().max_hp;
+        const bool new_act = CampaignWaveWithinAct(next_w) == 1;
+        m_bullets.clear();
+        m_enemies.clear();
+        m_wave_mgr.prepare_wave(next_w);
+        ParallaxBackground::instance().set_realm(m_wave_mgr.get_realm_data());
+        if (new_act) {
+            for (auto& pilot : m_squad) {
+                pilot.hp = std::min(pilot.max_hp, pilot.hp + std::max(1, pilot.max_hp * 35 / 100));
+                pilot.lives = std::min(3, pilot.lives + 1);
             }
-
-            m_wave_start_hp = m_squad[0].hp;
-            m_wave_kills = 0;
-            m_last_boss_phase = 1;
-            m_boss_phase_flash_timer = 0.0f;
         }
+
+        // Boss scaling for co-op
+        if (m_wave_mgr.is_boss_wave() && m_wave_mgr.get_boss().active && m_squad.size() > 1) {
+            m_wave_mgr.get_boss().max_hp = static_cast<int>(m_wave_mgr.get_boss().max_hp * (1.0f + 0.50f * (m_squad.size() - 1)));
+            m_wave_mgr.get_boss().hp = m_wave_mgr.get_boss().max_hp;
+        }
+
+        m_wave_start_hp = m_squad[0].hp;
+        m_wave_kills = 0;
+        m_last_boss_phase = 1;
+        m_boss_phase_flash_timer = 0.0f;
     }
 
     const WaveResult& latest_wave_result() const { return m_last_wave_result; }
@@ -201,14 +204,38 @@ public:
     bool is_coop_mode() const { return m_is_coop_mode; }
     int total_team_score() const { return m_total_team_score; }
 
+    void record_ship_mastery() {
+        if (m_run_recorded || m_squad.empty() || !m_squad[0].archetype) return;
+        m_run_recorded = true;
+        const std::string ship_id = m_squad[0].archetype->id;
+        const int old_sorties = CurrencySystem::instance().ship_sorties(ship_id);
+        const int sorties = CurrencySystem::instance().record_ship_sortie(ship_id);
+        DBSystem::instance().save_game();
+        if (old_sorties < CurrencySystem::SHIP_MASTERY_SORTIES && sorties >= CurrencySystem::SHIP_MASTERY_SORTIES) {
+            AchievementSystem::instance().notify_event(
+                "VIMANA MASTERY // GOLDEN SKIN",
+                m_squad[0].archetype->name + " has completed 50 sorties and earned its gold finish.");
+        }
+    }
+
     void update(float dt, Vector2 mouse_pos) override {
         m_aim_pos = mouse_pos;
         NetworkManager::instance().update(dt);
         CoOpAstraSystem::instance().update(dt);
 
-        // Pause toggle: ESC, P, or Enter — multiple keys so a flaky focus
-        // or non-US keyboard layout doesn't leave the player stuck in combat.
-        if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ENTER)) {
+        // Hold combat on the first run until the pilot dismisses the tutorial.
+        // Rendering belongs in draw(); update must not issue graphics calls.
+        if (!DBSystem::instance().tutorial_shown()) {
+            if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) ||
+                IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_P)) {
+                DBSystem::instance().set_tutorial_shown(true);
+                DBSystem::instance().save_game();
+            }
+            return;
+        }
+
+        // Pause toggle: ESC or P only. ENTER is reserved for confirm / P2 fire.
+        if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_P)) {
             m_is_paused = !m_is_paused;
             m_confirm_abort = false; // reset confirm state on any toggle
         }
@@ -235,14 +262,6 @@ public:
                 }
                 if (m_btn_exit.update(mouse_pos)) {
                     m_confirm_abort = true; // Show confirmation panel
-                }
-                if (m_btn_quit_title.update(mouse_pos)) {
-                    if (m_is_coop_mode) NetworkManager::instance().leave_session();
-                    m_next_view = ViewType::TITLE;
-                }
-                if (m_btn_quit_desktop.update(mouse_pos)) {
-                    if (m_is_coop_mode) NetworkManager::instance().leave_session();
-                    CloseWindow(); // Graceful desktop quit
                 }
             } else {
                 // ARE YOU SURE? confirmation sub-panel
@@ -281,32 +300,43 @@ public:
                     p.pos.y = std::clamp(p.pos.y, 0.0f, (float)SCREEN_HEIGHT);
                 }
 
-                // Self-revive (solo only): hold R for 30s
-                if (i == 0 && IsKeyDown(KEY_R)) {
+                // Self-revive consumes a Soma and channels independently of bleed-out.
+                if (i == 0 && IsKeyDown(KEY_R) && p.inventory.soma_vials > 0) {
                     p.self_revive_timer += dt;
-                    if (p.self_revive_timer >= 30.0f) {
+                    if (p.self_revive_timer >= REVIVE_TIME) {
+                        p.inventory.soma_vials--;
                         p.is_downed = false;
                         p.hp = static_cast<int>(p.max_hp * 0.30f);
                         p.invincibility_timer = 2.0f;
                         p.self_revive_timer = 0.0f;
+                        p.downed_timer = 0.0f;
+                        p.last_stand_timer = 0.0f;
+                        alive_count++;
                         SoundSystem::instance().play_revive_complete();
-                        m_particles.add_floating_text(p.pos, "SELF-REVIVED!", COLOR_GREEN_BRIGHT);
+                        m_particles.add_floating_text(p.pos, "SOMA SELF-REVIVE!", COLOR_GREEN_BRIGHT);
+                        continue;
                     }
                 } else {
                     p.self_revive_timer = 0.0f;
                 }
 
-                // Last-standing auto-revive: 1 live player, auto-revive in 20s
+                // Last-standing auto-revive: bring one fallen pilot back before bleed-out.
                 if (alive_count == 1 && m_squad.size() > 1) {
-                    p.downed_timer += dt;
-                    if (p.downed_timer >= 20.0f) {
+                    p.last_stand_timer += dt;
+                    if (p.last_stand_timer >= LAST_STAND_REVIVE_TIME) {
                         p.is_downed = false;
                         p.hp = static_cast<int>(p.max_hp * 0.30f);
                         p.invincibility_timer = 2.0f;
                         p.downed_timer = 0.0f;
+                        p.self_revive_timer = 0.0f;
+                        p.last_stand_timer = 0.0f;
+                        alive_count++;
                         SoundSystem::instance().play_revive_complete();
                         m_particles.add_floating_text(p.pos, "EMERGENCY REVIVE!", COLOR_CYAN_BRIGHT);
+                        continue;
                     }
+                } else {
+                    p.last_stand_timer = 0.0f;
                 }
 
                 // Bleed-out: downed_timer expires → lose a life
@@ -319,6 +349,8 @@ public:
                         p.is_downed = false;
                         p.hp = static_cast<int>(p.max_hp * 0.25f);
                         p.invincibility_timer = 2.0f;
+                        p.self_revive_timer = 0.0f;
+                        p.last_stand_timer = 0.0f;
                         p.pos = { SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT * 0.78f };
                         SoundSystem::instance().play_sfx("powerup.wav", 0.8f);
                         m_particles.add_floating_text(p.pos,
@@ -326,6 +358,8 @@ public:
                     } else {
                         // No lives left → become spectator
                         p.is_spectator = true;
+                        p.self_revive_timer = 0.0f;
+                        p.last_stand_timer = 0.0f;
                         SoundSystem::instance().play_downed_alert();
                         m_particles.add_floating_text(p.pos, "ELIMINATED // SPECTATING", COLOR_MUTED);
                     }
@@ -337,6 +371,7 @@ public:
         bool any_alive = false;
         for (auto& p : m_squad) { if (!p.is_spectator) { any_alive = true; break; } }
         if (!any_alive) {
+            record_ship_mastery();
             m_next_view = ViewType::GAME_OVER;
             return;
         }
@@ -434,9 +469,10 @@ public:
                 p.is_downed = true;
                 p.downed_timer = 0.0f;
                 p.self_revive_timer = 0.0f;
+                p.last_stand_timer = 0.0f;
                 p.downed_count++;
                 p.hp = 0;
-                m_particles.add_floating_text(p.pos, "PILOT DOWNED // HOLD R TO REVIVE!", COLOR_RED_BRIGHT);
+                m_particles.add_floating_text(p.pos, "PILOT DOWNED // HOLD R + SOMA!", COLOR_RED_BRIGHT);
                 SoundSystem::instance().play_downed_alert();
             }
         }
@@ -554,9 +590,20 @@ public:
             if (m_wave_mgr.current_wave() >= 5)  AchievementSystem::instance().check_and_award("WAVE_5");
             if (m_wave_mgr.current_wave() >= 15) AchievementSystem::instance().check_and_award("WAVE_15");
             if (m_wave_mgr.current_wave() >= 30) AchievementSystem::instance().check_and_award("WAVE_30");
-            if (m_wave_mgr.is_boss_wave()) {
-                if (m_wave_mgr.current_wave() <= 6)  AchievementSystem::instance().check_and_award("BOSS_1");
-                if (m_wave_mgr.current_wave() >= 25) AchievementSystem::instance().check_and_award("BOSS_5");
+            const int act_wave = CampaignWaveWithinAct(m_wave_mgr.current_wave());
+            const bool boss_defeated = act_wave % 5 == 0;
+            std::string boss_ship_unlocked;
+            if (boss_defeated) {
+                const BossID defeated_boss = m_wave_mgr.get_boss().id;
+                if (defeated_boss == BossID::KUMBHAKARNA) AchievementSystem::instance().check_and_award("BOSS_1");
+                if (defeated_boss == BossID::RAVANA) AchievementSystem::instance().check_and_award("BOSS_5");
+                boss_ship_unlocked = CurrencySystem::instance().unlock_boss_reward(m_wave_mgr.get_boss().ship_reward_key);
+                if (!boss_ship_unlocked.empty()) {
+                    const ShipArchetype* reward_ship = GetShipArchetype(boss_ship_unlocked);
+                    AchievementSystem::instance().notify_event(
+                        "BOSS VIMANA COMMISSIONED",
+                        reward_ship->name + " is now available in the Hangar.");
+                }
             }
 
             PerformanceRank rank = PerformanceRank::B_RANK;
@@ -569,10 +616,13 @@ public:
             }
 
             int wave_score = 500 + m_squad[0].max_combo * 35;
-            int wave_prana = PRANA_REWARD_WAVE_CLEAR + (no_dmg ? BONUS_NO_DEATH : 0);
+            int act = CampaignActForWave(m_wave_mgr.current_wave());
+            int wave_prana = PRANA_REWARD_WAVE_CLEAR + std::min(250, (act - 1) * 10) + (no_dmg ? BONUS_NO_DEATH : 0);
+            if (boss_defeated) wave_prana += PRANA_REWARD_BOSS_DEFEAT;
 
             CurrencySystem::instance().add_prana_shards(wave_prana);
             DBSystem::instance().update_max_wave(m_wave_mgr.current_wave());
+            DBSystem::instance().save_game();
 
             // Projectile-based Dynamic Accuracy calculation
             int acc = (m_squad[0].shots_fired > 0) ? static_cast<int>((m_squad[0].shots_hit * 100) / m_squad[0].shots_fired) : 100;
@@ -590,6 +640,7 @@ public:
                 perfect,
                 rank
             };
+            m_last_wave_result.boss_ship_unlocked = boss_ship_unlocked;
 
             m_next_view = ViewType::WAVE_CLEAR;
         }
@@ -655,12 +706,7 @@ public:
         Boss* boss_ptr = m_wave_mgr.is_boss_wave() ? &m_wave_mgr.get_boss() : nullptr;
         UI::HUD::draw(m_squad, m_wave_mgr.current_wave(), realm, boss_ptr, m_enemies, m_team_combo, m_team_transcendence_timer, title_f, body_f);
 
-        // Persistent [ESC] PAUSE reminder — always visible during active gameplay
-        // so pilots know how to suspend the run.
-        Rectangle esc_hint = { SCREEN_WIDTH - 130.0f, 8.0f, 122.0f, 18.0f };
-        DrawRectangleRec(esc_hint, ColorAlpha(COLOR_SURFACE_HIGH, 0.55f));
-        DrawRectangleLinesEx(esc_hint, 1.0f, ColorAlpha(COLOR_GOLD, 0.5f));
-        DrawText("[ESC] PAUSE", static_cast<int>(esc_hint.x + 12), static_cast<int>(esc_hint.y + 3), 11, COLOR_GOLD_BRIGHT);
+        // ESC hint lives in pause menu only, not during fight.
 
         // Pulsing PAUSED banner at top-center — guaranteed visibility even if
         // the pause panel below somehow fails to render.
@@ -709,11 +755,11 @@ public:
             DrawText("TEAM TRANSCENDENCE ACTIVE: +20% DMG, +10% SPD", SCREEN_WIDTH / 2 - 180, 52, 12, ColorAlpha(COLOR_GOLD_BRIGHT, 0.7f + 0.3f * t_pulse));
         }
 
-        // -- Low-HP Vignette & Critical Warning ----------------------------------
+        // -- Low-HP Vignette & Critical Warning (above hull bar, not on it) -
         if (m_squad[0].hp <= 35 && !m_squad[0].is_downed) {
             float pulse = 0.5f + 0.5f * std::sin(GetTime() * 10.0f);
             DrawRectangleLinesEx({ 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT }, 10.0f, ColorAlpha(COLOR_RED_BRIGHT, 0.2f + 0.4f * pulse));
-            DrawText("[!] HULL INTEGRITY CRITICAL // USE SOMA [C] [!]", SCREEN_WIDTH / 2 - 170, SCREEN_HEIGHT - 45, 12, ColorAlpha(COLOR_RED_BRIGHT, 0.8f + 0.2f * pulse));
+            DrawText("[!] HULL CRITICAL // SOMA [C] [!]", SCREEN_WIDTH / 2 - 130, SCREEN_HEIGHT - 90, 12, ColorAlpha(COLOR_RED_BRIGHT, 0.8f + 0.2f * pulse));
         }
 
         // Story Transmission
@@ -738,8 +784,8 @@ public:
                 Rectangle info_rec = { pause_box.x + 20, pause_box.y + 44, pause_box.width - 40, 68 };
                 UI::DrawChamferedPanel(info_rec, COLOR_MUTED, COLOR_SURFACE_MID, 4.0f);
                 DrawTextEx(body_f, "PILOT FLIGHT CONTROLS:", { info_rec.x + 10, info_rec.y + 6 }, 10, 1.0f, COLOR_MUTED);
-                DrawTextEx(body_f, "[WASD] Movement  -  [L-Click] Fire  -  [SPACE] Warp Dash", { info_rec.x + 10, info_rec.y + 22 }, 11, 1.0f, COLOR_GOLD_BRIGHT);
-                DrawTextEx(body_f, "[Q/E] Chakram  -  [F] Brahmastra  -  [C] Soma  -  [V] Vajra", { info_rec.x + 10, info_rec.y + 38 }, 11, 1.0f, COLOR_CYAN_BRIGHT);
+                DrawTextEx(body_f, "[WASD] Move  -  [LMB/Space] Fire  -  [Shift/RMB] Dash", { info_rec.x + 10, info_rec.y + 22 }, 11, 1.0f, COLOR_GOLD_BRIGHT);
+                DrawTextEx(body_f, "[Q] Chakram  -  [F] Bomb  -  [C] Soma  -  [V] Flare  -  [E] Revive", { info_rec.x + 10, info_rec.y + 38 }, 11, 1.0f, COLOR_CYAN_BRIGHT);
 
                 if (m_is_coop_mode) {
                     std::string ping_str = "LAN CO-OP ONLINE // PING: " + std::to_string(NetworkManager::instance().ping_ms()) + "ms";
@@ -749,8 +795,6 @@ public:
                 m_btn_resume.draw(title_f);
                 m_btn_restart_wave.draw(title_f);
                 m_btn_exit.draw(title_f);
-                m_btn_quit_title.draw(title_f);
-                m_btn_quit_desktop.draw(title_f);
             } else {
                 // Inline Confirmation Panel
                 Rectangle conf_box = { SCREEN_WIDTH / 2.0f - 190, 180, 380, 200 };
@@ -763,6 +807,26 @@ public:
                 m_btn_confirm_abort.draw(title_f);
                 m_btn_cancel_abort.draw(title_f);
             }
+        }
+
+        // First-fight tutorial overlay is drawn after the frozen scene/HUD.
+        if (!DBSystem::instance().tutorial_shown()) {
+            const Rectangle tut_box = { 100.0f, 125.0f, 700.0f, 310.0f };
+            UI::DrawYantraPanel(tut_box, COLOR_GOLD, COLOR_SURFACE_LOW, 6.0f, true);
+
+            const char* tutorial_title = "VIMANA WARS // FIRST FIGHT";
+            const Vector2 title_size = MeasureTextEx(title_f, tutorial_title, 24.0f, 1.0f);
+            DrawTextEx(title_f, tutorial_title,
+                       { SCREEN_WIDTH * 0.5f - title_size.x * 0.5f, tut_box.y + 30.0f },
+                       24.0f, 1.0f, COLOR_GOLD_BRIGHT);
+            DrawTextEx(body_f, "MOVE: WASD / Arrow Keys", { tut_box.x + 50.0f, tut_box.y + 95.0f }, 16.0f, 1.0f, COLOR_CYAN_BRIGHT);
+            DrawTextEx(body_f, "SHOOT: LMB / Space", { tut_box.x + 50.0f, tut_box.y + 130.0f }, 16.0f, 1.0f, COLOR_CYAN_BRIGHT);
+            DrawTextEx(body_f, "DASH: Shift / RMB", { tut_box.x + 50.0f, tut_box.y + 165.0f }, 16.0f, 1.0f, COLOR_CYAN_BRIGHT);
+            const char* tutorial_prompt = "SPACE / ENTER / ESC — CONTINUE";
+            const Vector2 prompt_size = MeasureTextEx(body_f, tutorial_prompt, 14.0f, 1.0f);
+            DrawTextEx(body_f, tutorial_prompt,
+                       { SCREEN_WIDTH * 0.5f - prompt_size.x * 0.5f, tut_box.y + 245.0f },
+                       14.0f, 1.0f, COLOR_PARCHMENT);
         }
 
         if (g_scanlines_enabled) UI::DrawScanlines();
@@ -780,7 +844,8 @@ public:
             case Difficulty::NOVICE: return "easy";
             case Difficulty::KSHATRIYA: return "normal";
             case Difficulty::ASURA_SLAYER: return "hard";
-            case Difficulty::CHAKRAVYUHA: return "endless";
+            // CHAKRAVYUHA is the hardest campaign tier, not Endless mode.
+            case Difficulty::CHAKRAVYUHA: return "hard";
             default: return "normal";
         }
     }
@@ -793,6 +858,7 @@ private:
     bool m_is_coop_mode;
     Difficulty m_difficulty = Difficulty::KSHATRIYA;
     float m_run_duration = 0.0f;
+    bool m_run_recorded = false;
     int m_team_combo;
     float m_team_transcendence_timer;
     int m_total_team_score;

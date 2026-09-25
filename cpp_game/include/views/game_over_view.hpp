@@ -22,9 +22,9 @@ public:
           m_is_new_high_score(false),
           m_duration(0.0f),
           m_difficulty("normal"),
-          m_btn_replay({ SCREEN_WIDTH / 2.0f - 220, 470, 135, 40 }, "FLY AGAIN", COLOR_GOLD_BRIGHT),
-          m_btn_profile({ SCREEN_WIDTH / 2.0f - 75, 470, 150, 40 }, "PILOT PROFILE", COLOR_CYAN_BRIGHT),
-          m_btn_menu({ SCREEN_WIDTH / 2.0f + 85, 470, 135, 40 }, "MAIN MENU", COLOR_MUTED)
+          m_btn_replay({ SCREEN_WIDTH / 2.0f - 220, 470, 135, 40 }, "FLY AGAIN", COLOR_GOLD_BRIGHT, "", Vimana::UI::ButtonKind::PRIMARY),
+          m_btn_profile({ SCREEN_WIDTH / 2.0f - 75, 470, 150, 40 }, "PILOT PROFILE", COLOR_CYAN_BRIGHT, "", Vimana::UI::ButtonKind::SECONDARY),
+          m_btn_menu({ SCREEN_WIDTH / 2.0f + 85, 470, 135, 40 }, "MAIN MENU", COLOR_MUTED, "", Vimana::UI::ButtonKind::GHOST)
     {
         init();
     }
@@ -107,7 +107,7 @@ public:
             Vector2 v_sz = MeasureTextEx(title_font, vic, 24, 1.0f);
             DrawTextEx(title_font, vic, { (SCREEN_WIDTH - v_sz.x) / 2.0f, card.y + 20 }, 24, 1.0f, COLOR_GOLD_BRIGHT);
 
-            const char* sub = "EMPEROR HIRANYAKASHIPU VANQUISHED - NARASIMHA AWAKENS!";
+            const char* sub = "FINAL ARMADA VANQUISHED // TEN ACTS OF DHARMA RESTORED";
             Vector2 s_sz = MeasureTextEx(body_font, sub, 11, 1.0f);
             DrawTextEx(body_font, sub, { (SCREEN_WIDTH - s_sz.x) / 2.0f, card.y + 50 }, 11, 1.0f, COLOR_CYAN_BRIGHT);
         } else {

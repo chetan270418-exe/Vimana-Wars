@@ -25,7 +25,7 @@ public:
           m_ip_focused(false),
           m_cloud_status("Querying active online lobbies..."),
           m_btn_quick({ 580, 100, 260, 34 }, "QUICK LOCAL SQUAD", COLOR_GOLD_BRIGHT),
-          m_btn_create_cloud({ 580, 142, 260, 34 }, "HOST ONLINE CLOUD LOBBY", COLOR_GOLD_BRIGHT),
+            m_btn_create_cloud({ 580, 142, 260, 34 }, "LIST ONLINE ROOM (BETA)", COLOR_GOLD_BRIGHT),
           m_btn_create({ 580, 184, 260, 32 }, "HOST LOCAL LAN [7704]", COLOR_CYAN_BRIGHT),
           m_btn_join_lan({ 580, 280, 260, 34 }, "JOIN LAN HOST >>", COLOR_GREEN_BRIGHT),
           m_btn_duel({ 580, 322, 260, 32 }, "1V1 ARENA DUEL", COLOR_ORANGE_BRIGHT),
@@ -96,8 +96,7 @@ public:
             for (const auto& lob : m_lobbies) {
                 Rectangle row_rec = { 45, static_cast<float>(ly - 4), 490, 34 };
                 if (CheckCollisionPointRec(mouse_pos, row_rec) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-                    m_in_room = true;
-                    NetworkManager::instance().join_session(m_target_ip, 7704, DBSystem::instance().player_name(), "pushpaka");
+                    m_cloud_status = "ROOM " + lob.code + " SELECTED // online rooms are directory-only; combat uses LAN host IP";
                     break;
                 }
                 ly += 42;
@@ -127,8 +126,11 @@ public:
             // Browser View Actions
             if (m_btn_create_cloud.update(mouse_pos)) {
                 AccountSystem::instance().create_lobby("campaign", 4, "garuda", [this](bool success, const std::string& code, const std::string& msg) {
-                    m_in_room = true;
-                    NetworkManager::instance().host_session(DBSystem::instance().player_name(), "garuda", 7704);
+                    if (success) {
+                        m_cloud_status = "ROOM " + code + " LISTED // directory only; public combat relay is not configured";
+                    } else {
+                        m_cloud_status = msg;
+                    }
                 });
             } else if (m_btn_create.update(mouse_pos)) {
                 m_in_room = true;

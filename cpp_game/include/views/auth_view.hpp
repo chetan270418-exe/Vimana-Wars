@@ -77,14 +77,14 @@ public:
           m_status_msg("Sign in with your pilot account or play as guest"),
           m_status_is_error(false),
           m_is_loading(false),
-          m_btn_tab_login({ 140, 80, 150, 34 }, "1. SIGN IN", COLOR_GOLD_BRIGHT),
-          m_btn_tab_register({ 300, 80, 150, 34 }, "2. REGISTER", COLOR_CYAN_BRIGHT),
-          m_btn_tab_verify({ 460, 80, 140, 34 }, "3. VERIFY", COLOR_GREEN_BRIGHT),
-          m_btn_tab_reset({ 610, 80, 150, 34 }, "4. RESET PW", COLOR_ORANGE_BRIGHT),
-          m_btn_submit({ 320, 410, 260, 42 }, "SIGN IN TO CLOUD", COLOR_GOLD_BRIGHT),
-          m_btn_guest({ 320, 462, 260, 36 }, "PLAY AS GUEST (OFFLINE)", COLOR_CYAN_BRIGHT),
-          m_btn_toggle_pw({ 665, 255, 75, 32 }, "SHOW", COLOR_MUTED),
-          m_btn_back({ 40, 525, 120, 36 }, "TITLE", COLOR_MUTED)
+          m_btn_tab_login({ 140, 80, 150, 34 }, "1. SIGN IN", COLOR_GOLD_BRIGHT, "", Vimana::UI::ButtonKind::PRIMARY),
+          m_btn_tab_register({ 300, 80, 150, 34 }, "2. REGISTER", COLOR_CYAN_BRIGHT, "", Vimana::UI::ButtonKind::SECONDARY),
+          m_btn_tab_verify({ 460, 80, 140, 34 }, "3. VERIFY", COLOR_GREEN_BRIGHT, "", Vimana::UI::ButtonKind::TERTIARY),
+          m_btn_tab_reset({ 610, 80, 150, 34 }, "4. RESET PW", COLOR_ORANGE_BRIGHT, "", Vimana::UI::ButtonKind::TERTIARY),
+          m_btn_submit({ 320, 410, 260, 42 }, "SIGN IN TO CLOUD", COLOR_GOLD_BRIGHT, "", Vimana::UI::ButtonKind::PRIMARY),
+          m_btn_guest({ 320, 462, 260, 36 }, "PLAY AS GUEST (OFFLINE)", COLOR_CYAN_BRIGHT, "", Vimana::UI::ButtonKind::SECONDARY),
+          m_btn_toggle_pw({ 665, 255, 75, 32 }, "SHOW", COLOR_MUTED, "", Vimana::UI::ButtonKind::GHOST),
+          m_btn_back({ 40, 525, 120, 36 }, "TITLE", COLOR_MUTED, "", Vimana::UI::ButtonKind::GHOST)
     {
         init();
     }

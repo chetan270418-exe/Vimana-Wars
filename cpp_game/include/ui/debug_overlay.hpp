@@ -22,35 +22,37 @@ public:
     bool boss_jump_requested = false;
 
     void update() {
-        // F1: Toggle Hitboxes
+        // F1: Toggle Hitboxes (always safe)
         if (IsKeyPressed(KEY_F1)) {
             show_hitboxes = !show_hitboxes;
             std::cout << "[DEBUG] Hitboxes: " << (show_hitboxes ? "ON" : "OFF") << std::endl;
         }
 
-        // F2: Skip to Next Wave
+        // F2: Skip to Next Wave (always safe - dev helper)
         if (IsKeyPressed(KEY_F2)) {
             skip_wave_requested = true;
             std::cout << "[DEBUG] Skip Wave Triggered" << std::endl;
         }
 
-        // F3: Add 1000 Prana Shards
+#if defined(_DEBUG) || defined(VIMANA_DEBUG)
+        // F3: Add 1000 Prana Shards - DEBUG BUILD ONLY
         if (IsKeyPressed(KEY_F3)) {
             CurrencySystem::instance().add_prana_shards(1000);
             std::cout << "[DEBUG] Added 1000 Prana Shards" << std::endl;
         }
 
-        // F4: God Mode
+        // F4: God Mode - DEBUG BUILD ONLY
         if (IsKeyPressed(KEY_F4)) {
             god_mode = !god_mode;
             std::cout << "[DEBUG] God Mode: " << (god_mode ? "ENABLED" : "DISABLED") << std::endl;
         }
 
-        // F5: Jump to Boss Wave
+        // F5: Jump to Boss Wave - DEBUG BUILD ONLY
         if (IsKeyPressed(KEY_F5)) {
             boss_jump_requested = true;
             std::cout << "[DEBUG] Jump to Boss Wave Triggered" << std::endl;
         }
+#endif
 
         // F7: Toggle FPS Overlay
         if (IsKeyPressed(KEY_F7)) {

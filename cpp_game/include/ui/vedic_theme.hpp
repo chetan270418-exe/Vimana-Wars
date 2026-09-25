@@ -5,6 +5,7 @@
 #include <algorithm>
 #include "raylib.h"
 #include "core/constants.hpp"
+#include "ui/design_tokens.hpp"   // ElevationStyle, PAL_*, Type, Space, Chamfer
 
 namespace Vimana::UI {
 
@@ -240,6 +241,283 @@ inline void DrawScanlines() {
     for (int y = 0; y < SCREEN_HEIGHT; y += 4) {
         DrawLine(0, y, SCREEN_WIDTH, y, { 0, 0, 0, 18 });
     }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// DESIGN-SYSTEM COMPONENTS  (see design_tokens.hpp)
+// ════════════════════════════════════════════════════════════════════════════
+
+// ── 12px CHAMFER FOR LARGE PANELS (cockpit enclosures, hangar cards) ──────────
+// Per design spec: large panels use 12px beveled corners. Identical fill
+// algorithm to DrawChamferedPanel, just a larger cut and glow halo.
+inline void DrawChamferedPanel12(Rectangle rect, Color border, Color fill, bool focused = false) {
+    const float cut = Chamfer::LARGE;
+    float x = rect.x, y = rect.y, w = rect.width, h = rect.height;
+    if (w < cut * 2 + 2 || h < cut * 2 + 2) {
+        DrawChamferedPanel(rect, border, fill, 6.0f, focused);
+        return;
+    }
+
+    Vector2 points[8] = {
+        { x + cut, y }, { x + w - cut, y }, { x + w, y + cut }, { x + w, y + h - cut },
+        { x + w - cut, y + h }, { x + cut, y + h }, { x, y + h - cut }, { x, y + cut }
+    };
+    DrawRectangle(static_cast<int>(x + cut), static_cast<int>(y), static_cast<int>(w - cut * 2), static_cast<int>(h), fill);
+    DrawRectangle(static_cast<int>(x), static_cast<int>(y + cut), static_cast<int>(cut), static_cast<int>(h - cut * 2), fill);
+    DrawRectangle(static_cast<int>(x + w - cut), static_cast<int>(y + cut), static_cast<int>(cut), static_cast<int>(h - cut * 2), fill);
+    DrawTriangle({ x, y + cut }, { x + cut, y }, { x + cut, y + cut }, fill);
+    DrawTriangle({ x + w - cut, y }, { x + w, y + cut }, { x + w - cut, y + cut }, fill);
+    DrawTriangle({ x + cut, y + h - cut }, { x + cut, y + h }, { x, y + h - cut }, fill);
+    DrawTriangle({ x + w - cut, y + h - cut }, { x + w, y + h - cut }, { x + w - cut, y + h }, fill);
+
+    float thick = focused ? 2.5f : 1.5f;
+    for (int i = 0; i < 8; ++i) {
+        DrawLineEx(points[i], points[(i + 1) % 8], thick, border);
+    }
+    if (focused) {
+        Color g = border; g.a = 50;
+        DrawRectangleLinesEx({ x - 4, y - 4, w + 8, h + 8 }, 1.0f, g);
+        g.a = 25;
+        DrawRectangleLinesEx({ x - 8, y - 8, w + 16, h + 16 }, 1.0f, g);
+    }
+}
+
+// ── ELEVATION PANEL ──────────────────────────────────────────────────────────
+// Draw a panel using an ElevationStyle from design_tokens.hpp. Automatically
+// applies the right chamfer cut and CRT scanline texture.
+inline void DrawElevationPanel(Rectangle rect, ElevationStyle style, bool focused = false) {
+    DrawChamferedPanel12(rect, style.border, style.fill, focused);
+
+    // Subtle 3% opacity horizontal scanlines over the panel
+    Color scan = { 0, 0, 0, 10 };
+    for (int y = static_cast<int>(rect.y); y < static_cast<int>(rect.y + rect.height); y += 4) {
+        DrawLine(static_cast<int>(rect.x), y, static_cast<int>(rect.x + rect.width), y, scan);
+    }
+}
+
+// ── CORNER BRACKETS WITH DIAMOND RIVETS ──────────────────────────────────────
+// L-bracket frame on each corner + small diamond rivet inset. Brass by default.
+inline void DrawCornerBrackets(Rectangle rect, float size, Color color) {
+    float x = rect.x, y = rect.y, w = rect.width, h = rect.height;
+    float thick = 1.5f;
+
+    // Top-Left L-bracket
+    DrawLineEx({ x, y }, { x + size, y }, thick, color);
+    DrawLineEx({ x, y }, { x, y + size }, thick, color);
+    DrawVedicDiamond({ x + 4, y + 4 }, 2.0f, color);
+
+    // Top-Right
+    DrawLineEx({ x + w, y }, { x + w - size, y }, thick, color);
+    DrawLineEx({ x + w, y }, { x + w, y + size }, thick, color);
+    DrawVedicDiamond({ x + w - 4, y + 4 }, 2.0f, color);
+
+    // Bottom-Left
+    DrawLineEx({ x, y + h }, { x + size, y + h }, thick, color);
+    DrawLineEx({ x, y + h }, { x, y + h - size }, thick, color);
+    DrawVedicDiamond({ x + 4, y + h - 4 }, 2.0f, color);
+
+    // Bottom-Right
+    DrawLineEx({ x + w, y + h }, { x + w - size, y + h }, thick, color);
+    DrawLineEx({ x + w, y + h }, { x + w, y + h - size }, thick, color);
+    DrawVedicDiamond({ x + w - 4, y + h - 4 }, 2.0f, color);
+}
+
+// ── SEGMENTED HEALTH / PRANA GAUGE ───────────────────────────────────────────
+// Per design spec: linear recessed well (#0E1320) broken into discrete cells.
+// Dynamic chromatic state:
+//   > 60%  → Vedic Jade (#1EC846)
+//   30-60% → Solar Amber (#DCC828)
+//   < 30%  → Pulsing Crimson Flare (#DC3C00)
+//
+// Optional damage_trail shows recent losses in vermilion fading to void.
+inline void DrawSegmentedHealthGauge(Rectangle rect, float current, float maximum,
+                                     int segments = 16, float pulse_t = 0.0f,
+                                     bool show_trail = false, float trail_pct = 0.0f) {
+    if (maximum <= 0.0f) maximum = 1.0f;
+    float pct = std::clamp(current / maximum, 0.0f, 1.0f);
+    int active_segs = static_cast<int>(pct * segments + 0.5f);
+    int trail_segs  = show_trail ? static_cast<int>(trail_pct * segments + 0.5f) : 0;
+
+    // Pick chromatic state
+    Color fill_col;
+    if (pct > 0.60f)       fill_col = PAL_HEALTH_HIGH;
+    else if (pct > 0.30f)  fill_col = PAL_HEALTH_MID;
+    else {
+        // Pulsing for critical
+        float pulse = 0.55f + 0.45f * std::sin(pulse_t * 5.0f);
+        fill_col = PAL_HEALTH_LOW;
+        fill_col.a = static_cast<unsigned char>(pulse * 255.0f);
+    }
+
+    // Recessed well background
+    DrawRectangleRec(rect, PAL_SURFACE_WELL);
+    DrawRectangleLinesEx(rect, 1.0f, PAL_OUTLINE_VARIANT);
+
+    // Inner padding
+    float pad = 2.0f;
+    Rectangle inner = { rect.x + pad, rect.y + pad, rect.width - pad * 2, rect.height - pad * 2 };
+    if (inner.width <= 4.0f || inner.height <= 4.0f) return;
+
+    float seg_w = (inner.width - (segments - 1) * 2.0f) / segments;
+    for (int i = 0; i < segments; ++i) {
+        float x = inner.x + i * (seg_w + 2.0f);
+        Rectangle cell = { x, inner.y, seg_w, inner.height };
+
+        if (i < active_segs) {
+            DrawRectangleRec(cell, fill_col);
+            // Soft inner glow on active cells
+            Color glow = fill_col;
+            glow.a = 80;
+            DrawRectangleLinesEx({ cell.x - 1, cell.y - 1, cell.width + 2, cell.height + 2 }, 1.0f, glow);
+        } else if (i < active_segs + trail_segs && show_trail) {
+            // Damage trail (decaying vermilion)
+            Color t = PAL_DAMAGE_TRAIL;
+            t.a = static_cast<unsigned char>(60 - (i - active_segs) * 8);
+            DrawRectangleRec(cell, t);
+        } else {
+            // Empty cell - very dark
+            DrawRectangleRec(cell, { 0x05, 0x07, 0x10, 255 });
+        }
+    }
+}
+
+// ── MANDALA RETICLE ──────────────────────────────────────────────────────────
+// Outer 16-point petal compass + middle counter-rotating wheel + inner
+// intersecting Sri Yantra triangles. Rotates over time.
+inline void DrawMandalaReticle(Vector2 center, float radius, float time, Color primary, Color secondary, float alpha_scale = 1.0f) {
+    float rot1 = time * 0.6f;
+    float rot2 = -time * 1.2f;
+    unsigned char a = static_cast<unsigned char>(alpha_scale * 255.0f);
+    Color p = primary; p.a = a;
+    Color s = secondary; s.a = a;
+
+    // Outer 16-point petal compass
+    int petals = 16;
+    for (int i = 0; i < petals; ++i) {
+        float a1 = rot1 + (i * 2.0f * 3.14159265f) / petals;
+        float a2 = a1 + (3.14159265f / petals) * 0.35f;
+        Vector2 p1 = { center.x + std::cos(a1) * radius, center.y + std::sin(a1) * radius };
+        Vector2 p2 = { center.x + std::cos(a2) * radius * 0.85f, center.y + std::sin(a2) * radius * 0.85f };
+        DrawLineEx(p1, p2, 1.0f, p);
+    }
+
+    // Middle rotating ring (counter-rotation)
+    DrawCircleLines(static_cast<int>(center.x), static_cast<int>(center.y), radius * 0.65f, p);
+    DrawCircleLines(static_cast<int>(center.x), static_cast<int>(center.y), radius * 0.62f, s);
+    int ticks = 18;
+    for (int i = 0; i < ticks; ++i) {
+        float ang = rot2 + (i * 2.0f * 3.14159265f) / ticks;
+        Vector2 ti = { center.x + std::cos(ang) * radius * 0.62f, center.y + std::sin(ang) * radius * 0.62f };
+        Vector2 to = { center.x + std::cos(ang) * radius * 0.68f, center.y + std::sin(ang) * radius * 0.68f };
+        DrawLineEx(ti, to, 1.0f, s);
+    }
+
+    // Inner Sri Yantra triangle cluster (4 + 4 interlocking triangles)
+    float inner_r = radius * 0.35f;
+    for (int i = 0; i < 4; ++i) {
+        float base_ang = rot1 + i * (3.14159265f / 2.0f);
+        Vector2 v1 = { center.x, center.y - inner_r };
+        Vector2 v2 = { center.x + std::cos(base_ang - 0.4f) * inner_r, center.y + std::sin(base_ang - 0.4f) * inner_r };
+        Vector2 v3 = { center.x + std::cos(base_ang + 0.4f) * inner_r, center.y + std::sin(base_ang + 0.4f) * inner_r };
+        DrawLineEx(v1, v2, 1.0f, p);
+        DrawLineEx(v2, v3, 1.0f, p);
+        DrawLineEx(v3, v1, 1.0f, p);
+    }
+
+    // Center pulse point
+    float pulse_r = 2.0f + 1.0f * std::sin(time * 4.0f);
+    DrawCircle(static_cast<int>(center.x), static_cast<int>(center.y), pulse_r, p);
+}
+
+// ── BOSS THREAT BANNER ───────────────────────────────────────────────────────
+// Per design spec: top-center, 600px wide, flanked by Sanskrit winged brackets,
+// dual-line HP pool with phase milestone pips. Red strobe when telegraphing.
+inline void DrawBossThreatBanner(Rectangle rect, const std::string& boss_name,
+                                 float current_hp, float max_hp, int current_phase, int total_phases,
+                                 bool telegraphing, float time) {
+    // Strobing red background when telegraphing
+    if (telegraphing) {
+        float strobe = 0.5f + 0.5f * std::sin(time * 12.0f);
+        Color alert = PAL_DESTRUCTIVE;
+        alert.a = static_cast<unsigned char>(40 + strobe * 80.0f);
+        DrawRectangleRec(rect, alert);
+    }
+
+    // Recessed well background
+    DrawRectangleRec(rect, PAL_SURFACE_WELL);
+    DrawRectangleLinesEx(rect, 1.0f, PAL_OUTLINE_VARIANT);
+
+    // Sanskrit winged brackets (L-brackets at edges)
+    float bracket_w = 18.0f;
+    DrawLineEx({ rect.x, rect.y }, { rect.x + bracket_w, rect.y + rect.height / 2 }, 2.0f, PAL_TERTIARY);
+    DrawLineEx({ rect.x + bracket_w, rect.y + rect.height / 2 }, { rect.x, rect.y + rect.height }, 2.0f, PAL_TERTIARY);
+    DrawLineEx({ rect.x + rect.width, rect.y }, { rect.x + rect.width - bracket_w, rect.y + rect.height / 2 }, 2.0f, PAL_TERTIARY);
+    DrawLineEx({ rect.x + rect.width - bracket_w, rect.y + rect.height / 2 }, { rect.x + rect.width, rect.y + rect.height }, 2.0f, PAL_TERTIARY);
+
+    // Boss name (uppercase, label-caps style)
+    // Caller is responsible for drawing text; here we just emit segmented gauge.
+    float gauge_x = rect.x + 24;
+    float gauge_y = rect.y + rect.height * 0.55f;
+    float gauge_w = rect.width - 48;
+    float gauge_h = rect.height * 0.32f;
+    Rectangle gauge = { gauge_x, gauge_y, gauge_w, gauge_h };
+
+    // Use 20 segments per design spec
+    DrawSegmentedHealthGauge(gauge, current_hp, max_hp, 20, time, false, 0.0f);
+
+    // Phase milestone pips across the top edge
+    if (total_phases > 1) {
+        float pip_spacing = (rect.width - 60) / (total_phases - 1);
+        for (int i = 0; i < total_phases; ++i) {
+            float px = rect.x + 30 + i * pip_spacing;
+            float py = rect.y + 6;
+            Color pc = (i < current_phase) ? PAL_PRIMARY : PAL_TEXT_MUTED;
+            DrawVedicDiamond({ px, py }, 3.0f, pc);
+        }
+    }
+}
+
+// ── BUTTON STATE STYLE (used by Button class to render correctly) ────────────
+enum class ButtonKind { PRIMARY, SECONDARY, TERTIARY, DESTRUCTIVE, GHOST };
+struct ButtonVisual {
+    Color fill_idle;
+    Color fill_hover;
+    Color border;
+    Color text;
+    Color text_hover;
+    float  glow_strength;  // 0..1 for hover glow alpha
+};
+
+inline ButtonVisual ButtonVisualPrimary() {
+    return { PAL_PRIMARY_FILL, PAL_PRIMARY_FILL_HOVER,
+             PAL_PRIMARY, PAL_PRIMARY_CORE, PAL_PRIMARY_CORE, 0.85f };
+}
+inline ButtonVisual ButtonVisualSecondary() {
+    return { PAL_SECONDARY_FILL, { 0x00, 0xDB, 0xE7, 50 },
+             PAL_SECONDARY, PAL_SECONDARY_BRIGHT, PAL_SECONDARY_BRIGHT, 0.60f };
+}
+inline ButtonVisual ButtonVisualDestructive() {
+    return { PAL_DESTRUCTIVE_FILL, { 0xBF, 0x00, 0x36, 60 },
+             PAL_DESTRUCTIVE, PAL_DESTRUCTIVE_BRIGHT, PAL_DESTRUCTIVE_BRIGHT, 0.80f };
+}
+inline ButtonVisual ButtonVisualTertiary() {
+    return { { 0, 0, 0, 0 }, { 0xC5, 0xA0, 0x59, 40 },
+             PAL_TERTIARY, PAL_TERTIARY, PAL_TERTIARY_BRIGHT, 0.50f };
+}
+inline ButtonVisual ButtonVisualGhost() {
+    return { { 0, 0, 0, 0 }, { 0xE1, 0xE1, 0xF1, 30 },
+             { 0x8F, 0x98, 0xA8, 200 }, PAL_TEXT, PAL_TEXT, 0.30f };
+}
+
+inline ButtonVisual GetButtonVisual(ButtonKind k) {
+    switch (k) {
+        case ButtonKind::PRIMARY:     return ButtonVisualPrimary();
+        case ButtonKind::SECONDARY:   return ButtonVisualSecondary();
+        case ButtonKind::DESTRUCTIVE: return ButtonVisualDestructive();
+        case ButtonKind::TERTIARY:    return ButtonVisualTertiary();
+        case ButtonKind::GHOST:       return ButtonVisualGhost();
+    }
+    return ButtonVisualPrimary();
 }
 
 } // namespace Vimana::UI

@@ -22,9 +22,11 @@ struct ShipArchetype {
     int prana_cost;
     std::string sprite_file;
     Color accent_color;
+    std::string boss_unlock_id = {};
+    std::string boss_unlock_name = {};
 };
 
-inline const std::array<ShipArchetype, 52> SHIP_FLEET = {{
+inline const std::array<ShipArchetype, 60> SHIP_FLEET = {{
     // ── TIER 1: STARTER FLEET (Wave 0 — always unlocked) ─────────────────────
     { "pushpaka",    "Pushpaka",      "Celestial Cruiser",             "Balanced",        100, 300.0f, 0.15f, 25, 2, 1.6f,  0, 0,    "pushpaka.png",                    COLOR_GOLD },
     { "tripura",     "Tripura",       "Iron Dreadnought",              "Heavy Assault",   160, 240.0f, 0.20f, 38, 1, 2.2f,  0, 0,    "tripura.png",                     COLOR_ORANGE_BRIGHT },
@@ -87,7 +89,17 @@ inline const std::array<ShipArchetype, 52> SHIP_FLEET = {{
     { "rama_vimana", "Rama Vimana",   "Righteous King's Warship",      "Honor Blade",     175, 345.0f, 0.11f, 52, 3, 1.1f, 30, 1500,"phase9_commander_ship_37.png",    { 60, 200, 80, 255 } },
     { "krishna_disc","Krishna Disc",  "Flute-Song Battle Platform",    "Divine Play",     185, 355.0f, 0.10f, 54, 3, 1.0f, 30, 1500,"phase9_commander_ship_38.png",    { 50, 80, 200, 255 } },
     { "vishnu_prime","Vishnu Prime",  "Preserver's Ultimate Form",     "Cosmic Preservation",220, 330.0f, 0.10f, 60, 2, 1.2f, 30, 1600,"phase9_commander_ship_39.png",  { 40, 120, 255, 255 } },
-    { "shiva_ultimate","Shiva Ultimate","Destroyer's Transcendent Form","Tandava Annihilation",240, 340.0f, 0.09f, 65, 3, 1.0f, 30, 1600,"phase9_commander_ship_40.png", { 220, 50, 50, 255 } }
+    { "shiva_ultimate","Shiva Ultimate","Destroyer's Transcendent Form","Tandava Annihilation",240, 340.0f, 0.09f, 65, 3, 1.0f, 30, 1600,"phase9_commander_ship_40.png", { 220, 50, 50, 255 } },
+
+    // ── TIER 7: BOSS-SALVAGED SIGNATURE FLEET ────────────────────────────────
+    { "kumbha_titan", "Kumbha Titan", "Siege hull forged from the Slumbering Colossus", "Boss Breaker / Heavy", 390, 205.0f, 0.19f, 61, 1, 2.4f, 999999, 0, "phase9_commander_ship_41.png", { 255, 145, 70, 255 }, "KUMBHAKARNA", "TITAN KUMBHAKARNA" },
+    { "ravana_dasha", "Dasha Vimana", "Tenfold imperial weapons platform", "Boss Breaker / Barrage", 250, 315.0f, 0.12f, 51, 2, 1.4f, 999999, 0, "phase9_commander_ship_42.png", { 255, 65, 80, 255 }, "RAVANA", "EMPEROR RAVANA" },
+    { "mahisha_rush", "Mahisha Ram", "Armored charge interceptor", "Boss Breaker / Assault", 310, 285.0f, 0.15f, 58, 2, 1.7f, 999999, 0, "phase9_commander_ship_43.png", { 255, 115, 60, 255 }, "MAHISHASURA", "WARLORD MAHISHASURA" },
+    { "makara_abyss", "Makara Abyssal", "Tidal shield cruiser recovered from the deep", "Boss Breaker / Sustain", 330, 260.0f, 0.17f, 45, 2, 1.6f, 999999, 0, "phase9_commander_ship_44.png", { 60, 225, 255, 255 }, "MAKARA", "MAKARA, ABYSSAL LEVIATHAN" },
+    { "indra_mirage", "Indrajit's Mirage", "Phase-shift strike craft", "Boss Breaker / Evasion", 205, 390.0f, 0.095f, 42, 4, 0.85f, 999999, 0, "phase9_commander_ship_45.png", { 190, 100, 255, 255 }, "INDRAJIT", "CONQUEROR INDRAJIT" },
+    { "hiranya_aegis", "Hiranya Aegis", "Immortal pact fortress vessel", "Boss Breaker / Aegis", 430, 225.0f, 0.18f, 58, 1, 2.3f, 999999, 0, "phase9_commander_ship_46.png", { 255, 220, 85, 255 }, "HIRANYAKASHIPU", "TYRANT HIRANYAKASHIPU" },
+    { "megha_tempest", "Meghnada Tempest", "Lightning grid assault carrier", "Boss Breaker / Storm", 260, 360.0f, 0.105f, 50, 3, 1.1f, 999999, 0, "phase9_commander_ship_47.png", { 180, 120, 255, 255 }, "MEGHNADA", "MEGHNADA, STORM ILLUSIONIST" },
+    { "vritra_skyseal", "Vritra Skyseal", "Storm-severing bastion fighter", "Boss Breaker / Control", 360, 275.0f, 0.16f, 56, 2, 1.8f, 999999, 0, "phase9_commander_ship_48.png", { 75, 220, 235, 255 }, "VRITRA", "VRITRA, SKY-SEALING SERPENT" }
 }};
 
 inline const ShipArchetype* GetShipArchetype(const std::string& id) {

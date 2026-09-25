@@ -99,7 +99,7 @@ public:
                 self.angle = std::atan2(input_dir.y, input_dir.x) * (180.0f / 3.14159f);
             }
 
-            if (IsKeyDown(KEY_ENTER) || IsKeyDown(KEY_RIGHT_CONTROL)) {
+            if (IsKeyDown(KEY_RIGHT_CONTROL)) {
                 self.try_shoot(out_bullets);
             }
             if (IsKeyPressed(KEY_SLASH) || IsKeyPressed(KEY_RIGHT_SHIFT)) {
@@ -131,6 +131,9 @@ public:
                 target_downed->is_downed = false;
                 target_downed->hp = static_cast<int>(target_downed->max_hp * 0.40f);
                 target_downed->invincibility_timer = 2.0f;
+                target_downed->downed_timer = 0.0f;
+                target_downed->self_revive_timer = 0.0f;
+                target_downed->last_stand_timer = 0.0f;
                 self.revives_given++;
                 m_revive_hold_timer = 0.0f;
             }
@@ -195,6 +198,9 @@ public:
                     downed_target->is_downed = false;
                     downed_target->hp = static_cast<int>(downed_target->max_hp * 0.40f);
                     downed_target->invincibility_timer = 2.0f;
+                    downed_target->downed_timer = 0.0f;
+                    downed_target->self_revive_timer = 0.0f;
+                    downed_target->last_stand_timer = 0.0f;
                     self.revives_given++;
                     m_revive_channel_timer = 0.0f;
                 }

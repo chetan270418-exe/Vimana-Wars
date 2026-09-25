@@ -26,9 +26,9 @@ inline const std::vector<AchievementDef> ALL_ACHIEVEMENTS = {
     { "FIRST_BLOOD",       "First Blood",            "Destroy your first enemy asura in combat.",       "COMBAT" },
     { "WAVE_5",            "Survivor of Swarga",     "Clear wave 5 and penetrate the astral defenses.",  "CAMPAIGN" },
     { "WAVE_15",           "Kshatriya Vanguard",     "Reach wave 15 deep in the cosmic void.",           "CAMPAIGN" },
-    { "WAVE_30",           "Chakravyuha Conqueror",  "Conquer all 30 campaign waves of Mahayuddha.",     "ULTIMATE" },
-    { "BOSS_1",            "Indrajit Defeated",      "Vanquish Indrajit, the sorcerer warlord.",         "BOSS" },
-    { "BOSS_5",            "Ravana Overthrown",      "Vanquish the supreme titan Ravana in Lanka.",      "BOSS" },
+    { "WAVE_30",           "Act I Vanguard",         "Clear the first 30-wave act of Mahayuddha.",       "ULTIMATE" },
+    { "BOSS_1",            "Kumbhakarna Defeated",   "Defeat the first act's guardian titan.",            "BOSS" },
+    { "BOSS_5",            "Ravana Overthrown",      "Defeat Emperor Ravana in a boss encounter.",        "BOSS" },
     { "PERFECT_WAVE",      "Untouched Warrior",      "Clear an entire wave taking zero damage.",         "SKILL" },
     { "COMBO_25",          "Combo Disciple",         "Build a sustained x25 combat strike streak.",      "COMBAT" },
     { "COMBO_50",          "Divya Astra Resonance",  "Achieve the legendary x50 maximum combo.",         "COMBAT" },
@@ -37,12 +37,12 @@ inline const std::vector<AchievementDef> ALL_ACHIEVEMENTS = {
     { "COOP_DUAL_ASTRA",   "Thunder Tempest",        "Execute a synchronized dual-Astra cooperative fury.","CO-OP" },
     { "ALL_BOONS",         "Deva Blessed",           "Equip all available divine boons during a run.",   "BUILD" },
     { "UNLOCK_SHIP",       "Astral Shipwright",      "Commission a new Vimana with astral prana.",       "PROGRESSION" },
-    { "ALL_SHIPS",         "Supreme Armada",         "Command all 52 Vimanas in the celestial fleet.",   "PROGRESSION" },
+    { "ALL_SHIPS",         "Supreme Armada",         "Command all 60 Vimanas in the celestial fleet.",   "PROGRESSION" },
     { "DAILY_WIN",         "Daily Devotion",         "Complete a daily cosmic challenge sortie.",        "EVENT" },
     { "IRON_MODE",         "Iron Ascetic",           "Survive a campaign sortie on Chakravyuha tier.",   "MASTERY" },
     { "LEADERBOARD_TOP10", "Sangha Vanguard",        "Enter the top 10 rankings on the cloud leaderboard.","ONLINE" },
     { "REGISTER",          "Sangha Commissioned",    "Create an authenticated Sangha pilot account.",    "ACCOUNT" },
-    { "PLAY_10",           "Veteran of the Void",    "Deploy on 10 combat sorties across the 7 realms.", "CAREER" }
+    { "PLAY_10",           "Veteran of the Void",    "Deploy on 10 combat sorties across the 10 acts.",  "CAREER" }
 };
 
 class AchievementSystem {
@@ -64,6 +64,14 @@ public:
 
     const std::unordered_set<std::string>& unlocked() const {
         return m_unlocked;
+    }
+
+    static std::string cloud_id_for(const std::string& local_id) {
+        std::string cloud_id = local_id;
+        for (char& ch : cloud_id) {
+            if (ch >= 'A' && ch <= 'Z') ch = static_cast<char>(ch - 'A' + 'a');
+        }
+        return cloud_id;
     }
 
     void check_and_award(const std::string& id) {
@@ -91,13 +99,20 @@ public:
         if (AccountSystem::instance().is_logged_in()) {
             std::string url = AccountSystem::instance().api_base() + "/achievements";
             nlohmann::json payload;
-            payload["achievement_id"] = id;
+            payload["achievement_id"] = cloud_id_for(id);
             HTTPClient::instance().post_async(url, payload.dump(), AccountSystem::instance().token(), [](HTTPClient::Response resp) {
                 if (resp.success) {
                     std::cout << "[AchievementSystem] Achievement backed up to cloud." << std::endl;
                 }
             });
         }
+    }
+
+    void notify_event(const std::string& title, const std::string& description) {
+        m_toast_title = title;
+        m_toast_desc = description;
+        m_toast_timer = 4.0f;
+        SoundSystem::instance().play_transcendence();
     }
 
     void update(float dt) {
@@ -172,6 +187,7 @@ private:
                 fi >> j;
             }
             std::vector<std::string> arr(m_unlocked.begin(), m_unlocked.end());
+            j["version"] = SAVE_SCHEMA_VERSION;
             j["achievements"] = arr;
             std::ofstream fo(path);
             fo << j.dump(2);

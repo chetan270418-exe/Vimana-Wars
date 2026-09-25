@@ -7,6 +7,8 @@
 
 namespace Vimana {
 
+inline constexpr int SAVE_SCHEMA_VERSION = 5;
+
 // ── Math Helpers ─────────────────────────────────────────────────────────────
 inline Vector2 Vector2Zero() { return { 0.0f, 0.0f }; }
 inline Vector2 Vector2Add(Vector2 a, Vector2 b) { return { a.x + b.x, a.y + b.y }; }
@@ -33,7 +35,7 @@ enum class ViewType {
     TITLE,              // Title card — PRESS SPACE
     PILOT_SETUP,        // First-launch name entry
     MENU,               // Pilot dashboard
-    CAMPAIGN_MAP,       // 7-realm campaign map
+    CAMPAIGN_MAP,       // 10-act campaign map
     SHIP_SELECT,        // Vimana Hangar
     LOADOUT,            // Pre-mission loadout
     DIFFICULTY_SELECT,  // 4-tier difficulty picker
@@ -45,11 +47,13 @@ enum class ViewType {
     MULTIPLAYER_LOBBY,  // Room create / join
     MULTIPLAYER_RESULT, // Post-match co-op/PvP result
     PROFILE,            // Pilot profile + match history
+    ACHIEVEMENTS,       // Browsable trophy gallery
     CODEX,              // Bestiary / lore / synergy reference
     SETTINGS,           // Audio / Controls / Accessibility
     AUTH,               // Online Account Login / Registration
     VICTORY,            // Campaign victory
-    GAME_OVER           // Defeat screen
+    GAME_OVER,          // Defeat screen
+    QUIT                // Safe exit request (main loop handles teardown)
 };
 
 // ── Performance Rank ──────────────────────────────────────────────────────────
@@ -66,13 +70,14 @@ struct WaveResult {
     int enemies_destroyed  = 0;
     int damage_taken       = 0;
     int max_combo          = 1;
-    int accuracy_pct       = 88;
+    int accuracy_pct       = 100;
     int score_earned       = 0;
     int prana_earned       = 50;
     bool no_damage         = false;
     bool perfect_wave      = false;
     PerformanceRank rank   = PerformanceRank::A_RANK;
     std::string rank_reason = "";
+    std::string boss_ship_unlocked = "";
 };
 
 // ── Match Record (persisted in DB for match history) ─────────────────────────

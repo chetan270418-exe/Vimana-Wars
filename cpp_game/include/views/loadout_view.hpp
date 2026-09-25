@@ -24,9 +24,9 @@ public:
           m_btn_launch({ SCREEN_WIDTH - 290, SCREEN_HEIGHT - 75, 260, 44 }, "ENGAGE MISSION >>", COLOR_GOLD_BRIGHT),
           m_btn_change_ship({ 50, 420, 200, 36 }, "CHANGE VIMANA", COLOR_CYAN_BRIGHT),
           m_btn_back({ 50, SCREEN_HEIGHT - 75, 170, 44 }, "<< CAMPAIGN MAP", COLOR_MUTED),
-          m_btn_buy_kavach({ 680, 195, 120, 30 }, "BUY (75 P)", COLOR_GOLD),
-          m_btn_buy_soma({ 680, 260, 120, 30 }, "BUY (50 P)", COLOR_GREEN_BRIGHT),
-          m_btn_buy_vajra({ 680, 325, 120, 30 }, "BUY (60 P)", COLOR_CYAN_BRIGHT)
+          m_btn_buy_kavach({ 680, 195, 120, 30 }, "BUY (120 P)", COLOR_GOLD),
+          m_btn_buy_soma({ 680, 260, 120, 30 }, "BUY (100 P)", COLOR_GREEN_BRIGHT),
+          m_btn_buy_vajra({ 680, 325, 120, 30 }, "BUY (80 P)", COLOR_CYAN_BRIGHT)
     {
         init();
     }
@@ -49,24 +49,24 @@ public:
     void update(float dt, Vector2 mouse_pos) override {
         m_ship_spin_angle += dt * 45.0f;
 
-        // Buy Consumables
+        // Buy Consumables - single source of truth: COST_* in core/constants.hpp
         if (m_btn_buy_kavach.update(mouse_pos)) {
-            if (CurrencySystem::instance().prana_shards() >= 75 && m_inventory.kavach_charges < 3) {
-                CurrencySystem::instance().spend_prana_shards(75);
+            if (CurrencySystem::instance().prana_shards() >= COST_KAVACH_SHIELD && m_inventory.kavach_charges < 3) {
+                CurrencySystem::instance().spend_prana_shards(COST_KAVACH_SHIELD);
                 m_inventory.kavach_charges++;
                 SoundSystem::instance().play_sfx("ui_click.wav");
             }
         }
         if (m_btn_buy_soma.update(mouse_pos)) {
-            if (CurrencySystem::instance().prana_shards() >= 50 && m_inventory.soma_vials < 5) {
-                CurrencySystem::instance().spend_prana_shards(50);
+            if (CurrencySystem::instance().prana_shards() >= COST_SOMA_VIAL && m_inventory.soma_vials < 5) {
+                CurrencySystem::instance().spend_prana_shards(COST_SOMA_VIAL);
                 m_inventory.soma_vials++;
                 SoundSystem::instance().play_sfx("ui_click.wav");
             }
         }
         if (m_btn_buy_vajra.update(mouse_pos)) {
-            if (CurrencySystem::instance().prana_shards() >= 60 && m_inventory.vajra_flares < 5) {
-                CurrencySystem::instance().spend_prana_shards(60);
+            if (CurrencySystem::instance().prana_shards() >= COST_VAJRA_FLARE && m_inventory.vajra_flares < 5) {
+                CurrencySystem::instance().spend_prana_shards(COST_VAJRA_FLARE);
                 m_inventory.vajra_flares++;
                 SoundSystem::instance().play_sfx("ui_click.wav");
             }
@@ -132,10 +132,10 @@ public:
             bar_y += 20;
         };
 
-        draw_stat("HULL ARMOR", static_cast<float>(m_selected_ship->max_hp), 300.0f, COLOR_GREEN_BRIGHT);
-        draw_stat("SUB-LIGHT SPD", m_selected_ship->speed, 420.0f, COLOR_CYAN_BRIGHT);
+        draw_stat("HULL ARMOR", static_cast<float>(m_selected_ship->max_hp), 600.0f, COLOR_GREEN_BRIGHT);
+        draw_stat("SUB-LIGHT SPD", m_selected_ship->speed, 500.0f, COLOR_CYAN_BRIGHT);
         draw_stat("FIRING RATE", 1.0f / m_selected_ship->shoot_cooldown, 15.0f, COLOR_GOLD_BRIGHT);
-        draw_stat("DASH RECHARGE", 3.0f - m_selected_ship->dash_cooldown, 3.0f, COLOR_PURPLE_BRIGHT);
+        draw_stat("DASH CHARGES", static_cast<float>(m_selected_ship->dash_charges), 4.0f, COLOR_PURPLE_BRIGHT);
 
         m_btn_change_ship.draw(font);
 
@@ -183,8 +183,8 @@ public:
         Rectangle ctrl_rec = { depot_box.x + 20, depot_box.y + 278, depot_box.width - 40, 55 };
         UI::DrawChamferedPanel(ctrl_rec, COLOR_MUTED, COLOR_SURFACE_LOW, 4.0f);
         DrawText("PILOT CONTROLS BRIEFING:", static_cast<int>(ctrl_rec.x + 12), static_cast<int>(ctrl_rec.y + 8), 10, COLOR_MUTED);
-        DrawText("[WASD] Maneuver  •  [LEFT CLICK] Fire Plasma  •  [SPACE] Warp Dash", static_cast<int>(ctrl_rec.x + 12), static_cast<int>(ctrl_rec.y + 24), 11, COLOR_GOLD_BRIGHT);
-        DrawText("[F] Brahmastra Nuke  •  [C] Consume Soma  •  [V] Deploy Vajra Flare", static_cast<int>(ctrl_rec.x + 12), static_cast<int>(ctrl_rec.y + 39), 11, COLOR_CYAN_BRIGHT);
+        DrawText("[WASD] Move  -  [LMB/Space] Fire  -  [Shift/RMB] Dash", static_cast<int>(ctrl_rec.x + 12), static_cast<int>(ctrl_rec.y + 24), 11, COLOR_GOLD_BRIGHT);
+        DrawText("[F] Bomb  -  [Q] Chakram  -  [C] Soma  -  [V] Flare  -  [E] Revive", static_cast<int>(ctrl_rec.x + 12), static_cast<int>(ctrl_rec.y + 39), 11, COLOR_CYAN_BRIGHT);
 
         // Bottom Action Buttons
         m_btn_launch.draw(font);

@@ -1,4 +1,3 @@
-#include <iostream>
 #include <memory>
 #include <algorithm>
 #include "raylib.h"
@@ -12,7 +11,6 @@
 #include "systems/achievement_system.hpp"
 #include "systems/transition_manager.hpp"
 #include "ui/debug_overlay.hpp"
-
 #include "views/boot_view.hpp"
 #include "views/pilot_setup_view.hpp"
 #include "views/auth_view.hpp"
@@ -30,6 +28,7 @@
 #include "views/multiplayer_view.hpp"
 #include "views/multiplayer_result_view.hpp"
 #include "views/profile_view.hpp"
+#include "views/achievements_view.hpp"
 #include "views/settings_view.hpp"
 #include "views/game_over_view.hpp"
 
@@ -76,6 +75,7 @@ int main() {
     auto multiplayer_view = std::make_unique<MultiplayerView>();
     auto multiplayer_result_view = std::make_unique<MultiplayerResultView>();
     auto profile_view = std::make_unique<ProfileView>();
+    auto achievements_view = std::make_unique<AchievementsView>();
     auto settings_view = std::make_unique<SettingsView>();
     auto game_over_view = std::make_unique<GameOverView>(false);
 
@@ -83,10 +83,9 @@ int main() {
     ViewType current_view_type = ViewType::BOOT;
     IView* current_view = boot_view.get();
 
-    std::cout << "[VimanaWars] C++ Master Engine Initialized. Running at 60 FPS." << std::endl;
-
-    // 5. Master Game Loop
-    while (!WindowShouldClose()) {
+    // 5. Master Game Loop (QUIT breaks for safe teardown in section 6)
+    bool quit_requested = false;
+    while (!WindowShouldClose() && !quit_requested) {
         float dt = GetFrameTime();
         if (dt > 0.1f) dt = 0.1f; // Cap delta time against hitches
 
@@ -138,9 +137,14 @@ int main() {
             } else if (next == ViewType::PROFILE) {
                 profile_view->init();
                 current_view = profile_view.get();
+            } else if (next == ViewType::ACHIEVEMENTS) {
+                achievements_view->init();
+                current_view = achievements_view.get();
             } else if (next == ViewType::LOADOUT) {
                 if (current_view_type == ViewType::CAMPAIGN_MAP) {
                     loadout_view->set_mission_target(campaign_map_view->starting_wave(), &ship_select_view->selected_ship(), ship_select_view->consumables());
+                } else if (current_view_type == ViewType::DIFFICULTY_SELECT) {
+                    loadout_view->set_mission_target(difficulty_view->starting_wave(), &ship_select_view->selected_ship(), ship_select_view->consumables());
                 } else if (current_view_type == ViewType::SHIP_SELECT) {
                     loadout_view->set_mission_target(loadout_view->starting_wave(), &ship_select_view->selected_ship(), ship_select_view->consumables());
                 }
@@ -154,7 +158,15 @@ int main() {
                 codex_view->init();
                 current_view = codex_view.get();
             } else if (next == ViewType::DIFFICULTY_SELECT) {
+                if (current_view_type == ViewType::CAMPAIGN_MAP) {
+                    difficulty_view->set_starting_wave(campaign_map_view->starting_wave());
+                }
                 difficulty_view->init();
+                // preserve pending wave across init (init must not reset it)
+                if (current_view_type == ViewType::CAMPAIGN_MAP) {
+                    // re-apply after init in case init clears state
+                    difficulty_view->set_starting_wave(campaign_map_view->starting_wave());
+                }
                 current_view = difficulty_view.get();
             } else if (next == ViewType::GAMEPLAY) {
                 if (current_view_type == ViewType::LOADOUT) {
@@ -169,8 +181,13 @@ int main() {
                 }
                 current_view = game_view.get();
             } else if (next == ViewType::WAVE_CLEAR) {
-                bool is_final = (game_view->current_wave() >= 30);
-                wave_clear_view->set_results(game_view->latest_wave_result(), is_final);
+                bool act_cleared = (CampaignWaveWithinAct(game_view->current_wave()) == WAVES_PER_ACT);
+                bool campaign_complete = act_cleared && CampaignActForWave(game_view->current_wave()) >= static_cast<int>(CAMPAIGN_REALMS.size());
+                if (campaign_complete) {
+                    game_view->record_ship_mastery();
+                    AccountSystem::instance().sync_profile();
+                }
+                wave_clear_view->set_results(game_view->latest_wave_result(), act_cleared, campaign_complete);
                 wave_clear_view->init();
                 current_view = wave_clear_view.get();
             } else if (next == ViewType::BOON_SELECT) {
@@ -188,7 +205,7 @@ int main() {
                 current_view = multiplayer_view.get();
             } else if (next == ViewType::MULTIPLAYER_RESULT) {
                 multiplayer_result_view->set_results(
-                    game_view->current_wave() >= 30,
+                    game_view->current_wave() >= WAVES_PER_ACT * static_cast<int>(CAMPAIGN_REALMS.size()),
                     game_view->total_team_score(),
                     game_view->squad()
                 );
@@ -213,6 +230,11 @@ int main() {
         if (current_view) {
             current_view->update(dt, virtual_mouse);
             ViewType next = current_view->next_view();
+
+            if (next == ViewType::QUIT) {
+                quit_requested = true;
+                continue;
+            }
 
             if (next != current_view_type) {
                 current_view->reset_next_view();

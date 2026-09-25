@@ -36,8 +36,8 @@ tools/
 *.o
 *.obj
 *.pdb
+cpp_game/bin/VimanaWars.exe
 
 # Archives and source downloads
 *.zip
 assets/online/
-

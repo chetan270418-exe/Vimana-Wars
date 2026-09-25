@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&amp;family=JetBrains+Mono:wght@500;600&amp;family=Space+Grotesk:wght@400;600&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+          "surface-dim": "#11131d",
+          "surface-container-high": "#272935",
+          "on-secondary-container": "#005c61",
+          "secondary-container": "#03dbe7",
+          "surface-bright": "#373944",
+          "background": "#11131d",
+          "on-tertiary-fixed-variant": "#5d4201",
+          "on-secondary": "#00363a",
+          "surface-tint": "#e9c400",
+          "surface-container": "#1d1f2a",
+          "on-surface": "#e1e1f1",
+          "on-background": "#e1e1f1",
+          "secondary-fixed": "#75f5ff",
+          "error-container": "#93000a",
+          "tertiary": "#ffdea5",
+          "on-primary-fixed": "#221b00",
+          "primary-container": "#e9c400",
+          "primary-fixed": "#ffe16e",
+          "inverse-on-surface": "#2e303b",
+          "primary": "#ffe16f",
+          "surface-variant": "#323440",
+          "on-primary-container": "#625100",
+          "on-secondary-fixed": "#002022",
+          "tertiary-container": "#e9c177",
+          "on-error": "#690005",
+          "secondary-fixed-dim": "#03dbe7",
+          "on-primary-fixed-variant": "#544600",
+          "tertiary-fixed-dim": "#e9c176",
+          "surface-container-lowest": "#0b0e18",
+          "on-tertiary": "#412d00",
+          "outline-variant": "#4d4632",
+          "on-primary": "#3a3000",
+          "on-tertiary-container": "#6a4e0d",
+          "outline": "#999078",
+          "on-surface-variant": "#d0c6ac",
+          "inverse-primary": "#705d00",
+          "on-tertiary-fixed": "#261900",
+          "inverse-surface": "#e1e1f1",
+          "on-secondary-fixed-variant": "#004f54",
+          "on-error-container": "#ffdad6",
+          "primary-fixed-dim": "#e9c400",
+          "surface-container-low": "#191b26",
+          "tertiary-fixed": "#ffdea5",
+          "surface": "#11131d",
+          "error": "#ffb4ab",
+          "secondary": "#75f5ff",
+          "surface-container-highest": "#323440"
+        },
+        "borderRadius": {
+          "DEFAULT": "0.25rem",
+          "lg": "0.5rem",
+          "xl": "0.75rem",
+          "full": "9999px"
+        },
+        "spacing": {
+          "space-xs": "0.25rem",
+          "space-md": "1rem",
+          "gutter-desktop": "1.5rem",
+          "margin": "1rem",
+          "space-sm": "0.5rem",
+          "margin-desktop": "2rem",
+          "gutter": "1rem",
+          "space-lg": "1.5rem",
+          "space-xl": "2rem"
+        },
+        "fontFamily": {
+          "title-sm": [
+            "Space Grotesk"
+          ],
+          "body-md": [
+            "Space Grotesk"
+          ],
+          "telemetry-sm": [
+            "JetBrains Mono"
+          ],
+          "title-md": [
+            "Space Grotesk"
+          ],
+          "headline-md": [
+            "Cinzel"
+          ],
+          "label-caps": [
+            "Cinzel"
+          ],
+          "display-lg": [
+            "Cinzel"
+          ],
+          "body-sm": [
+            "Space Grotesk"
+          ],
+          "headline-lg": [
+            "Cinzel"
+          ],
+          "body-lg": [
+            "Space Grotesk"
+          ],
+          "display-lg-mobile": [
+            "Cinzel"
+          ],
+          "telemetry-mono": [
+            "JetBrains Mono"
+          ]
+        },
+        "fontSize": {
+          "title-sm": [
+            "16px",
+            {
+              "lineHeight": "22px",
+              "letterSpacing": "0.04em",
+              "fontWeight": "600"
+            }
+          ],
+          "body-md": [
+            "14px",
+            {
+              "lineHeight": "20px",
+              "letterSpacing": "0.01em",
+              "fontWeight": "400"
+            }
+          ],
+          "telemetry-sm": [
+            "10px",
+            {
+              "lineHeight": "14px",
+              "letterSpacing": "0.12em",
+              "fontWeight": "500"
+            }
+          ],
+          "title-md": [
+            "18px",
+            {
+              "lineHeight": "24px",
+              "letterSpacing": "0.05em",
+              "fontWeight": "600"
+            }
+          ],
+          "headline-md": [
+            "24px",
+            {
+              "lineHeight": "32px",
+              "letterSpacing": "0.1em",
+              "fontWeight": "700"
+            }
+          ],
+          "label-caps": [
+            "12px",
+            {
+              "lineHeight": "16px",
+              "letterSpacing": "0.18em",
+              "fontWeight": "700"
+            }
+          ],
+          "display-lg": [
+            "48px",
+            {
+              "lineHeight": "56px",
+              "letterSpacing": "0.05em",
+              "fontWeight": "900"
+            }
+          ],
+          "body-sm": [
+            "12px",
+            {
+              "lineHeight": "18px",
+              "letterSpacing": "0.01em",
+              "fontWeight": "400"
+            }
+          ],
+          "headline-lg": [
+            "32px",
+            {
+              "lineHeight": "40px",
+              "letterSpacing": "0.08em",
+              "fontWeight": "700"
+            }
+          ],
+          "body-lg": [
+            "16px",
+            {
+              "lineHeight": "24px",
+              "letterSpacing": "0.02em",
+              "fontWeight": "400"
+            }
+          ],
+          "display-lg-mobile": [
+            "32px",
+            {
+              "lineHeight": "40px",
+              "letterSpacing": "0.05em",
+              "fontWeight": "900"
+            }
+          ],
+          "telemetry-mono": [
+            "11px",
+            {
+              "lineHeight": "16px",
+              "letterSpacing": "0.15em",
+              "fontWeight": "600"
+            }
+          ]
+        }
+      },
+    },
+  }</script></head><body class="bg-surface-container-lowest font-body-md text-body-md text-on-surface select-none"><header class="fixed top-0 w-full z-50 bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_4px_30px_rgba(0,0,0,0.8)]"><div class="h-20 w-full px-gutter-desktop flex items-center justify-between"><div class="flex items-center gap-space-md"><img alt="Vimana Wars Crest" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBhI8yS-KYD9gqpWZr3piKq3QJtYiAcabAsT2JCsgiRsgISNz5M2pLHAFmenOEfc9Yz2OtQUzN0K7FHdvjqq3J5Md9-HyCEhUi_GqrAdvZTk2i8imkYyBguANKBFZuDkVLNPwPWzppGI720I41DyRQJ5IbCmXCpWQtKyFf8txWcsEPaZvGmXq5MIUuirNp5fR8n60rRItCOgF51rmcHQnv-qShqcMCoOWKou1_CXyL-8_QkQBSltp0"/><div class="flex flex-col"><span class="font-headline-md text-title-sm tracking-widest text-primary font-bold uppercase">Vimana Wars</span><span class="font-label-caps text-telemetry-sm text-secondary tracking-widest uppercase">Celestial Conflict</span></div><div class="h-6 w-px bg-outline-variant/40 ml-space-xs hidden xl:block"></div><div class="hidden xl:flex items-center gap-space-xs px-space-sm py-space-xs rounded bg-surface-container-low"><span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span><span class="font-telemetry-mono text-telemetry-sm text-secondary tracking-wider">ASIA-INDRA-01</span><span class="font-telemetry-mono text-telemetry-sm text-on-surface-variant">[24ms]</span></div></div><nav class="hidden lg:flex items-center gap-space-sm bg-surface-container-low/70 px-space-sm py-space-xs rounded" data-active-classes="bg-primary-container text-on-primary-container font-bold"><a class="font-label-caps text-label-caps px-space-md py-space-xs text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" data-path="main-menu" href="#">Main Menu</a><a aria-current="page" class="px-space-md py-space-xs transition-colors bg-primary-container text-on-primary-container font-bold" data-path="vimana-hangar" href="#">Vimana Hangar</a><a class="font-label-caps text-label-caps px-space-md py-space-xs text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" data-path="combat-hud" href="#">Combat HUD</a><a class="font-label-caps text-label-caps px-space-md py-space-xs text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" data-path="mission-debrief" href="#">Mission Debrief</a></nav><div class="flex items-center gap-space-md"><div class="hidden md:flex flex-col items-end"><div class="flex items-center gap-space-xs mb-space-xs"><span class="font-label-caps text-telemetry-sm text-tertiary uppercase">Astra Core</span><span class="font-telemetry-mono text-telemetry-sm text-primary font-bold">94%</span></div><div class="flex gap-[2px] p-[2px] bg-surface-container rounded"><div class="w-2.5 h-1.5 bg-secondary"></div><div class="w-2.5 h-1.5 bg-secondary"></div><div class="w-2.5 h-1.5 bg-secondary"></div><div class="w-2.5 h-1.5 bg-secondary"></div><div class="w-2.5 h-1.5 bg-secondary"></div><div class="w-2.5 h-1.5 bg-secondary"></div><div class="w-2.5 h-1.5 bg-secondary"></div><div class="w-2.5 h-1.5 bg-surface-variant"></div></div></div><div class="flex items-center gap-space-xs bg-surface-container-low p-space-xs rounded"><button class="w-7 h-7 flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors rounded"><span class="material-symbols-outlined text-[16px]">volume_up</span></button><button class="w-7 h-7 flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors rounded"><span class="material-symbols-outlined text-[16px]">music_note</span></button></div><div class="flex items-center gap-space-sm pl-space-xs"><div class="hidden sm:flex flex-col text-right"><span class="font-title-sm text-body-sm text-primary font-bold uppercase tracking-wider">Cdr. Arjuna</span><span class="font-telemetry-mono text-telemetry-sm text-on-surface-variant">LVL 48 // VEDIC ACE</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></div></header><main class="w-full pt-20 bg-surface-container-lowest min-h-screen"><div class="flex flex-col w-full">
+<section class="relative w-full px-gutter-desktop py-space-md min-h-[calc(100vh-5rem)] flex flex-col justify-between overflow-hidden bg-surface-container-lowest text-on-surface">
+<!-- Cosmic Void Background Grid & Sacred Vectors -->
+<div class="absolute inset-0 pointer-events-none opacity-20 flex items-center justify-center">
+<svg class="w-[1400px] h-[1400px] text-primary animate-[spin_160s_linear_infinite]" fill="none" stroke="currentColor" viewbox="0 0 800 800">
+<circle cx="400" cy="400" r="380" stroke-dasharray="8 6" stroke-width="1"></circle>
+<circle cx="400" cy="400" r="300" stroke-width="1"></circle>
+<polygon points="400,120 480,360 720,400 480,440 400,680 320,440 80,400 320,360" stroke-width="1.5"></polygon>
+<polygon points="400,160 460,340 640,400 460,460 400,640 340,460 160,400 340,340" stroke-dasharray="4 8" stroke-width="1"></polygon>
+<circle cx="400" cy="400" r="180" stroke-width="1.5"></circle>
+<circle cx="400" cy="400" r="70" stroke-width="2"></circle>
+</svg>
+</div>
+<!-- Top Sub-Nav Deck / Telemetry Banner -->
+<div class="relative z-10 w-full flex flex-col lg:flex-row lg:items-center justify-between gap-space-sm p-space-md bg-surface-container-low/80 backdrop-blur-md rounded shadow-xl">
+<div class="flex items-center gap-space-md">
+<div class="w-10 h-10 bg-primary/10 flex items-center justify-center rounded text-primary">
+<span class="material-symbols-outlined text-headline-md">qr_code_2</span>
+</div>
+<div>
+<div class="flex items-center gap-space-xs">
+<span class="font-telemetry-mono text-telemetry-sm text-secondary">BAY 07 // CELESTIAL DRY-DOCK</span>
+<span class="font-telemetry-mono text-telemetry-sm text-on-surface-variant">•</span>
+<span class="font-telemetry-mono text-telemetry-sm text-primary font-bold">GANTRY ONLINE</span>
+</div>
+<h1 class="font-headline-lg text-headline-md text-primary tracking-wider uppercase">Vimana Hangar &amp; Customization</h1>
+</div>
+</div>
+<!-- Currency & Resource Ledgers -->
+<div class="flex flex-wrap items-center gap-space-md">
+<div class="flex items-center gap-space-xs px-space-md py-space-xs bg-surface-container rounded shadow-inner">
+<span class="material-symbols-outlined text-primary text-[18px]">monetization_on</span>
+<div class="flex flex-col">
+<span class="font-telemetry-mono text-telemetry-sm text-outline uppercase">Soma Nectar</span>
+<span class="font-telemetry-mono text-title-sm text-primary font-bold" id="somaDisplay">148,500</span>
+</div>
+</div>
+<div class="flex items-center gap-space-xs px-space-md py-space-xs bg-surface-container rounded shadow-inner">
+<span class="material-symbols-outlined text-secondary text-[18px]">diamond</span>
+<div class="flex flex-col">
+<span class="font-telemetry-mono text-telemetry-sm text-outline uppercase">Astra Shards</span>
+<span class="font-telemetry-mono text-title-sm text-secondary font-bold">2,420</span>
+</div>
+</div>
+<div class="flex items-center gap-space-xs px-space-md py-space-xs bg-surface-container rounded shadow-inner">
+<span class="material-symbols-outlined text-tertiary text-[18px]">bolt</span>
+<div class="flex flex-col">
+<span class="font-telemetry-mono text-telemetry-sm text-outline uppercase">Pranic Flux</span>
+<span class="font-telemetry-mono text-title-sm text-tertiary font-bold">99.4%</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Active Ship Selector Carousel Bar -->
+<div class="relative z-10 w-full mt-space-md grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-space-sm">
+<!-- Ship 1: Garuda -->
+<button class="ship-select-card text-left p-space-md rounded transition-all duration-300 bg-surface-container-high shadow-lg relative group" id="ship-btn-garuda" onclick="selectVimana('garuda')">
+<div class="flex items-center justify-between mb-space-xs">
+<span class="font-telemetry-mono text-telemetry-sm text-primary font-bold tracking-widest">ACTIVE VESSEL</span>
+<span class="material-symbols-outlined text-primary text-[18px]">verified</span>
+</div>
+<div class="font-headline-md text-title-sm text-on-surface group-hover:text-primary tracking-wide uppercase font-bold">Garuda Mk-VII</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant truncate">Interception • Plasma Strafing Engine</div>
+<div class="mt-space-sm flex items-center justify-between font-telemetry-mono text-telemetry-sm">
+<span class="text-secondary">SPEED: 1,420 m/s</span>
+<span class="text-primary font-semibold">CLASS A</span>
+</div>
+</button>
+<!-- Ship 2: Pushpaka -->
+<button class="ship-select-card text-left p-space-md rounded transition-all duration-300 bg-surface-container-low hover:bg-surface-container shadow relative group" id="ship-btn-pushpaka" onclick="selectVimana('pushpaka')">
+<div class="flex items-center justify-between mb-space-xs">
+<span class="font-telemetry-mono text-telemetry-sm text-outline tracking-widest">DOCK BAY 02</span>
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">shield</span>
+</div>
+<div class="font-headline-md text-title-sm text-on-surface group-hover:text-primary tracking-wide uppercase font-bold">Pushpaka Titan</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant truncate">Heavy Siege Dreadnought • Solar Matrix</div>
+<div class="mt-space-sm flex items-center justify-between font-telemetry-mono text-telemetry-sm">
+<span class="text-secondary">ARMOR: 8,400 HP</span>
+<span class="text-tertiary">CLASS S</span>
+</div>
+</button>
+<!-- Ship 3: Tripura -->
+<button class="ship-select-card text-left p-space-md rounded transition-all duration-300 bg-surface-container-low hover:bg-surface-container shadow relative group" id="ship-btn-tripura" onclick="selectVimana('tripura')">
+<div class="flex items-center justify-between mb-space-xs">
+<span class="font-telemetry-mono text-telemetry-sm text-outline tracking-widest">DOCK BAY 03</span>
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">visibility_off</span>
+</div>
+<div class="font-headline-md text-title-sm text-on-surface group-hover:text-primary tracking-wide uppercase font-bold">Tripura Strider</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant truncate">Void Invisibility • Runic Torpedoes</div>
+<div class="mt-space-sm flex items-center justify-between font-telemetry-mono text-telemetry-sm">
+<span class="text-secondary">STEALTH: 98%</span>
+<span class="text-secondary-fixed">CLASS X</span>
+</div>
+</button>
+<!-- Ship 4: Meru -->
+<button class="ship-select-card text-left p-space-md rounded transition-all duration-300 bg-surface-container-low hover:bg-surface-container shadow relative group" id="ship-btn-meru" onclick="selectVimana('meru')">
+<div class="flex items-center justify-between mb-space-xs">
+<span class="font-telemetry-mono text-telemetry-sm text-outline tracking-widest">DOCK BAY 04</span>
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">castle</span>
+</div>
+<div class="font-headline-md text-title-sm text-on-surface group-hover:text-primary tracking-wide uppercase font-bold">Meru Citadel</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant truncate">Fleet Shield Guardian • Divine Aura</div>
+<div class="mt-space-sm flex items-center justify-between font-telemetry-mono text-telemetry-sm">
+<span class="text-secondary">SHIELDS: 14,000 HP</span>
+<span class="text-primary-fixed">CLASS OMEGA</span>
+</div>
+</button>
+</div>
+<!-- Main Workspace Stage: Left Customization Matrix, Center Gantry Viewport, Right Telemetry Analysis -->
+<div class="relative z-10 w-full my-space-md grid grid-cols-1 lg:grid-cols-12 gap-space-md items-start">
+<!-- LEFT MATRIX: Astra Weaponry & Defense Sockets (lg:col-span-3) -->
+<div class="lg:col-span-3 flex flex-col gap-space-md">
+<!-- Slot 1: Primary Weapon -->
+<div class="module-socket cursor-pointer p-space-md rounded bg-surface-container-low hover:bg-surface-container transition-colors shadow-md relative group" onclick="selectModule('agneyastra')">
+<div class="flex items-center justify-between mb-space-xs">
+<span class="font-telemetry-mono text-telemetry-sm text-tertiary uppercase tracking-wider">HARDPOINT [ALPHA] • PRIMARY</span>
+<span class="font-telemetry-mono text-telemetry-sm text-primary font-bold">OC-LVL 5</span>
+</div>
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded bg-surface-container-high flex items-center justify-center text-primary group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-[20px]">local_fire_department</span>
+</div>
+<div class="min-w-0">
+<h3 class="font-title-md text-title-sm text-on-surface truncate font-semibold">Agneyastra Plasma</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">Focused Solar Fusion Lance</p>
+</div>
+</div>
+<div class="mt-space-sm grid grid-cols-2 gap-space-xs font-telemetry-mono text-telemetry-sm">
+<div class="bg-surface-container-lowest/60 p-space-xs rounded">
+<span class="text-outline">DPS: </span><span class="text-primary font-bold">840</span>
+</div>
+<div class="bg-surface-container-lowest/60 p-space-xs rounded">
+<span class="text-outline">CYCLE: </span><span class="text-secondary font-bold">12/SEC</span>
+</div>
+</div>
+</div>
+<!-- Slot 2: Ultimate Astra Slot -->
+<div class="module-socket cursor-pointer p-space-md rounded bg-surface-container-low hover:bg-surface-container transition-colors shadow-md relative group" onclick="selectModule('brahmastra')">
+<div class="flex items-center justify-between mb-space-xs">
+<span class="font-telemetry-mono text-telemetry-sm text-error uppercase tracking-wider">DIVINE CORE • SUPREME ASTRA</span>
+<span class="font-telemetry-mono text-telemetry-sm text-error font-bold">READY (100%)</span>
+</div>
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded bg-error-container/40 flex items-center justify-center text-error group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-[20px]">flare</span>
+</div>
+<div class="min-w-0">
+<h3 class="font-title-md text-title-sm text-on-surface truncate font-semibold">Brahmastra Particle Beam</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">Cataclysmic antimatter pulse</p>
+</div>
+</div>
+<div class="mt-space-sm grid grid-cols-2 gap-space-xs font-telemetry-mono text-telemetry-sm">
+<div class="bg-surface-container-lowest/60 p-space-xs rounded">
+<span class="text-outline">BLAST RADIUS: </span><span class="text-error font-bold">450m</span>
+</div>
+<div class="bg-surface-container-lowest/60 p-space-xs rounded">
+<span class="text-outline">PRANA COST: </span><span class="text-tertiary font-bold">ALL</span>
+</div>
+</div>
+</div>
+<!-- Slot 3: Shield Harmonics -->
+<div class="module-socket cursor-pointer p-space-md rounded bg-surface-container-low hover:bg-surface-container transition-colors shadow-md relative group" onclick="selectModule('kavacha')">
+<div class="flex items-center justify-between mb-space-xs">
+<span class="font-telemetry-mono text-telemetry-sm text-secondary uppercase tracking-wider">DEFENSE GRID • HARMONICS</span>
+<span class="font-telemetry-mono text-telemetry-sm text-secondary font-bold">OPTIMAL</span>
+</div>
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded bg-surface-container-high flex items-center justify-center text-secondary group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-[20px]">security</span>
+</div>
+<div class="min-w-0">
+<h3 class="font-title-md text-title-sm text-on-surface truncate font-semibold">Kavacha Resonance</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">Runic Phase Absorption Shield</p>
+</div>
+</div>
+<div class="mt-space-sm grid grid-cols-2 gap-space-xs font-telemetry-mono text-telemetry-sm">
+<div class="bg-surface-container-lowest/60 p-space-xs rounded">
+<span class="text-outline">CAPACITY: </span><span class="text-secondary font-bold">3,200 HP</span>
+</div>
+<div class="bg-surface-container-lowest/60 p-space-xs rounded">
+<span class="text-outline">REGEN: </span><span class="text-secondary-fixed font-bold">180/SEC</span>
+</div>
+</div>
+</div>
+<!-- Slot 4: Propulsion Subsystem -->
+<div class="module-socket cursor-pointer p-space-md rounded bg-surface-container-low hover:bg-surface-container transition-colors shadow-md relative group" onclick="selectModule('vayu')">
+<div class="flex items-center justify-between mb-space-xs">
+<span class="font-telemetry-mono text-telemetry-sm text-secondary uppercase tracking-wider">THRUST • GRAVITON DRIVE</span>
+<span class="font-telemetry-mono text-telemetry-sm text-primary font-bold">WARP READY</span>
+</div>
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded bg-surface-container-high flex items-center justify-center text-primary group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-[20px]">air</span>
+</div>
+<div class="min-w-0">
+<h3 class="font-title-md text-title-sm text-on-surface truncate font-semibold">Vayu Graviton Thruster</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">Quad-Vector Pranic Propulsion</p>
+</div>
+</div>
+<div class="mt-space-sm grid grid-cols-2 gap-space-xs font-telemetry-mono text-telemetry-sm">
+<div class="bg-surface-container-lowest/60 p-space-xs rounded">
+<span class="text-outline">MAX VELOCITY: </span><span class="text-primary font-bold">1,420 m/s</span>
+</div>
+<div class="bg-surface-container-lowest/60 p-space-xs rounded">
+<span class="text-outline">AFTERBURNER: </span><span class="text-secondary font-bold">+80%</span>
+</div>
+</div>
+</div>
+</div>
+<!-- CENTER: Holographic Dry-Dock Viewport Stage (lg:col-span-6) -->
+<div class="lg:col-span-6 flex flex-col items-center justify-center relative min-h-[520px] rounded bg-surface-container-low p-space-md overflow-hidden shadow-2xl">
+<!-- Overhead Hologram Projection Cone -->
+<div class="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-primary/15 via-secondary/5 to-transparent pointer-events-none"></div>
+<!-- Floating Sacred Yantra Reticle in 3D Space -->
+<div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+<div class="w-96 h-96 rounded-full border border-primary/20 flex items-center justify-center animate-spin" style="animation-duration: 90s;">
+<div class="w-80 h-80 rounded-full border border-secondary/20 flex items-center justify-center">
+<div class="w-64 h-64 border border-tertiary/20 rotate-45 flex items-center justify-center">
+<div class="w-48 h-48 border border-primary/30 rotate-45"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Central Ship Visual Stage with Decorative Gantry Accents -->
+<div class="relative z-10 w-full max-w-lg aspect-square flex items-center justify-center">
+<img class="w-full h-full object-contain filter drop-shadow-[0_0_24px_rgba(233,196,0,0.35)] select-none" data-alt="Intricate golden and obsidian Vedic starship fighter craft hovering inside a high-tech sci-fi hangar bay with cyan holographic repair gantries glowing Sanskrit energy runes and luminous prana conduits" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCMuKji_hOprU8ofTU-QN_o4r5ZtoqkpiInBpUt9Sg9fltwoCPDVYmk9DvUz3utO7BYwktpuDSD0TkHXihSHqcrqwS2vCHkPY1pqQSYNGPwuz1e3AI6mRgDvTi30GNOOzQL429E9j-wRWWCLeRAKtxMKMV36rv020c8ScRQRbaDlv0Ype3AKoPHV7W9p2Lz7cr4ZpQZ4CGNIizIKp58UoAhJxRVAls2MbJTzqm_v26ntov6uFYCtbA"/>
+<!-- Interactive Module Pin: Weapons -->
+<div class="absolute top-[32%] left-[24%] flex items-center gap-space-xs group cursor-pointer" onclick="selectModule('agneyastra')">
+<span class="w-3 h-3 rounded-full bg-primary animate-ping"></span>
+<span class="w-2.5 h-2.5 rounded-full bg-primary absolute -left-0.5 -top-0.5"></span>
+<div class="hidden group-hover:flex flex-col bg-surface-container-high/95 p-space-xs rounded shadow-lg backdrop-blur-md -ml-2">
+<span class="font-telemetry-mono text-telemetry-sm text-primary font-bold uppercase">Agneyastra Hardpoint</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Active Plasma Link</span>
+</div>
+</div>
+<!-- Interactive Module Pin: Shields / Kavacha -->
+<div class="absolute top-[48%] right-[22%] flex items-center gap-space-xs group cursor-pointer" onclick="selectModule('kavacha')">
+<span class="w-3 h-3 rounded-full bg-secondary animate-ping"></span>
+<span class="w-2.5 h-2.5 rounded-full bg-secondary absolute -left-0.5 -top-0.5"></span>
+<div class="hidden group-hover:flex flex-col bg-surface-container-high/95 p-space-xs rounded shadow-lg backdrop-blur-md -ml-2">
+<span class="font-telemetry-mono text-telemetry-sm text-secondary font-bold uppercase">Kavacha Emitter</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Field Status: 100%</span>
+</div>
+</div>
+<!-- Interactive Module Pin: Thrusters -->
+<div class="absolute bottom-[28%] left-[48%] flex items-center gap-space-xs group cursor-pointer" onclick="selectModule('vayu')">
+<span class="w-3 h-3 rounded-full bg-primary animate-ping"></span>
+<span class="w-2.5 h-2.5 rounded-full bg-primary absolute -left-0.5 -top-0.5"></span>
+<div class="hidden group-hover:flex flex-col bg-surface-container-high/95 p-space-xs rounded shadow-lg backdrop-blur-md -ml-2">
+<span class="font-telemetry-mono text-telemetry-sm text-primary font-bold uppercase">Vayu Graviton Array</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Pranic Vectoring OK</span>
+</div>
+</div>
+</div>
+<!-- Drydock Status HUD Overlay -->
+<div class="relative z-10 w-full flex items-center justify-between px-space-md py-space-xs bg-surface-container-lowest/80 backdrop-blur rounded mt-space-md">
+<div class="flex items-center gap-space-sm font-telemetry-mono text-telemetry-sm">
+<span class="text-secondary flex items-center gap-space-xs">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+              DRY-DOCK GANTRY VII
+            </span>
+<span class="text-outline hidden sm:inline">|</span>
+<span class="text-on-surface-variant hidden sm:inline">STRUCTURAL INTEGRITY: 100%</span>
+</div>
+<div class="flex items-center gap-space-xs font-telemetry-mono text-telemetry-sm text-primary">
+<span class="material-symbols-outlined text-[16px]">rotate_right</span>
+<span>360° ROTATION READY</span>
+</div>
+</div>
+</div>
+<!-- RIGHT ANALYSIS MATRIX: Radar Chart & Telemetry Readouts (lg:col-span-3) -->
+<div class="lg:col-span-3 flex flex-col gap-space-md">
+<!-- Vessel Diagnostic & Radar Chart Panel -->
+<div class="p-space-md rounded bg-surface-container-low shadow-md">
+<div class="flex items-center justify-between mb-space-sm">
+<span class="font-telemetry-mono text-telemetry-sm text-primary tracking-widest uppercase">VESSEL COMBAT TELEMETRY</span>
+<span class="font-telemetry-mono text-telemetry-sm text-secondary">REALM INDEX: 94.2</span>
+</div>
+<!-- Radar / Pentagram SVG Chart -->
+<div class="w-full flex justify-center py-space-sm">
+<svg class="w-44 h-44 text-outline-variant" viewbox="0 0 200 200">
+<!-- Pentagon grid concentric levels -->
+<polygon fill="none" opacity="0.4" points="100,20 180,75 150,165 50,165 20,75" stroke="currentColor" stroke-width="0.8"></polygon>
+<polygon fill="none" opacity="0.3" points="100,45 155,85 135,148 65,148 45,85" stroke="currentColor" stroke-width="0.8"></polygon>
+<polygon fill="none" opacity="0.2" points="100,70 130,95 120,130 80,130 70,95" stroke="currentColor" stroke-width="0.8"></polygon>
+<!-- Axis lines -->
+<line opacity="0.5" stroke="currentColor" stroke-width="0.6" x1="100" x2="100" y1="100" y2="20"></line>
+<line opacity="0.5" stroke="currentColor" stroke-width="0.6" x1="100" x2="180" y1="100" y2="75"></line>
+<line opacity="0.5" stroke="currentColor" stroke-width="0.6" x1="100" x2="150" y1="100" y2="165"></line>
+<line opacity="0.5" stroke="currentColor" stroke-width="0.6" x1="100" x2="50" y1="100" y2="165"></line>
+<line opacity="0.5" stroke="currentColor" stroke-width="0.6" x1="100" x2="20" y1="100" y2="75"></line>
+<!-- Vessel Active Polygon (Garuda Mk-VII specs) -->
+<polygon fill="rgba(233, 196, 0, 0.2)" points="100,28 170,82 132,150 58,158 32,80" stroke="#ffe16f" stroke-width="1.8"></polygon>
+<!-- Data Points -->
+<circle cx="100" cy="28" fill="#ffe16f" r="3"></circle>
+<circle cx="170" cy="82" fill="#03dbe7" r="3"></circle>
+<circle cx="132" cy="150" fill="#75f5ff" r="3"></circle>
+<circle cx="58" cy="158" fill="#ffe16f" r="3"></circle>
+<circle cx="32" cy="80" fill="#ffe16f" r="3"></circle>
+</svg>
+</div>
+<!-- Discrete Progress Gauges -->
+<div class="flex flex-col gap-space-sm mt-space-xs">
+<div>
+<div class="flex justify-between font-telemetry-mono text-telemetry-sm mb-space-xs">
+<span class="text-on-surface-variant">MANEUVERABILITY</span>
+<span class="text-primary font-bold">92 / 100</span>
+</div>
+<div class="h-2 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full transition-all duration-500" style="width: 92%;"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between font-telemetry-mono text-telemetry-sm mb-space-xs">
+<span class="text-on-surface-variant">FIREPOWER</span>
+<span class="text-primary font-bold">88 / 100</span>
+</div>
+<div class="h-2 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full transition-all duration-500" style="width: 88%;"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between font-telemetry-mono text-telemetry-sm mb-space-xs">
+<span class="text-on-surface-variant">DEFENSE / KAVACHA</span>
+<span class="text-secondary font-bold">65 / 100</span>
+</div>
+<div class="h-2 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-secondary rounded-full transition-all duration-500" style="width: 65%;"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between font-telemetry-mono text-telemetry-sm mb-space-xs">
+<span class="text-on-surface-variant">PRANIC ENERGY CORE</span>
+<span class="text-tertiary font-bold">95 / 100</span>
+</div>
+<div class="h-2 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-tertiary rounded-full transition-all duration-500" style="width: 95%;"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Cosmetic Aura / Ship Paint Schematics -->
+<div class="p-space-md rounded bg-surface-container-low shadow-md">
+<div class="flex items-center justify-between mb-space-xs">
+<span class="font-telemetry-mono text-telemetry-sm text-tertiary tracking-widest uppercase">COSMETIC WAR-SKIN</span>
+<span class="font-telemetry-mono text-telemetry-sm text-outline">SELECT</span>
+</div>
+<div class="grid grid-cols-3 gap-space-xs">
+<button class="skin-btn p-space-xs rounded bg-surface-container-high text-center hover:bg-surface-container transition-colors border-0" onclick="changeSkin('gold')">
+<span class="w-4 h-4 mx-auto rounded-full bg-primary block mb-space-xs"></span>
+<span class="font-telemetry-mono text-telemetry-sm text-on-surface block truncate">Sunburst</span>
+</button>
+<button class="skin-btn p-space-xs rounded bg-surface-container text-center hover:bg-surface-container-high transition-colors border-0" onclick="changeSkin('asura')">
+<span class="w-4 h-4 mx-auto rounded-full bg-error block mb-space-xs"></span>
+<span class="font-telemetry-mono text-telemetry-sm text-on-surface-variant block truncate">Asura</span>
+</button>
+<button class="skin-btn p-space-xs rounded bg-surface-container text-center hover:bg-surface-container-high transition-colors border-0" onclick="changeSkin('indra')">
+<span class="w-4 h-4 mx-auto rounded-full bg-secondary block mb-space-xs"></span>
+<span class="font-telemetry-mono text-telemetry-sm text-on-surface-variant block truncate">Lightning</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Command Deck: Modular Upgrades & Action Launcher -->
+<div class="relative z-10 w-full mt-space-md p-space-md bg-surface-container-low rounded shadow-xl flex flex-col md:flex-row items-center justify-between gap-space-md">
+<!-- Selected Module Details Prompt -->
+<div class="flex items-center gap-space-md">
+<div class="w-12 h-12 rounded bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[24px]" id="activeModuleIcon">construction</span>
+</div>
+<div>
+<div class="flex items-center gap-space-xs">
+<span class="font-telemetry-mono text-telemetry-sm text-tertiary uppercase font-semibold" id="activeModuleType">SELECTED: AGNEYASTRA PLASMA CANNON</span>
+<span class="font-telemetry-mono text-telemetry-sm text-outline">•</span>
+<span class="font-telemetry-mono text-telemetry-sm text-primary" id="activeModuleLevel">UPGRADE TIER 6 AVAILABLE</span>
+</div>
+<div class="font-body-md text-body-sm text-on-surface-variant mt-0.5" id="activeModuleDesc">
+            Increases projectile velocity by +14% and inflicts Solar Burn DOT over 4.5s.
+          </div>
+</div>
+</div>
+<!-- Tactical Action Push Buttons -->
+<div class="flex flex-wrap items-center gap-space-sm">
+<button class="h-11 px-space-lg rounded bg-primary-container text-on-primary-container font-headline-md text-label-caps uppercase tracking-wider font-bold hover:scale-102 active:scale-98 transition-all shadow-md flex items-center gap-space-xs" onclick="upgradeActiveModule()">
+<span class="material-symbols-outlined text-[18px]">upgrade</span>
+<span>UPGRADE MODULE (12,000 SOMA)</span>
+</button>
+<button class="h-11 px-space-md rounded bg-surface-container-high hover:bg-surface-container text-primary font-headline-md text-label-caps uppercase tracking-wider font-bold transition-all shadow flex items-center gap-space-xs" onclick="equipLoadout()">
+<span class="material-symbols-outlined text-[18px]">check_circle</span>
+<span>EQUIP LOADOUT</span>
+</button>
+<button class="h-11 px-space-md rounded bg-surface-container-high hover:bg-surface-container text-secondary font-headline-md text-label-caps uppercase tracking-wider font-bold transition-all shadow flex items-center gap-space-xs" onclick="testSimulator()">
+<span class="material-symbols-outlined text-[18px]">videogame_asset</span>
+<span>TEST IN SIMULATOR</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Interaction Logic for Vimana Switching & Customization -->
+<script>
+    let currentSoma = 148500;
+    let selectedModule = 'agneyastra';
+
+    const moduleData = {
+      agneyastra: {
+        title: 'AGNEYASTRA PLASMA CANNON',
+        type: 'PRIMARY ASTRA HARDPOINT',
+        level: 'UPGRADE TIER 6 AVAILABLE',
+        desc: 'Increases plasma burst damage by +14% and inflicts Solar Burn DOT over 4.5 seconds.',
+        icon: 'local_fire_department',
+        cost: 12000
+      },
+      brahmastra: {
+        title: 'BRAHMASTRA PARTICLE BEAM',
+        type: 'SUPREME CELESTIAL CANNON',
+        level: 'MAX TIER REACHED',
+        desc: 'Empowers cosmic shockwave blast radius to 520m with catastrophic antimatter dissipation.',
+        icon: 'flare',
+        cost: 35000
+      },
+      kavacha: {
+        title: 'KAVACHA RESONANCE BARRIER',
+        type: 'DEFENSE GRID HARMONIC',
+        level: 'UPGRADE TIER 4 AVAILABLE',
+        desc: 'Expands kinetic absorption shield by +600 HP and grants 12% resistance against Void Rifts.',
+        icon: 'security',
+        cost: 16500
+      },
+      vayu: {
+        title: 'VAYU GRAVITON THRUSTERS',
+        type: 'PROPULSION VECTOR ENGINE',
+        level: 'UPGRADE TIER 5 AVAILABLE',
+        desc: 'Reduces afterburner cooldown by 2.2s and raises maximum combat sprint speed to 1,580 m/s.',
+        icon: 'air',
+        cost: 14000
+      }
+    };
+
+    function selectVimana(shipKey) {
+      const cards = document.querySelectorAll('.ship-select-card');
+      cards.forEach(card => {
+        card.classList.remove('bg-surface-container-high', 'shadow-lg');
+        card.classList.add('bg-surface-container-low');
+      });
+
+      const selected = document.getElementById(`ship-btn-${shipKey}`);
+      if (selected) {
+        selected.classList.remove('bg-surface-container-low');
+        selected.classList.add('bg-surface-container-high', 'shadow-lg');
+      }
+    }
+
+    function selectModule(key) {
+      selectedModule = key;
+      const mod = moduleData[key];
+      if (!mod) return;
+
+      document.getElementById('activeModuleType').textContent = `SELECTED: ${mod.title}`;
+      document.getElementById('activeModuleLevel').textContent = mod.level;
+      document.getElementById('activeModuleDesc').textContent = mod.desc;
+      document.getElementById('activeModuleIcon').textContent = mod.icon;
+    }
+
+    function upgradeActiveModule() {
+      const mod = moduleData[selectedModule];
+      if (currentSoma >= mod.cost) {
+        currentSoma -= mod.cost;
+        document.getElementById('somaDisplay').textContent = currentSoma.toLocaleString();
+        alert(`Upgrade Successful: ${mod.title} enhanced! Remaining Soma: ${currentSoma.toLocaleString()}`);
+      } else {
+        alert('Insufficient Soma Nectar to perform this Vedic forging rite.');
+      }
+    }
+
+    function equipLoadout() {
+      alert('Vimana Loadout Synchronized with Celestial Realm Command.');
+    }
+
+    function testSimulator() {
+      alert('Launching Astral Simulator Chamber: Initializing Holographic Drone Targets...');
+    }
+
+    function changeSkin(skin) {
+      alert(`Vimana War-Skin updated to: [${skin.toUpperCase()}]`);
+    }
+  </script>
+</div></main><footer class="w-full bg-surface-container-lowest py-space-md shadow-[0_-4px_20px_rgba(0,0,0,0.5)]"><div class="w-full px-gutter-desktop flex flex-col md:flex-row items-center justify-between gap-space-sm"><div class="flex items-center gap-space-md"><span class="font-telemetry-mono text-telemetry-sm text-outline uppercase">SYS CONCORDIA V4.19</span><span class="font-telemetry-mono text-telemetry-sm text-on-surface-variant">//</span><span class="font-telemetry-mono text-telemetry-sm text-on-surface-variant">QUANTUM YANTRA NAV: ONLINE</span></div><div class="text-center font-telemetry-mono text-telemetry-sm text-on-surface-variant">© CELESTIAL REALM COMMAND. BRAHMASTRA DEFENSE SYSTEMS.</div><div class="flex items-center gap-space-md"><span class="font-telemetry-mono text-telemetry-sm text-secondary">FPS: 144</span><span class="font-telemetry-mono text-telemetry-sm text-tertiary">PRANA: STABLE</span></div></div></footer></body></html>

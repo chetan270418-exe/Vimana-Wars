@@ -68,10 +68,10 @@ public:
         std::string callsign = DBSystem::instance().player_name();
         int max_wave = DBSystem::instance().max_wave();
         std::string rank_str = "INITIATE";
-        if (max_wave >= 30) rank_str = "MAHAMAHESHWARA (VIMANA MASTER)";
-        else if (max_wave >= 20) rank_str = "ASURA SLAYER (COMMANDER)";
-        else if (max_wave >= 10) rank_str = "KSHATRIYA (WARRIOR)";
-        else if (max_wave >= 5)  rank_str = "ASTRAL PILOT (VANGUARD)";
+        if (max_wave >= 300) rank_str = "MAHAMAHESHWARA (ARMADA SAVIOR)";
+        else if (max_wave >= 210) rank_str = "ASURA SLAYER (COMMANDER)";
+        else if (max_wave >= 90) rank_str = "KSHATRIYA (WARRIOR)";
+        else if (max_wave >= 30)  rank_str = "ASTRAL PILOT (VANGUARD)";
 
         DrawText("CALLSIGN // RANK:", static_cast<int>(card.x + 30), static_cast<int>(card.y + 55), 9, COLOR_MUTED);
         DrawTextEx(title_f, callsign.c_str(), { card.x + 30, card.y + 70 }, 20, 1.0f, COLOR_GOLD_BRIGHT);
@@ -106,7 +106,8 @@ public:
         Rectangle s1 = { card.x + 30, grid_y, col_w, 58 };
         UI::DrawChamferedPanel(s1, COLOR_MUTED, COLOR_SURFACE_MID, 4.0f);
         DrawText("MAX CAMPAIGN WAVE", static_cast<int>(s1.x + 12), static_cast<int>(s1.y + 8), 9, COLOR_MUTED);
-        std::string w_txt = "WAVE " + std::to_string(max_wave) + " / 30";
+        std::string w_txt = "ACT " + std::to_string(CampaignActForWave(max_wave)) + " · WAVE " +
+                            std::to_string(CampaignWaveWithinAct(max_wave)) + "/30";
         DrawTextEx(title_f, w_txt.c_str(), { s1.x + 12, s1.y + 24 }, 16, 1.0f, COLOR_GOLD);
 
         // Stat 2: High Score

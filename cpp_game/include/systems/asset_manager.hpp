@@ -38,10 +38,11 @@ public:
         }
         std::cout << "[AssetManager] Resolved assets base path: " << m_base_path << std::endl;
 
-        // Preload fonts
+        // Preload fonts — load at LARGE raster sizes so downscaling is crisp.
+// (Loading at 36 and drawing at 9-12 makes everything blurry at 900x600.)
         std::string title_font_path = m_base_path + "/fonts/Cinzel-Bold.ttf";
         if (std::filesystem::exists(title_font_path)) {
-            m_main_font = LoadFontEx(title_font_path.c_str(), 36, nullptr, 0);
+            m_main_font = LoadFontEx(title_font_path.c_str(), 96, nullptr, 0);
             SetTextureFilter(m_main_font.texture, TEXTURE_FILTER_BILINEAR);
             std::cout << "[AssetManager] Loaded Title Font: " << title_font_path << std::endl;
         } else {
@@ -50,7 +51,7 @@ public:
 
         std::string body_font_path = m_base_path + "/fonts/SpaceGrotesk-Bold.ttf";
         if (std::filesystem::exists(body_font_path)) {
-            m_body_font = LoadFontEx(body_font_path.c_str(), 28, nullptr, 0);
+            m_body_font = LoadFontEx(body_font_path.c_str(), 64, nullptr, 0);
             SetTextureFilter(m_body_font.texture, TEXTURE_FILTER_BILINEAR);
             std::cout << "[AssetManager] Loaded Body Font: " << body_font_path << std::endl;
         } else {
@@ -59,7 +60,7 @@ public:
 
         std::string mono_font_path = m_base_path + "/fonts/JetBrainsMono-Bold.ttf";
         if (std::filesystem::exists(mono_font_path)) {
-            m_mono_font = LoadFontEx(mono_font_path.c_str(), 24, nullptr, 0);
+            m_mono_font = LoadFontEx(mono_font_path.c_str(), 48, nullptr, 0);
             SetTextureFilter(m_mono_font.texture, TEXTURE_FILTER_BILINEAR);
             std::cout << "[AssetManager] Loaded Mono Font: " << mono_font_path << std::endl;
         } else {

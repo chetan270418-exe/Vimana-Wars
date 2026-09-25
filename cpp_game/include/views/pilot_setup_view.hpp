@@ -5,6 +5,7 @@
 #include "core/types.hpp"
 #include "views/view_interface.hpp"
 #include "systems/asset_manager.hpp"
+#include "systems/account_system.hpp"
 #include "systems/db_system.hpp"
 #include "ui/button.hpp"
 #include "ui/vedic_theme.hpp"
@@ -92,7 +93,8 @@ public:
         // Registry Specs
         float cy = card.y + 95;
         DrawText("ASSIGNED PILOT ID :", card.x + 40, cy, 12, COLOR_MUTED);
-        DrawText(PILOT_ID, card.x + 220, cy, 13, COLOR_GOLD_BRIGHT);
+        const std::string pilot_id = AccountSystem::instance().game_id();
+        DrawText(pilot_id.c_str(), static_cast<int>(card.x + 220), static_cast<int>(cy), 13, COLOR_GOLD_BRIGHT);
 
         DrawText("SQUADRON FLEET   :", card.x + 40, cy + 28, 12, COLOR_MUTED);
         DrawText(PILOT_SQUADRON, card.x + 220, cy + 28, 13, COLOR_CYAN_BRIGHT);

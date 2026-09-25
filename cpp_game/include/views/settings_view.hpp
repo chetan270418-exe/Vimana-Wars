@@ -27,28 +27,28 @@ public:
         m_next_view = ViewType::SETTINGS;
 
         float cx = SCREEN_WIDTH / 2.0f;
-        m_btn_vol_down = UI::Button({ cx - 110, 160, 40, 30 }, "-", COLOR_GOLD);
-        m_btn_vol_up = UI::Button({ cx + 70, 160, 40, 30 }, "+", COLOR_GOLD);
+        m_btn_vol_down = UI::Button({ cx - 110, 160, 40, 30 }, "-", COLOR_GOLD, "", UI::ButtonKind::SECONDARY);
+        m_btn_vol_up = UI::Button({ cx + 70, 160, 40, 30 }, "+", COLOR_GOLD, "", UI::ButtonKind::SECONDARY);
 
-        m_btn_sfx_down = UI::Button({ cx - 110, 205, 40, 30 }, "-", COLOR_GOLD);
-        m_btn_sfx_up = UI::Button({ cx + 70, 205, 40, 30 }, "+", COLOR_GOLD);
+        m_btn_sfx_down = UI::Button({ cx - 110, 205, 40, 30 }, "-", COLOR_GOLD, "", UI::ButtonKind::SECONDARY);
+        m_btn_sfx_up = UI::Button({ cx + 70, 205, 40, 30 }, "+", COLOR_GOLD, "", UI::ButtonKind::SECONDARY);
 
-        m_btn_music_down = UI::Button({ cx - 110, 250, 40, 30 }, "-", COLOR_GOLD);
-        m_btn_music_up = UI::Button({ cx + 70, 250, 40, 30 }, "+", COLOR_GOLD);
+        m_btn_music_down = UI::Button({ cx - 110, 250, 40, 30 }, "-", COLOR_GOLD, "", UI::ButtonKind::SECONDARY);
+        m_btn_music_up = UI::Button({ cx + 70, 250, 40, 30 }, "+", COLOR_GOLD, "", UI::ButtonKind::SECONDARY);
 
-        m_btn_ui_down = UI::Button({ cx - 110, 295, 40, 30 }, "-", COLOR_GOLD);
-        m_btn_ui_up = UI::Button({ cx + 70, 295, 40, 30 }, "+", COLOR_GOLD);
+        m_btn_ui_down = UI::Button({ cx - 110, 295, 40, 30 }, "-", COLOR_GOLD, "", UI::ButtonKind::SECONDARY);
+        m_btn_ui_up = UI::Button({ cx + 70, 295, 40, 30 }, "+", COLOR_GOLD, "", UI::ButtonKind::SECONDARY);
 
-        m_btn_boss_down = UI::Button({ cx - 110, 340, 40, 30 }, "-", COLOR_GOLD);
-        m_btn_boss_up = UI::Button({ cx + 70, 340, 40, 30 }, "+", COLOR_GOLD);
+        m_btn_boss_down = UI::Button({ cx - 110, 340, 40, 30 }, "-", COLOR_GOLD, "", UI::ButtonKind::SECONDARY);
+        m_btn_boss_up = UI::Button({ cx + 70, 340, 40, 30 }, "+", COLOR_GOLD, "", UI::ButtonKind::SECONDARY);
 
-        m_btn_fullscreen = UI::Button({ cx - 110, 395, 220, 36 }, "TOGGLE FULLSCREEN", COLOR_CYAN_BRIGHT);
-        m_btn_colorblind = UI::Button({ cx + 20, 160, 190, 34 }, "TOGGLE PALETTE", COLOR_GREEN_BRIGHT);
-        m_btn_shake = UI::Button({ cx + 20, 245, 190, 34 }, "TOGGLE SHAKE", COLOR_CYAN_BRIGHT);
-        m_btn_scanlines = UI::Button({ cx + 20, 330, 190, 34 }, "TOGGLE SCANLINES", COLOR_GOLD_BRIGHT);
+        m_btn_fullscreen = UI::Button({ cx - 110, 395, 220, 36 }, "TOGGLE FULLSCREEN", COLOR_CYAN_BRIGHT, "", UI::ButtonKind::SECONDARY);
+        m_btn_colorblind = UI::Button({ cx + 20, 160, 190, 34 }, "TOGGLE PALETTE", COLOR_GREEN_BRIGHT, "", UI::ButtonKind::SECONDARY);
+        m_btn_shake = UI::Button({ cx + 20, 245, 190, 34 }, "TOGGLE SHAKE", COLOR_CYAN_BRIGHT, "", UI::ButtonKind::SECONDARY);
+        m_btn_scanlines = UI::Button({ cx + 20, 330, 190, 34 }, "TOGGLE SCANLINES", COLOR_GOLD_BRIGHT, "", UI::ButtonKind::SECONDARY);
 
-        m_btn_back = UI::Button({ 40, 520, 110, 36 }, "SAVE & BACK", COLOR_MUTED);
-        m_btn_reset_defaults = UI::Button({ SCREEN_WIDTH - 230, 520, 190, 36 }, "RESET DEFAULTS", COLOR_RED_BRIGHT);
+        m_btn_back = UI::Button({ 40, 520, 110, 36 }, "SAVE & BACK", COLOR_MUTED, "", UI::ButtonKind::PRIMARY);
+        m_btn_reset_defaults = UI::Button({ SCREEN_WIDTH - 230, 520, 190, 36 }, "RESET DEFAULTS", COLOR_RED_BRIGHT, "", UI::ButtonKind::DESTRUCTIVE);
     }
 
     void update(float dt, Vector2 mouse_pos) override {
