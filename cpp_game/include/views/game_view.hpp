@@ -41,15 +41,12 @@ public:
           m_is_paused(false),
           m_confirm_abort(false),
           m_is_coop_mode(false),
-          m_team_combo(1),
+          m_team_combo(0),
           m_team_transcendence_timer(0.0f),
           m_total_team_score(0),
-          m_net_snapshot_timer(0.0f),
           m_btn_resume(      { SCREEN_WIDTH / 2.0f - 130, 262, 260, 34 }, "RESUME COMBAT",       COLOR_GOLD_BRIGHT, "", UI::ButtonKind::PRIMARY),
           m_btn_restart_wave({ SCREEN_WIDTH / 2.0f - 130, 304, 260, 34 }, "RESTART WAVE",        COLOR_CYAN_BRIGHT, "", UI::ButtonKind::SECONDARY),
           m_btn_exit(        { SCREEN_WIDTH / 2.0f - 130, 346, 260, 34 }, "ABORT TO MAP",        COLOR_RED_BRIGHT, "", UI::ButtonKind::DESTRUCTIVE),
-          m_btn_quit_title(  { 0, 0, 0, 0 }, "QUIT TO TITLE",       COLOR_ORANGE_BRIGHT, "", UI::ButtonKind::TERTIARY),
-          m_btn_quit_desktop({ 0, 0, 0, 0 }, "QUIT TO DESKTOP",     COLOR_MUTED, "", UI::ButtonKind::GHOST),
           m_btn_confirm_abort({ SCREEN_WIDTH / 2.0f - 135, 340, 130, 32 }, "CONFIRM",            COLOR_RED_BRIGHT, "", UI::ButtonKind::DESTRUCTIVE),
           m_btn_cancel_abort( { SCREEN_WIDTH / 2.0f +   5, 340, 130, 32 }, "CANCEL",             COLOR_CYAN_BRIGHT, "", UI::ButtonKind::SECONDARY)
     {
@@ -78,7 +75,7 @@ public:
         m_wave_mgr.start_campaign(1, Difficulty::KSHATRIYA, 1);
         m_wave_start_hp = m_squad[0].hp;
         m_wave_kills = 0;
-        m_team_combo = 1;
+        m_team_combo = 0;
         m_team_transcendence_timer = 0.0f;
         m_total_team_score = 0;
         m_milestone_text = "";
@@ -86,8 +83,17 @@ public:
         m_last_milestone = 0;
         m_last_boss_phase = 1;
         m_boss_phase_flash_timer = 0.0f;
+        m_death_cause.clear();
         CoOpAstraSystem::instance().reset();
         ParallaxBackground::instance().init();
+        m_stars.clear();
+        for (int i = 0; i < 90; ++i) {
+            m_stars.push_back({
+                static_cast<float>(std::rand() % SCREEN_WIDTH),
+                static_cast<float>(std::rand() % SCREEN_HEIGHT),
+                0.5f + (std::rand() % 15) / 10.0f
+            });
+        }
 
         SoundSystem::instance().play_music("combat_loop.mp3");
     }
@@ -102,6 +108,7 @@ public:
         m_difficulty = diff;
         m_run_duration = 0.0f;
         m_run_recorded = false;
+        m_death_cause.clear();
         m_is_coop_mode = (squad_size > 1 || NetworkManager::instance().role() != NetworkRole::OFFLINE);
         int num_players = m_is_coop_mode ? std::max(squad_size, (int)NetworkManager::instance().players().size()) : 1;
         if (num_players < 1) num_players = 1;
@@ -157,7 +164,7 @@ public:
 
         m_wave_start_hp = m_squad[0].hp;
         m_wave_kills = 0;
-        m_team_combo = 1;
+        m_team_combo = 0;
         m_team_transcendence_timer = 0.0f;
         m_total_team_score = 0;
         m_is_paused = false;
@@ -170,8 +177,9 @@ public:
         CoOpAstraSystem::instance().reset();
     }
 
-    void apply_boon_and_resume(BoonType boon) {
+void apply_boon_and_resume(BoonType boon) {
         m_squad[0].apply_boon(boon);
+        m_is_paused = false;
         m_next_view = ViewType::GAMEPLAY;
 
         int next_w = m_wave_mgr.current_wave() + 1;
@@ -203,11 +211,13 @@ public:
     const std::vector<Player>& squad() const { return m_squad; }
     bool is_coop_mode() const { return m_is_coop_mode; }
     int total_team_score() const { return m_total_team_score; }
+    std::string death_cause() const { return m_death_cause.empty() ? "Unknown hostile" : m_death_cause; }
 
     void record_ship_mastery() {
         if (m_run_recorded || m_squad.empty() || !m_squad[0].archetype) return;
         m_run_recorded = true;
         const std::string ship_id = m_squad[0].archetype->id;
+        if (!m_death_cause.empty()) CurrencySystem::instance().set_ship_last_death_cause(ship_id, m_death_cause);
         const int old_sorties = CurrencySystem::instance().ship_sorties(ship_id);
         const int sorties = CurrencySystem::instance().record_ship_sortie(ship_id);
         DBSystem::instance().save_game();
@@ -288,20 +298,9 @@ public:
             auto& p = m_squad[i];
             if (p.is_spectator) continue;
 
-            if (p.is_downed) {
-                // Spectator camera: WASD free-fly (handled in draw via offset)
-                if (i == 0) {
-                    float spd = 200.0f * dt;
-                    if (IsKeyDown(KEY_W)) p.pos.y -= spd;
-                    if (IsKeyDown(KEY_S)) p.pos.y += spd;
-                    if (IsKeyDown(KEY_A)) p.pos.x -= spd;
-                    if (IsKeyDown(KEY_D)) p.pos.x += spd;
-                    p.pos.x = std::clamp(p.pos.x, 0.0f, (float)SCREEN_WIDTH);
-                    p.pos.y = std::clamp(p.pos.y, 0.0f, (float)SCREEN_HEIGHT);
-                }
-
+if (p.is_downed) {
                 // Self-revive consumes a Soma and channels independently of bleed-out.
-                if (i == 0 && IsKeyDown(KEY_R) && p.inventory.soma_vials > 0) {
+                if (i == 0 && IsKeyDown(KEY_E) && p.inventory.soma_vials > 0) {
                     p.self_revive_timer += dt;
                     if (p.self_revive_timer >= REVIVE_TIME) {
                         p.inventory.soma_vials--;
@@ -378,7 +377,7 @@ public:
 
 
         // Team Transcendence countdown
-        if (m_team_transcendence_timer > 0) m_team_transcendence_timer -= dt;
+        m_team_transcendence_timer = std::max(0.0f, m_team_transcendence_timer - dt);
         if (m_boss_phase_flash_timer > 0.0f) m_boss_phase_flash_timer -= dt;
 
         Boss* boss_ptr = m_wave_mgr.is_boss_wave() ? &m_wave_mgr.get_boss() : nullptr;
@@ -454,25 +453,36 @@ public:
             }
             p.update(dt);
 
+            Color th_col = p.archetype ? p.archetype->accent_color : COLOR_CYAN_BRIGHT;
             // Thruster trail for active ships
             if (!p.is_downed) {
                 float rad = (p.angle + 180.0f) * (3.14159f / 180.0f);
                 Vector2 eng_pos = { p.pos.x + std::cos(rad) * p.radius, p.pos.y + std::sin(rad) * p.radius };
-                Color th_col = p.archetype ? p.archetype->accent_color : COLOR_CYAN_BRIGHT;
                 m_particles.emit_thrust(eng_pos, { std::cos(rad), std::sin(rad) }, th_col);
+            }
+            if (p.just_shot) {
+                float rad = p.angle * (3.14159f / 180.0f);
+                Vector2 nose = { p.pos.x + std::cos(rad) * p.radius, p.pos.y + std::sin(rad) * p.radius };
+                m_particles.emit_muzzle_flash(nose, { std::cos(rad), std::sin(rad) }, th_col);
+                p.just_shot = false;
+            }
+            if (p.just_dashed) {
+                m_particles.emit_dash_ghost(p.pos, p.archetype ? p.archetype->sprite_file : "pushpaka.png", p.angle + 90.0f, p.archetype ? p.archetype->accent_color : COLOR_CYAN_BRIGHT);
+                p.just_dashed = false;
             }
         }
 
         // -- 4. Downed & Revive Status Transition --------------------------------
         for (auto& p : m_squad) {
             if (!p.is_spectator && !p.is_downed && p.hp <= 0) {
+                m_death_cause = p.last_damage_source.empty() ? "Unknown hostile" : p.last_damage_source;
                 p.is_downed = true;
                 p.downed_timer = 0.0f;
                 p.self_revive_timer = 0.0f;
                 p.last_stand_timer = 0.0f;
                 p.downed_count++;
                 p.hp = 0;
-                m_particles.add_floating_text(p.pos, "PILOT DOWNED // HOLD R + SOMA!", COLOR_RED_BRIGHT);
+                m_particles.add_floating_text(p.pos, "PILOT DOWNED // HOLD E + SOMA!", COLOR_RED_BRIGHT);
                 SoundSystem::instance().play_downed_alert();
             }
         }
@@ -622,6 +632,8 @@ public:
 
             CurrencySystem::instance().add_prana_shards(wave_prana);
             DBSystem::instance().update_max_wave(m_wave_mgr.current_wave());
+            const int campaign_end = WAVES_PER_ACT * static_cast<int>(CAMPAIGN_REALMS.size());
+            DBSystem::instance().set_continue_wave(std::min(campaign_end, m_wave_mgr.current_wave() + 1));
             DBSystem::instance().save_game();
 
             // Projectile-based Dynamic Accuracy calculation
@@ -651,6 +663,13 @@ public:
 
         // 5-Layer Layered Parallax Background
         ParallaxBackground::instance().draw();
+
+        // Extra foreground stars make dark realm artwork feel populated.
+        for (const auto& star : m_stars) {
+            const float twinkle = 0.78f + 0.22f * std::sin(GetTime() * (1.4f + star.z) + star.x * 0.03f);
+            const auto alpha = static_cast<unsigned char>((95.0f + star.z * 38.0f) * twinkle);
+            DrawCircleV({ star.x, star.y }, std::max(1.0f, star.z * 0.8f), Color{ 178, 208, 255, alpha });
+        }
 
         // Screen Shake offset (respects accessibility setting)
         Vector2 shake = g_screen_shake_enabled ? m_particles.get_shake_offset() : Vector2{ 0.0f, 0.0f };
@@ -708,11 +727,10 @@ public:
 
         // ESC hint lives in pause menu only, not during fight.
 
-        // Pulsing PAUSED banner at top-center — guaranteed visibility even if
-        // the pause panel below somehow fails to render.
+        // Pulsing PAUSED banner just below the header — no overlap with WAVE/SCORE
         if (m_is_paused) {
             float pulse = 0.5f + 0.5f * std::sin(GetTime() * 4.0f);
-            Rectangle banner = { SCREEN_WIDTH / 2.0f - 90.0f, 14.0f, 180.0f, 28.0f };
+            Rectangle banner = { SCREEN_WIDTH / 2.0f - 90.0f, 52.0f, 180.0f, 28.0f };
             DrawRectangleRec(banner, ColorAlpha(COLOR_RED_BRIGHT, 0.25f + 0.20f * pulse));
             DrawRectangleLinesEx(banner, 2.0f, COLOR_RED_BRIGHT);
             const char* txt = "|| PAUSED ||";
@@ -862,8 +880,8 @@ private:
     int m_team_combo;
     float m_team_transcendence_timer;
     int m_total_team_score;
-    float m_net_snapshot_timer;
     std::vector<Star> m_stars;
+    std::string m_death_cause;
 
     std::vector<Player> m_squad;
     std::vector<std::unique_ptr<IPlayerController>> m_controllers;
@@ -889,8 +907,6 @@ private:
     UI::Button m_btn_resume;
     UI::Button m_btn_restart_wave;
     UI::Button m_btn_exit;
-    UI::Button m_btn_quit_title;
-    UI::Button m_btn_quit_desktop;
     UI::Button m_btn_confirm_abort;
     UI::Button m_btn_cancel_abort;
 };

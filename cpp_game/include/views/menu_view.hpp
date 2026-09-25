@@ -13,8 +13,7 @@
 #include "systems/currency_system.hpp"
 #include "systems/db_system.hpp"
 #include "systems/account_system.hpp"
-#include "entities/player.hpp"
-#include "views/player_card_view.hpp"
+#include "entities/ship_archetypes.hpp"
 
 namespace Vimana {
 
@@ -27,7 +26,6 @@ public:
     void init() override {
         m_next_view = ViewType::MENU;
         m_buttons.clear();
-        m_card_overlay.set_visible(false);
         m_btn_continue = UI::Button({ 50, 148, 320, 36 }, "CONTINUE", COLOR_GOLD_BRIGHT, "", Vimana::UI::ButtonKind::PRIMARY);
 
         float start_y = 190.0f;
@@ -39,16 +37,10 @@ public:
         m_buttons.emplace_back(Rectangle{ center_x, start_y,                     btn_w, btn_h }, "1.  ENTER CAMPAIGN",            COLOR_GOLD_BRIGHT,   "[1]", Vimana::UI::ButtonKind::PRIMARY);
         m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 1,       btn_w, btn_h }, "2.  VIMANA HANGAR",             COLOR_CYAN_BRIGHT,   "[2]", Vimana::UI::ButtonKind::SECONDARY);
         m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 2,       btn_w, btn_h }, "3.  PILOT PROFILE",             COLOR_GREEN_BRIGHT,  "[3]", Vimana::UI::ButtonKind::SECONDARY);
-        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 3,       btn_w, btn_h }, "4.  ASTRAL CODEX",              COLOR_PARCHMENT,     "[4]", Vimana::UI::ButtonKind::TERTIARY);
-        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 4,       btn_w, btn_h }, "5.  DUEL MODE",                 COLOR_ORANGE_BRIGHT, "[5]", Vimana::UI::ButtonKind::SECONDARY);
-        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 5,       btn_w, btn_h }, "6.  MULTIPLAYER",               COLOR_PURPLE_BRIGHT, "[6]", Vimana::UI::ButtonKind::SECONDARY);
-        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 6,       btn_w, btn_h }, "7.  LEADERBOARD",               COLOR_GOLD,          "[7]", Vimana::UI::ButtonKind::PRIMARY);
-        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 7,       btn_w, btn_h }, "8.  SETTINGS",                  COLOR_MUTED,         "[8]", Vimana::UI::ButtonKind::GHOST);
-        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 8,       btn_w, btn_h }, "9.  SIGN IN / REGISTER",         COLOR_GREEN_BRIGHT,  "[9]", Vimana::UI::ButtonKind::SECONDARY);
-        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 9,       btn_w, btn_h }, "0.  ACHIEVEMENT HALL",           COLOR_GOLD_BRIGHT,   "[0]", Vimana::UI::ButtonKind::SECONDARY);
+        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 3,       btn_w, btn_h }, "4.  DUEL MODE",                 COLOR_ORANGE_BRIGHT, "[4]", Vimana::UI::ButtonKind::SECONDARY);
+        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 4,       btn_w, btn_h }, "5.  SETTINGS",                  COLOR_MUTED,         "[5]", Vimana::UI::ButtonKind::GHOST);
 
-        // Bottom-right secondary actions (separate row, smaller)
-        m_buttons.emplace_back(Rectangle{ SCREEN_WIDTH - 260, SCREEN_HEIGHT - 56, 110, 28 }, "FULLSCREEN",  COLOR_MUTED,    "[F11]", Vimana::UI::ButtonKind::GHOST);
+        // Bottom-right secondary actions
         m_buttons.emplace_back(Rectangle{ SCREEN_WIDTH - 145, SCREEN_HEIGHT - 56, 110, 28 }, "QUIT GAME",   COLOR_RED_BRIGHT,"[ESC]", Vimana::UI::ButtonKind::DESTRUCTIVE);
 
         // Ambient starfield
@@ -63,17 +55,6 @@ public:
     }
 
     void update(float dt, Vector2 mouse_pos) override {
-        // Overlay takes priority if open
-        if (m_card_overlay.is_visible()) {
-            m_card_overlay.update(dt, mouse_pos);
-            return;
-        }
-
-        // Toggle Player Card Overlay via [P]
-        if (IsKeyPressed(KEY_P)) {
-            m_card_overlay.toggle();
-        }
-
         // Starfield drift
         for (auto& star : m_stars) {
             star.y += star.z * 20.0f * dt;
@@ -87,45 +68,31 @@ public:
         m_ship_bob += dt * 2.5f;
 
         // CONTINUE hero action if save exists
-        int saved_wave = DBSystem::instance().max_wave();
+        int saved_wave = DBSystem::instance().continue_wave();
         if (saved_wave > 1) {
             std::string cont_label = "CONTINUE WAVE " + std::to_string(saved_wave);
             m_btn_continue.set_label(cont_label);
             if (m_btn_continue.update(mouse_pos)) m_next_view = ViewType::CAMPAIGN_MAP;
         }
 
-        // Button clicks or keyboard shortcuts [1-9]
+        // Button clicks or keyboard shortcuts [1-5]
         if (m_buttons[0].update(mouse_pos) || IsKeyPressed(KEY_ONE)) m_next_view = ViewType::CAMPAIGN_MAP;
         else if (m_buttons[1].update(mouse_pos) || IsKeyPressed(KEY_TWO)) m_next_view = ViewType::SHIP_SELECT;
-        else if (m_buttons[2].update(mouse_pos) || IsKeyPressed(KEY_THREE)) m_card_overlay.set_visible(true);
-        else if (m_buttons[3].update(mouse_pos) || IsKeyPressed(KEY_FOUR)) m_next_view = ViewType::CODEX;
-        else if (m_buttons[4].update(mouse_pos) || IsKeyPressed(KEY_FIVE)) m_next_view = ViewType::DUEL;
-        else if (m_buttons[5].update(mouse_pos) || IsKeyPressed(KEY_SIX)) m_next_view = ViewType::MULTIPLAYER_LOBBY;
-        else if (m_buttons[6].update(mouse_pos) || IsKeyPressed(KEY_SEVEN)) m_next_view = ViewType::LEADERBOARD;
-        else if (m_buttons[7].update(mouse_pos) || IsKeyPressed(KEY_EIGHT)) m_next_view = ViewType::SETTINGS;
-        else if (m_buttons[8].update(mouse_pos) || IsKeyPressed(KEY_NINE)) m_next_view = ViewType::AUTH;
+        else if (m_buttons[2].update(mouse_pos) || IsKeyPressed(KEY_THREE)) m_next_view = ViewType::PROFILE;
+        else if (m_buttons[3].update(mouse_pos) || IsKeyPressed(KEY_FOUR)) m_next_view = ViewType::DUEL;
+        else if (m_buttons[4].update(mouse_pos) || IsKeyPressed(KEY_FIVE)) m_next_view = ViewType::SETTINGS;
 
-        // Bottom-right secondary actions: Fullscreen + Quit
-        // Indices 10 (FULLSCREEN) and 11 (QUIT GAME)
-        if (m_buttons.size() >= 12) {
-            if (m_buttons[10].update(mouse_pos) || IsKeyPressed(KEY_F11)) {
-                int mode = 0; // toggle: 0 = windowed, 1 = borderless fullscreen
-                if (IsWindowFullscreen()) mode = 0;
-                else mode = 1;
-                ToggleFullscreen();
-                (void)mode;
-            }
-            if (m_buttons[11].update(mouse_pos)) {
-                m_next_view = ViewType::QUIT;
-            }
+        if (IsKeyPressed(KEY_P)) m_next_view = ViewType::PROFILE;
+
+        // Bottom-right: QUIT
+        if (m_buttons[5].update(mouse_pos)) {
+            m_next_view = ViewType::QUIT;
         }
-
-        if (m_buttons[9].update(mouse_pos) || IsKeyPressed(KEY_ZERO)) m_next_view = ViewType::ACHIEVEMENTS;
 
         // Click on top-right Pilot Badge opens Player Card
         Rectangle pilot_badge = { SCREEN_WIDTH - 360, 25, 310, 48 };
         if (CheckCollisionPointRec(mouse_pos, pilot_badge) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-            m_card_overlay.set_visible(true);
+            m_next_view = ViewType::PROFILE;
         }
     }
 
@@ -169,7 +136,7 @@ public:
         DrawText(cloud_info.c_str(), static_cast<int>(pilot_badge.x + 12), static_cast<int>(pilot_badge.y + 39), 12, cloud_col);
 
         // Subtitle line — telemetry-mono style
-        DrawText("CELESTIAL ASTRAL COMBAT // 10 ACTS · 300 WAVES", 52, 160, 12, PAL_SECONDARY_BRIGHT);
+        DrawText("CELESTIAL ASTRAL COMBAT // ACT I · 30 WAVES", 52, 160, 12, PAL_SECONDARY_BRIGHT);
         DrawLine(50, 180, SCREEN_WIDTH - 50, 180, PAL_OUTLINE_VARIANT);
 
         // ── LEFT COLUMN: NAVIGATION BUTTONS ─────────────────────────────────────
@@ -240,15 +207,12 @@ public:
         DrawText(hs_str.c_str(), static_cast<int>(tile3.x + 250), static_cast<int>(tile3.y + 26), 12, PAL_PRIMARY_BRIGHT);
 
         // Quick tip & keybind hint — telemetry style
-        DrawText("[1-9, 0] NAVIGATE  ·  [P] PILOT CARD  ·  [F11] FULLSCREEN  ·  60 FPS NATIVE", static_cast<int>(dash_box.x + 20), static_cast<int>(dash_box.y + 285), 12, PAL_TEXT_MUTED);
+        DrawText("[1-9, 0] NAVIGATE  ·  [F11] FULLSCREEN  ·  60 FPS NATIVE", static_cast<int>(dash_box.x + 20), static_cast<int>(dash_box.y + 285), 12, PAL_TEXT_MUTED);
 
         // Footer hint
         const char* footer = "VIMANA WARS  //  WINDOWS BUILD  ·  C++20 + RAYLIB  ·  60 FPS";
         Vector2 f_sz = MeasureTextEx(title_f, footer, 13, 1.0f);
         DrawTextEx(title_f, footer, { (SCREEN_WIDTH - f_sz.x) / 2.0f, SCREEN_HEIGHT - 86 }, 13, 1.0f, PAL_TEXT_MUTED);
-
-        // Pilot Card Overlay (draws on top of everything when active)
-        m_card_overlay.draw(title_f, body_f);
 
         if (g_scanlines_enabled) UI::DrawScanlines();
     }
@@ -263,7 +227,6 @@ private:
     UI::Button m_btn_continue = UI::Button({50,148,320,36}, "CONTINUE", COLOR_GOLD_BRIGHT);
     ViewType m_next_view;
     float m_ship_bob = 0.0f;
-    PlayerCardOverlay m_card_overlay;
 };
 
 } // namespace Vimana

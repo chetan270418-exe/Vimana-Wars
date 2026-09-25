@@ -95,6 +95,7 @@ public:
         }
 
         m_boss_active = false;
+        m_current_boss.active = false;
 
         // Tutorial beats: Act 1 Waves 1-5 staged (chasers -> tanks -> shooters -> mixed -> mini-elite)
         if (act == 1 && act_wave >= 1 && act_wave <= 5) {
@@ -126,6 +127,55 @@ public:
                 float sx = 70.0f + static_cast<float>(std::rand() % (SCREEN_WIDTH - 140));
                 m_spawn_queue.push({b.t, b.d, {sx, -30.0f}, act_wave == 5 && b.t == EnemyType::ASURA_TANK});
             }
+            return;
+        }
+
+        // Act I's first post-tutorial beats are authored formations rather than
+        // the procedural composition used later in the campaign. Wave 10 is
+        // intentionally handled above as a boss-and-escort fleet encounter.
+        if (act == 1 && act_wave >= 6 && act_wave <= 9) {
+            struct FormationBeat { EnemyType type; int count; float first_delay; float spacing; bool elite; };
+            std::vector<FormationBeat> formation;
+            switch (act_wave) {
+                case 6: formation = {
+                    { EnemyType::ASURA_CHASER, 8, 0.35f, 0.28f, false },
+                    { EnemyType::ASURA_KAMIKAZE, 4, 1.2f, 0.48f, false },
+                    { EnemyType::ASURA_SHOOTER, 3, 2.0f, 0.65f, false }
+                }; break;
+                case 7: formation = {
+                    { EnemyType::ASURA_TANK, 4, 0.4f, 0.72f, false },
+                    { EnemyType::ASURA_SHOOTER, 6, 0.8f, 0.42f, false },
+                    { EnemyType::ASURA_CHASER, 5, 2.4f, 0.38f, false }
+                }; break;
+                case 8: formation = {
+                    { EnemyType::ASURA_SNIPER, 3, 0.5f, 1.0f, false },
+                    { EnemyType::ASURA_HEALER, 3, 1.1f, 0.9f, false },
+                    { EnemyType::ASURA_CHASER, 8, 1.4f, 0.32f, false }
+                }; break;
+                default: formation = {
+                    { EnemyType::ASURA_KAMIKAZE, 5, 0.35f, 0.45f, false },
+                    { EnemyType::ASURA_TANK, 3, 1.0f, 0.85f, true },
+                    { EnemyType::ASURA_SNIPER, 3, 1.8f, 0.8f, false },
+                    { EnemyType::ASURA_CHASER, 7, 2.0f, 0.34f, false }
+                }; break;
+            }
+            m_wave_pattern = (act_wave == 6) ? WavePattern::INTERCEPTOR_SWARM :
+                             (act_wave == 7) ? WavePattern::SIEGE_LINE :
+                             (act_wave == 8) ? WavePattern::RIFT_AMBUSH : WavePattern::ELITE_HUNT;
+            m_wave_enemy_goal = 0;
+            std::vector<SpawnInstruction> staged_spawns;
+            for (const auto& group : formation) {
+                for (int i = 0; i < group.count; ++i) {
+                    const float lane = static_cast<float>((i * 2 + group.count) % 9) / 8.0f;
+                    const float x = 70.0f + lane * (SCREEN_WIDTH - 140.0f);
+                    const float y = -30.0f - static_cast<float>(i % 3) * 22.0f;
+                    staged_spawns.push_back({ group.type, group.first_delay + i * group.spacing, { x, y }, group.elite });
+                    ++m_wave_enemy_goal;
+                }
+            }
+            std::stable_sort(staged_spawns.begin(), staged_spawns.end(),
+                [](const SpawnInstruction& lhs, const SpawnInstruction& rhs) { return lhs.delay < rhs.delay; });
+            for (const auto& spawn : staged_spawns) m_spawn_queue.push(spawn);
             return;
         }
 
@@ -211,7 +261,7 @@ public:
     }
 
     void update(float dt, std::vector<Enemy>& enemies, std::vector<Bullet>& bullets, Vector2 player_pos) {
-        if (m_banner_timer > 0) m_banner_timer -= dt;
+        m_banner_timer = std::max(0.0f, m_banner_timer - dt);
 
         m_wave_timer += dt;
         if (!m_spawn_queue.empty()) {
@@ -246,10 +296,12 @@ public:
     }
 
     bool is_wave_cleared() const {
-        return !m_is_wave_in_progress;
+        return !m_is_wave_in_progress && m_banner_timer <= 0.0f;
     }
 
     int current_wave() const { return m_current_wave; }
+    size_t queued_spawn_count() const { return m_spawn_queue.size(); }
+    int wave_enemy_goal() const { return m_wave_enemy_goal; }
     bool is_boss_wave() const { return m_boss_active; }
     Boss& get_boss() { return m_current_boss; }
     const Boss& get_boss() const { return m_current_boss; }

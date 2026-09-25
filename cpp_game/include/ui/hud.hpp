@@ -45,6 +45,15 @@ public:
                        combo_size, 1.0f, combo_color);
         }
 
+        // Ship name + gun type
+        if (player.archetype) {
+            std::string ship_label = player.archetype->name;
+            if (!player.archetype->gun_type.empty() && player.archetype->gun_type != "STANDARD") {
+                ship_label += " [" + player.archetype->gun_type + "]";
+            }
+            DrawTextEx(body_font, ship_label.c_str(), { 30, 9 }, 9, 1.0f, player.archetype->accent_color);
+        }
+
         std::string realm_str = std::string(realm.name);
         Vector2 realm_sz = MeasureTextEx(body_font, realm_str.c_str(), 12, 1.0f);
         DrawTextEx(body_font, realm_str.c_str(), { SCREEN_WIDTH - realm_sz.x - 30, 23 }, 12, 1.0f, realm.accent_color);
@@ -95,57 +104,49 @@ public:
             DrawText(boss->attack_name.c_str(), 200, 90, 10, COLOR_GOLD);
         }
 
-        // ── Bottom Cockpit Instruments ──────────────────────────────────────
-        DrawYantraPanel({ 15, SCREEN_HEIGHT - 65, 870, 52 }, COLOR_GOLD, COLOR_SURFACE_LOW, 6.0f, true);
+        // ── Bottom Cockpit Instruments ──────────────────────────────────
+        DrawYantraPanel({ 15, SCREEN_HEIGHT - 42, 870, 28 }, COLOR_GOLD, COLOR_SURFACE_LOW, 6.0f, true);
 
-        // 1. Health Bar & Life Tokens
-        float hp_ratio = std::clamp(static_cast<float>(player.hp) / player.max_hp, 0.0f, 1.0f);
-
-        std::string lives_txt = "LIVES: " + std::to_string(player.lives) + "/3";
-        DrawText("HULL INTEGRITY", 30, SCREEN_HEIGHT - 58, 9, COLOR_MUTED);
-        DrawText(lives_txt.c_str(), 140, SCREEN_HEIGHT - 58, 9, (player.lives > 1) ? COLOR_GOLD_BRIGHT : COLOR_RED_BRIGHT);
-
-        // Segmented gauge (chromatic state machine: green/amber/crimson pulse)
-        Rectangle player_hp_rect = { 30, SCREEN_HEIGHT - 44, 180, 18 };
-        DrawSegmentedHealthGauge(player_hp_rect, static_cast<float>(player.hp), static_cast<float>(player.max_hp), 16, GetTime());
-
+        // 1. Health Bar
+        DrawText("HULL", 30, SCREEN_HEIGHT - 34, 8, COLOR_MUTED);
+        Rectangle player_hp_rect = { 30, SCREEN_HEIGHT - 26, 140, 12 };
+        DrawSegmentedHealthGauge(player_hp_rect, static_cast<float>(player.hp), static_cast<float>(player.max_hp), 12, GetTime());
         std::string hp_text = std::to_string(player.hp) + "/" + std::to_string(player.max_hp);
-        DrawText(hp_text.c_str(), 95, SCREEN_HEIGHT - 41, 11, COLOR_OBSIDIAN);
+        DrawText(hp_text.c_str(), 90, SCREEN_HEIGHT - 22, 10, COLOR_OBSIDIAN);
 
-        // 2. Dash Charges (Pip Meter)
-        DrawText("VAYU DASH", 230, SCREEN_HEIGHT - 58, 9, COLOR_MUTED);
-        UI::DrawPipMeter({ 230, SCREEN_HEIGHT - 44 }, player.dash_charges, player.max_dash_charges, COLOR_CYAN_BRIGHT, COLOR_SURFACE_HIGH, 22.0f, 18.0f, 6.0f);
+        // 2. Dash Charges
+        DrawText("VAYU", 180, SCREEN_HEIGHT - 34, 8, COLOR_MUTED);
+        UI::DrawPipMeter({ 180, SCREEN_HEIGHT - 26 }, player.dash_charges, player.max_dash_charges, COLOR_CYAN_BRIGHT, COLOR_SURFACE_HIGH, 14.0f, 12.0f, 4.0f);
 
-        // 3. Sudarshana Chakram Cooldown Dial
-        DrawText("CHAKRAM [Q/E]", 335, SCREEN_HEIGHT - 58, 9, COLOR_MUTED);
+        // 3. Chakram Ready
+        DrawText("CHAKRAM [Q]", 240, SCREEN_HEIGHT - 34, 8, COLOR_MUTED);
         float chakram_ratio = 1.0f - std::clamp(player.chakram_timer / player.chakram_cooldown, 0.0f, 1.0f);
-        DrawRectangle(335, SCREEN_HEIGHT - 44, 105, 18, { 25, 30, 45, 255 });
-        DrawRectangle(335, SCREEN_HEIGHT - 44, static_cast<int>(105 * chakram_ratio), 18, (chakram_ratio >= 1.0f) ? COLOR_GOLD_BRIGHT : COLOR_SURFACE_HIGH);
-        DrawRectangleLines(335, SCREEN_HEIGHT - 44, 105, 18, COLOR_GOLD);
-        DrawText((chakram_ratio >= 1.0f) ? "READY" : "CHARGING", 360, SCREEN_HEIGHT - 41, 10, COLOR_OBSIDIAN);
+        DrawRectangle(240, SCREEN_HEIGHT - 26, 80, 12, { 25, 30, 45, 255 });
+        DrawRectangle(240, SCREEN_HEIGHT - 26, static_cast<int>(80 * chakram_ratio), 12, (chakram_ratio >= 1.0f) ? COLOR_GOLD_BRIGHT : COLOR_SURFACE_HIGH);
+        DrawRectangleLines(240, SCREEN_HEIGHT - 26, 80, 12, COLOR_GOLD);
 
-        // 4. Brahmastra Bomb
-        DrawText("BOMB [F]", 460, SCREEN_HEIGHT - 58, 9, COLOR_MUTED);
+        // 4. Brahmastra
+        DrawText("BOMB [F]", 340, SCREEN_HEIGHT - 34, 8, COLOR_MUTED);
         std::string bomb_str = "x" + std::to_string(player.brahmastra_bombs);
-        DrawTextEx(title_font, bomb_str.c_str(), { 490, SCREEN_HEIGHT - 44 }, 16, 1.0f, COLOR_GOLD_BRIGHT);
+        DrawTextEx(title_font, bomb_str.c_str(), { 410, SCREEN_HEIGHT - 27 }, 12, 1.0f, COLOR_GOLD_BRIGHT);
 
         // 5. Consumables - hidden unless owned
         if (player.inventory.soma_vials > 0 || player.inventory.vajra_flares > 0 || player.inventory.kavach_charges > 0) {
-            DrawText("ITEMS", 575, SCREEN_HEIGHT - 58, 9, COLOR_MUTED);
-            float ix = 575;
+            DrawText("ITEMS", 470, SCREEN_HEIGHT - 34, 8, COLOR_MUTED);
+            float ix = 470;
             if (player.inventory.soma_vials > 0) {
-                std::string soma_str = "[C]" + std::to_string(player.inventory.soma_vials);
-                DrawText(soma_str.c_str(), (int)ix, SCREEN_HEIGHT - 43, 11, COLOR_GREEN_BRIGHT);
-                ix += 55;
+                std::string soma_str = "SOMA x" + std::to_string(player.inventory.soma_vials);
+                DrawText(soma_str.c_str(), (int)ix, SCREEN_HEIGHT - 27, 10, COLOR_GREEN_BRIGHT);
+                ix += 75;
             }
             if (player.inventory.vajra_flares > 0) {
-                std::string vajra_str = "[V]" + std::to_string(player.inventory.vajra_flares);
-                DrawText(vajra_str.c_str(), (int)ix, SCREEN_HEIGHT - 43, 11, COLOR_CYAN_BRIGHT);
-                ix += 55;
+                std::string vajra_str = "VAJRA x" + std::to_string(player.inventory.vajra_flares);
+                DrawText(vajra_str.c_str(), (int)ix, SCREEN_HEIGHT - 27, 10, COLOR_CYAN_BRIGHT);
+                ix += 75;
             }
             if (player.inventory.kavach_charges > 0) {
-                std::string kavach_str = "K" + std::to_string(player.inventory.kavach_charges);
-                DrawText(kavach_str.c_str(), (int)ix, SCREEN_HEIGHT - 43, 11, COLOR_GOLD_BRIGHT);
+                std::string kavach_str = "KAVACH x" + std::to_string(player.inventory.kavach_charges);
+                DrawText(kavach_str.c_str(), (int)ix, SCREEN_HEIGHT - 27, 10, COLOR_GOLD_BRIGHT);
             }
         }
 

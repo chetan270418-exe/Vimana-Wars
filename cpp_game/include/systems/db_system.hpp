@@ -11,6 +11,7 @@
 #include "systems/currency_system.hpp"
 #include "systems/sound_system.hpp"
 #include <chrono>
+#include <algorithm>
 
 namespace Vimana {
 
@@ -19,6 +20,54 @@ public:
     static DBSystem& instance() {
         static DBSystem sys;
         return sys;
+    }
+
+    // Additive SQLite migration kept public so the migration itself can be
+    // exercised against an in-memory database without touching a pilot's save.
+    static bool ensure_death_cause_column(sqlite3* database) {
+        if (!database) return false;
+        bool has_death_cause = false;
+        sqlite3_stmt* columns = nullptr;
+        if (sqlite3_prepare_v2(database, "PRAGMA table_info(scores);", -1, &columns, nullptr) != SQLITE_OK) {
+            return false;
+        }
+        while (sqlite3_step(columns) == SQLITE_ROW) {
+            const char* name = reinterpret_cast<const char*>(sqlite3_column_text(columns, 1));
+            if (name && std::string(name) == "death_cause") has_death_cause = true;
+        }
+        sqlite3_finalize(columns);
+        if (has_death_cause) return true;
+
+        char* error_message = nullptr;
+        const int result = sqlite3_exec(database,
+            "ALTER TABLE scores ADD COLUMN death_cause TEXT NOT NULL DEFAULT '';",
+            nullptr, nullptr, &error_message);
+        if (result != SQLITE_OK) {
+            std::cerr << "[DBSystem] Score migration failed: "
+                      << (error_message ? error_message : sqlite3_errmsg(database)) << std::endl;
+        }
+        sqlite3_free(error_message);
+        return result == SQLITE_OK;
+    }
+
+    static bool insert_score_record(sqlite3* database, const ScoreEntry& entry) {
+        if (!database) return false;
+        const char* sql = "INSERT INTO scores (player_name, score, level_reached, difficulty, ship_class, kills, total_damage, duration_seconds, death_cause) "
+                          "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
+        sqlite3_stmt* statement = nullptr;
+        if (sqlite3_prepare_v2(database, sql, -1, &statement, nullptr) != SQLITE_OK) return false;
+        sqlite3_bind_text(statement, 1, entry.player_name.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_int(statement, 2, entry.score);
+        sqlite3_bind_int(statement, 3, entry.level_reached);
+        sqlite3_bind_text(statement, 4, entry.difficulty.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(statement, 5, entry.ship_class.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_int(statement, 6, entry.kills);
+        sqlite3_bind_int(statement, 7, entry.total_damage);
+        sqlite3_bind_double(statement, 8, entry.duration_seconds);
+        sqlite3_bind_text(statement, 9, entry.death_cause.c_str(), -1, SQLITE_TRANSIENT);
+        const bool inserted = sqlite3_step(statement) == SQLITE_DONE;
+        sqlite3_finalize(statement);
+        return inserted;
     }
 
     void init() {
@@ -67,7 +116,7 @@ public:
         std::vector<ScoreEntry> entries;
         if (!m_db) return entries;
 
-        const char* sql = "SELECT id, player_name, score, level_reached, difficulty, ship_class, kills, total_damage, created_at "
+        const char* sql = "SELECT id, player_name, score, level_reached, difficulty, ship_class, kills, total_damage, created_at, death_cause "
                           "FROM scores ORDER BY score DESC LIMIT ?;";
         sqlite3_stmt* stmt = nullptr;
         if (sqlite3_prepare_v2(m_db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
@@ -83,6 +132,8 @@ public:
                 e.kills = sqlite3_column_int(stmt, 6);
                 e.total_damage = sqlite3_column_int(stmt, 7);
                 e.created_at = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 8));
+                const char* cause = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 9));
+                e.death_cause = cause ? cause : "";
                 entries.push_back(e);
             }
             sqlite3_finalize(stmt);
@@ -91,25 +142,7 @@ public:
     }
 
     bool insert_score(const ScoreEntry& e) {
-        if (!m_db) return false;
-        const char* sql = "INSERT INTO scores (player_name, score, level_reached, difficulty, ship_class, kills, total_damage, duration_seconds) "
-                          "VALUES (?, ?, ?, ?, ?, ?, ?, ?);";
-        sqlite3_stmt* stmt = nullptr;
-        if (sqlite3_prepare_v2(m_db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-            sqlite3_bind_text(stmt, 1, e.player_name.c_str(), -1, SQLITE_TRANSIENT);
-            sqlite3_bind_int(stmt, 2, e.score);
-            sqlite3_bind_int(stmt, 3, e.level_reached);
-            sqlite3_bind_text(stmt, 4, e.difficulty.c_str(), -1, SQLITE_TRANSIENT);
-            sqlite3_bind_text(stmt, 5, e.ship_class.c_str(), -1, SQLITE_TRANSIENT);
-            sqlite3_bind_int(stmt, 6, e.kills);
-            sqlite3_bind_int(stmt, 7, e.total_damage);
-            sqlite3_bind_double(stmt, 8, e.duration_seconds);
-
-            int rc = sqlite3_step(stmt);
-            sqlite3_finalize(stmt);
-            return (rc == SQLITE_DONE);
-        }
-        return false;
+        return insert_score_record(m_db, e);
     }
 
     void load_save_game() {
@@ -130,6 +163,7 @@ public:
             m_player_name = j.value("player_name", "Warrior");
             m_high_score = j.value("high_score", 0);
             m_max_wave = j.value("last_wave", 1);
+            m_continue_wave = std::max(1, j.value("continue_wave", m_max_wave));
             int shards = j.value("prana_shards", 200);
             CurrencySystem::instance().set_prana_shards(shards);
 
@@ -152,6 +186,13 @@ public:
                 }
                 CurrencySystem::instance().set_ship_sortie_counts(sorties);
             }
+            if (j.contains("ship_last_death_cause") && j["ship_last_death_cause"].is_object()) {
+                std::unordered_map<std::string, std::string> causes;
+                for (auto it = j["ship_last_death_cause"].begin(); it != j["ship_last_death_cause"].end(); ++it) {
+                    if (it.value().is_string()) causes[it.key()] = it.value().get<std::string>();
+                }
+                CurrencySystem::instance().set_ship_last_death_causes(causes);
+            }
 
             // Audio channels
             if (j.contains("master_volume")) SoundSystem::instance().set_master_volume(j["master_volume"].get<float>());
@@ -164,6 +205,7 @@ public:
             if (j.contains("colorblind_mode")) g_colorblind_mode = j["colorblind_mode"].get<bool>();
             if (j.contains("screen_shake_enabled")) g_screen_shake_enabled = j["screen_shake_enabled"].get<bool>();
             if (j.contains("scanlines_enabled")) g_scanlines_enabled = j["scanlines_enabled"].get<bool>();
+            if (j.contains("fullscreen_enabled")) g_fullscreen_enabled = j["fullscreen_enabled"].get<bool>();
             if (j.contains("tutorial_shown")) m_tutorial_shown = j["tutorial_shown"].get<bool>();
 
             std::cout << "[DBSystem] Loaded savegame: " << m_player_name << " HighScore: " << m_high_score << std::endl;
@@ -208,11 +250,13 @@ public:
             j["player_name"] = m_player_name;
             j["high_score"] = m_high_score;
             j["last_wave"] = m_max_wave;
+            j["continue_wave"] = m_continue_wave;
             j["tutorial_shown"] = m_tutorial_shown;
             j["prana_shards"] = CurrencySystem::instance().prana_shards();
             j["unlocked_ships"] = CurrencySystem::instance().unlocked_ships();
             j["ship_upgrades"] = CurrencySystem::instance().ship_upgrade_levels();
             j["ship_sorties"] = CurrencySystem::instance().ship_sortie_counts();
+            j["ship_last_death_cause"] = CurrencySystem::instance().ship_last_death_causes();
 
             // Audio channel volumes
             j["master_volume"] = SoundSystem::instance().master_volume();
@@ -225,6 +269,7 @@ public:
             j["colorblind_mode"] = g_colorblind_mode;
             j["screen_shake_enabled"] = g_screen_shake_enabled;
             j["scanlines_enabled"] = g_scanlines_enabled;
+            j["fullscreen_enabled"] = g_fullscreen_enabled;
 
             std::ofstream f(save_path, std::ios::trunc);
             if (!f) throw std::runtime_error("unable to open save file for writing");
@@ -242,6 +287,8 @@ public:
     void update_high_score(int score) { if (score > m_high_score) m_high_score = score; }
     int max_wave() const { return m_max_wave; }
     void update_max_wave(int wave) { if (wave > m_max_wave) m_max_wave = wave; }
+    int continue_wave() const { return m_continue_wave; }
+    void set_continue_wave(int wave) { m_continue_wave = std::max(1, wave); }
     bool tutorial_shown() const { return m_tutorial_shown; }
     void set_tutorial_shown(bool shown) { m_tutorial_shown = shown; }
 
@@ -279,7 +326,7 @@ public:
     }
 
 private:
-    DBSystem() : m_db(nullptr), m_player_name("Warrior"), m_high_score(0), m_max_wave(1), m_tutorial_shown(false) {}
+    DBSystem() : m_db(nullptr), m_player_name("Warrior"), m_high_score(0), m_max_wave(1), m_continue_wave(1), m_tutorial_shown(false) {}
     ~DBSystem() = default;
 
     void ensure_tables() {
@@ -295,12 +342,15 @@ private:
                           "total_damage INTEGER DEFAULT 0,"
                           "duration_seconds REAL DEFAULT 0);";
         sqlite3_exec(m_db, sql, nullptr, nullptr, nullptr);
+        // Additive migration: preserve old score rows and add the new optional field.
+        ensure_death_cause_column(m_db);
     }
 
     sqlite3* m_db;
     std::string m_player_name;
     int m_high_score;
     int m_max_wave;
+    int m_continue_wave;
     bool m_tutorial_shown;
 };
 

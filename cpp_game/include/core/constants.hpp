@@ -124,6 +124,7 @@ inline Color COLOR_CB_ACCENT_2        = { 255, 230,  50, 255 };
 inline bool  g_colorblind_mode        = false;
 inline bool  g_screen_shake_enabled   = true;
 inline bool  g_scanlines_enabled      = false;
+inline bool  g_fullscreen_enabled     = false;
 
 // ── Difficulty Profiles ───────────────────────────────────────────────────────
 inline const std::array<DifficultyProfile, 4> DIFFICULTY_PROFILES = {{

@@ -113,7 +113,7 @@ public:
 private:
     int get_item_count() const {
         switch (m_active_tab) {
-            case CodexTab::REALMS: return static_cast<int>(CAMPAIGN_REALMS.size());
+            case CodexTab::REALMS: return 2;
             case CodexTab::VIMANAS: return static_cast<int>(SHIP_FLEET.size());
             case CodexTab::ASURAS: return 5;
             case CodexTab::BOSSES: return 8;
@@ -130,15 +130,7 @@ private:
             struct RInfo { const char* name; const char* waves; const char* boss; const char* lore; const char* tactic; };
             static const RInfo realms[] = {
                 { "Swarga Outpost", "Waves 1-30", "Tyrant Hiranyakashipu", "Act I: break the Asura blockade around Indra's orbital sanctuary. Fleet formations intensify through thirty waves.", "Move between attack lanes; save dash charges for the boss volleys." },
-                { "Kshira Sagara", "Waves 31-60", "Meghnada", "Act II: cross the luminous ocean while coordinated storm craft contest the route.", "Keep moving through the drifting projectile currents." },
-                { "Dandaka Void", "Waves 61-90", "Vritra", "Act III: shadowed asteroid forests hide mines, ambush wings, and elite hunter squadrons.", "Track the full formation and avoid getting pinned at the edge." },
-                { "Lanka Approach", "Waves 91-120", "Titan Kumbhakarna", "Act IV: assault the outer planetary defense network of Ravana's citadel under molten flak.", "Prioritize shooter ships before they create crossfire." },
-                { "Setu Expanse", "Waves 121-150", "Emperor Ravana", "Act V: fight across a fractured bridge of magnetized worlds as armadas push from both flanks.", "Use the open lanes between siege formations." },
-                { "Naraka Forge", "Waves 151-180", "Warlord Mahishasura", "Act VI: penetrate underworld shipyards and survive mass-produced dreadnought squadrons.", "Take down support ships before engaging armored targets." },
-                { "Mahayuddha Citadel", "Waves 181-210", "Makara Leviathan", "Act VII: break command fleets defending the Asura throne and face the deep's leviathan.", "Watch the boss telegraph and reposition before its ring attack." },
-                { "Indra's Thunderhead", "Waves 211-240", "Conqueror Indrajit", "Act VIII: climb a planet-sized electrical storm as interceptor wings dive from the cloud sea.", "Keep moving; Indrajit's mirage volleys punish stationary pilots." },
-                { "Ananta Rift", "Waves 241-270", "Tyrant Hiranyakashipu", "Act IX: navigate unstable portals and coordinated ambush fleets at the edge of known space.", "Read the warning markers and preserve a clear escape route." },
-                { "Dharma's Last Stand", "Waves 271-300", "Meghnada", "Act X: the final thirty-wave campaign. Every Asura armada converges for the celestial realms.", "Use upgrades and boons together; the final act is the toughest fleet gauntlet." }
+                { "ENDLESS MODE", "All Waves", "All Asuras", "The campaign beyond Act I is an endless escalation. Waves continue infinitely with escalating difficulty. Unlockable after clearing Act I.", "Survive as long as you can; the wave counter never resets." }
             };
 
             static const char* realm_bg_files[] = {
@@ -154,13 +146,14 @@ private:
                 "realm_mahayuddha_citadel.png"
             };
 
-            for (int i = 0; i < static_cast<int>(CAMPAIGN_REALMS.size()); ++i) {
+            for (int i = 0; i < 2; ++i) {
                 Rectangle item_rec = { list_box.x + 8, list_box.y + 10 + i * 36.0f, list_box.width - 16, 32 };
                 bool sel = (m_selected_index == i);
                 if (sel) DrawRectangleRec(item_rec, COLOR_SURFACE_HIGH);
                 DrawTextEx(body_font, realms[i].name, { item_rec.x + 10, item_rec.y + 8 }, 12, 1.0f, sel ? COLOR_GOLD_BRIGHT : COLOR_PARCHMENT);
             }
 
+            if (m_selected_index >= 2) m_selected_index = 0;
             const auto& r = realms[m_selected_index];
             DrawTextEx(title_font, r.name, { detail_box.x + 25, detail_box.y + 20 }, 20, 1.0f, COLOR_GOLD_BRIGHT);
             DrawTextEx(body_font, ("OPERATIONAL SPAN: " + std::string(r.waves)).c_str(), { detail_box.x + 25, detail_box.y + 48 }, 12, 1.0f, COLOR_CYAN_BRIGHT);

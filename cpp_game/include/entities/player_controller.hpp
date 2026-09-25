@@ -27,6 +27,17 @@ public:
     ) = 0;
 };
 
+struct PlayerControlInput {
+    Vector2 move = { 0.0f, 0.0f };
+    Vector2 aim = { SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f };
+    bool fire = false;
+    bool dash = false;
+    bool chakram = false;
+    bool use_soma = false;
+    bool use_vajra = false;
+    bool revive = false;
+};
+
 // -- Human Controller (Local Player) ------------------------------------------
 class HumanController : public IPlayerController {
 public:
@@ -41,71 +52,62 @@ public:
         const std::vector<Enemy>& enemies,
         const Boss* boss
     ) override {
+        PlayerControlInput input;
         if (self.is_downed) {
-            // Downed movement is sluggish crawl
-            Vector2 crawl = { 0, 0 };
-            if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) crawl.y -= 1.0f;
-            if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN)) crawl.y += 1.0f;
-            if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) crawl.x -= 1.0f;
-            if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) crawl.x += 1.0f;
-            if (Vector2Length(crawl) > 0.1f) crawl = Vector2Normalize(crawl);
-            self.vel.x = crawl.x * 40.0f;
-            self.vel.y = crawl.y * 40.0f;
+            if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) input.move.y -= 1.0f;
+            if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN)) input.move.y += 1.0f;
+            if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) input.move.x -= 1.0f;
+            if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) input.move.x += 1.0f;
+        } else if (m_player_idx == 0) {
+            if (IsKeyDown(KEY_W)) input.move.y -= 1.0f;
+            if (IsKeyDown(KEY_S)) input.move.y += 1.0f;
+            if (IsKeyDown(KEY_A)) input.move.x -= 1.0f;
+            if (IsKeyDown(KEY_D)) input.move.x += 1.0f;
+            input.aim = mouse_pos;
+            input.fire = IsMouseButtonDown(MOUSE_BUTTON_LEFT) || IsKeyDown(KEY_SPACE);
+            input.dash = IsKeyPressed(KEY_LEFT_SHIFT) || IsMouseButtonPressed(MOUSE_BUTTON_RIGHT);
+            input.chakram = IsKeyPressed(KEY_Q);
+            input.use_soma = IsKeyPressed(KEY_C);
+            input.use_vajra = IsKeyPressed(KEY_V);
+        } else {
+            if (IsKeyDown(KEY_UP)) input.move.y -= 1.0f;
+            if (IsKeyDown(KEY_DOWN)) input.move.y += 1.0f;
+            if (IsKeyDown(KEY_LEFT)) input.move.x -= 1.0f;
+            if (IsKeyDown(KEY_RIGHT)) input.move.x += 1.0f;
+            input.fire = IsKeyDown(KEY_RIGHT_CONTROL);
+            input.dash = IsKeyPressed(KEY_SLASH) || IsKeyPressed(KEY_RIGHT_SHIFT);
+            input.chakram = IsKeyPressed(KEY_KP_1);
+            input.use_soma = IsKeyPressed(KEY_KP_2);
+            input.use_vajra = IsKeyPressed(KEY_KP_3);
+        }
+        input.revive = IsKeyDown(KEY_E);
+        update_from_input(dt, self, out_bullets, squad, input);
+    }
+
+    void update_from_input(
+        float dt,
+        Player& self,
+        std::vector<Bullet>& out_bullets,
+        std::vector<Player>& squad,
+        const PlayerControlInput& input
+    ) {
+        Vector2 input_dir = input.move;
+        if (self.is_downed) {
+            if (Vector2Length(input_dir) > 0.1f) input_dir = Vector2Normalize(input_dir);
+            self.vel = { input_dir.x * 40.0f, input_dir.y * 40.0f };
             return;
         }
 
-        // Standard movement & aiming
-        Vector2 input_dir = { 0, 0 };
         if (m_player_idx == 0) {
-            // WASD
-            if (IsKeyDown(KEY_W)) input_dir.y -= 1.0f;
-            if (IsKeyDown(KEY_S)) input_dir.y += 1.0f;
-            if (IsKeyDown(KEY_A)) input_dir.x -= 1.0f;
-            if (IsKeyDown(KEY_D)) input_dir.x += 1.0f;
-
-            // Aim towards mouse
-            self.angle = Vector2AngleDeg(self.pos, mouse_pos);
-
-            // Primary fire
-            if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) || IsKeyDown(KEY_SPACE)) {
-                self.try_shoot(out_bullets);
-            }
-
-            // Dash
-            if (IsKeyPressed(KEY_LEFT_SHIFT) || IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
-                self.try_dash(input_dir);
-            }
-
-            // Sudarshana Chakram
-            if (IsKeyPressed(KEY_Q)) {
-                self.try_chakram(out_bullets);
-            }
-
-            // Consumables: Soma Vial (C) and Vajra Flare (V)
-            if (IsKeyPressed(KEY_C)) {
-                self.use_soma_vial();
-            }
-            if (IsKeyPressed(KEY_V)) {
-                self.use_vajra_flare(out_bullets);
-            }
-        } else {
-            // Arrow keys for P2
-            if (IsKeyDown(KEY_UP)) input_dir.y -= 1.0f;
-            if (IsKeyDown(KEY_DOWN)) input_dir.y += 1.0f;
-            if (IsKeyDown(KEY_LEFT)) input_dir.x -= 1.0f;
-            if (IsKeyDown(KEY_RIGHT)) input_dir.x += 1.0f;
-
-            if (Vector2Length(input_dir) > 0.1f) {
-                self.angle = std::atan2(input_dir.y, input_dir.x) * (180.0f / 3.14159f);
-            }
-
-            if (IsKeyDown(KEY_RIGHT_CONTROL)) {
-                self.try_shoot(out_bullets);
-            }
-            if (IsKeyPressed(KEY_SLASH) || IsKeyPressed(KEY_RIGHT_SHIFT)) {
-                self.try_dash(input_dir);
-            }
+            self.angle = Vector2AngleDeg(self.pos, input.aim);
+        } else if (Vector2Length(input_dir) > 0.1f) {
+            self.angle = std::atan2(input_dir.y, input_dir.x) * (180.0f / 3.14159f);
         }
+        if (input.fire) self.try_shoot(out_bullets);
+        if (input.dash) self.try_dash(input_dir);
+        if (input.chakram) self.try_chakram(out_bullets);
+        if (input.use_soma) self.use_soma_vial();
+        if (input.use_vajra) self.use_vajra_flare(out_bullets);
 
         input_dir = Vector2Normalize(input_dir);
         float spd = self.is_dashing ? DASH_SPEED_BURST : self.current_speed;
@@ -113,7 +115,7 @@ public:
         self.vel.y = input_dir.y * spd;
 
         // Revive Interaction: Hold E within 80px of any downed squadmate
-        bool holding_e = IsKeyDown(KEY_E);
+        bool holding_e = input.revive;
         Player* target_downed = nullptr;
         for (auto& mate : squad) {
             if (&mate != &self && mate.is_downed) {
@@ -177,7 +179,7 @@ public:
         // 1. High-Priority Check: Revive downed teammate
         Player* downed_target = nullptr;
         for (auto& mate : squad) {
-            if (&mate != &self && mate.is_downed) {
+            if (self.inventory.soma_vials > 0 && &mate != &self && mate.is_downed) {
                 downed_target = &mate;
                 break;
             }
@@ -195,6 +197,7 @@ public:
                 self.vel = { 0, 0 };
                 m_revive_channel_timer += dt;
                 if (m_revive_channel_timer >= REVIVE_TIME) {
+                    --self.inventory.soma_vials;
                     downed_target->is_downed = false;
                     downed_target->hp = static_cast<int>(downed_target->max_hp * 0.40f);
                     downed_target->invincibility_timer = 2.0f;

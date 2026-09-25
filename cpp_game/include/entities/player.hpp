@@ -9,6 +9,7 @@
 #include "entities/ship_archetypes.hpp"
 #include "entities/bullet.hpp"
 #include "systems/currency_system.hpp"
+#include "systems/sound_system.hpp"
 
 namespace Vimana {
 
@@ -36,6 +37,9 @@ struct Player {
     float dash_duration_timer = 0.0f;
     bool is_dashing = false;
 
+    bool just_shot = false;
+    bool just_dashed = false;
+
     // Defense & Invincibility
     float invincibility_timer = 0.0f;
     bool has_kavach_shield = false;
@@ -60,6 +64,7 @@ struct Player {
     // Identification
     uint8_t player_id = 0;
     std::string callsign = "Warrior";
+    std::string last_damage_source;
 
     // Statistics for current run
     int score = 0;
@@ -113,6 +118,7 @@ struct Player {
         buff_overdrive_timer = 0.0f;
         shot_counter = 0;
         score = 0;
+        last_damage_source.clear();
         combo = 1;
         combo_timer = 0.0f;
         kills = 0;
@@ -265,7 +271,7 @@ struct Player {
             }
 
             // Sudarshana Chakram
-            if (IsKeyPressed(KEY_Q) || IsKeyPressed(KEY_E)) {
+            if (IsKeyPressed(KEY_Q)) {
                 try_chakram(out_bullets);
             }
 
@@ -287,11 +293,21 @@ struct Player {
                 angle = std::atan2(input_dir.y, input_dir.x) * (180.0f / 3.14159f);
             }
 
-            if (IsKeyDown(KEY_ENTER) || IsKeyDown(KEY_RIGHT_CONTROL)) {
+            if (IsKeyDown(KEY_RIGHT_CONTROL)) {
                 try_shoot(out_bullets);
             }
             if (IsKeyPressed(KEY_SLASH) || IsKeyPressed(KEY_RIGHT_SHIFT)) {
                 try_dash(input_dir);
+            }
+            // P2 uses the keypad to avoid overlapping P1's Q/C/V bindings.
+            if (IsKeyPressed(KEY_KP_1)) {
+                try_chakram(out_bullets);
+            }
+            if (IsKeyPressed(KEY_KP_2)) {
+                use_soma_vial();
+            }
+            if (IsKeyPressed(KEY_KP_3)) {
+                use_vajra_flare(out_bullets);
             }
         }
 
@@ -305,6 +321,7 @@ struct Player {
         float cd = (buff_overdrive_timer > 0) ? shoot_cooldown * 0.45f : shoot_cooldown;
         if (shoot_timer > 0) return;
         shoot_timer = cd;
+        just_shot = true;
         shot_counter = (shot_counter % 7) + 1;
 
         float rad = angle * (3.14159f / 180.0f);
@@ -325,6 +342,7 @@ struct Player {
         bool is_pierce = (has_boon(BoonType::SURYA_RADIANT_PIERCE) && (shot_counter % 7 == 0));
         bool is_tripura = (archetype && archetype->id == "tripura");
         bool is_garuda = (archetype && (archetype->id == "garuda" || archetype->id == "garuda_prime" || archetype->id == "garuda_apex"));
+        const int garuda_pierce_bonus = is_garuda ? 2 : 0;
 
         if (is_tripura && buff_agneyastra_timer <= 0) {
             // Tripura Dreadnought: native 3-shot heavy spread
@@ -338,45 +356,82 @@ struct Player {
                 b.damage = dmg;
                 b.radius = 6.5f;
                 b.color = COLOR_ORANGE_BRIGHT;
-                b.pierce_remaining = is_pierce ? 2 : 0;
+                b.pierce_remaining = (is_pierce ? 2 : 0) + garuda_pierce_bonus;
                 b.owner_player_id = player_id;
                 b.is_player_owned = true;
                 out_bullets.push_back(b);
             }
-        } else if (buff_agneyastra_timer > 0) {
-            // 3-way spread fire
-            shots_fired += 3;
-            for (int off : { -16, 0, 16 }) {
+        } else if (archetype && archetype->gun_type == "BURST") {
+            // Vajra: 4 quick shots in a tight spread
+            shots_fired += 4;
+            for (int off : { -8, -3, 3, 8 }) {
                 float a = (angle + off) * (3.14159f / 180.0f);
                 Bullet b;
-                b.active = true;
-                b.pos = nose;
-                b.vel = { std::cos(a) * PLAYER_BULLET_SPEED, std::sin(a) * PLAYER_BULLET_SPEED };
-                b.damage = dmg;
-                b.radius = 6.0f;
+                b.active = true; b.pos = nose;
+                b.vel = { std::cos(a) * PLAYER_BULLET_SPEED * 1.05f, std::sin(a) * PLAYER_BULLET_SPEED * 1.05f };
+                b.damage = dmg; b.radius = 4.0f;
+                b.color = COLOR_CYAN_BRIGHT;
+                b.pierce_remaining = (is_pierce ? 2 : 0) + garuda_pierce_bonus;
+                b.owner_player_id = player_id; b.is_player_owned = true;
+                out_bullets.push_back(b);
+            }
+        } else if (archetype && archetype->gun_type == "PIERCE") {
+            // Naga: penetrating single shot with extra range
+            shots_fired += 1;
+            Bullet b;
+            b.active = true; b.pos = nose;
+            b.vel = { std::cos(rad) * PLAYER_BULLET_SPEED * 1.15f, std::sin(rad) * PLAYER_BULLET_SPEED * 1.15f };
+            b.damage = dmg; b.radius = 7.0f;
+            b.color = COLOR_GREEN_BRIGHT;
+            b.pierce_remaining = (is_pierce ? 4 : 3) + garuda_pierce_bonus;
+            b.owner_player_id = player_id; b.is_player_owned = true;
+            out_bullets.push_back(b);
+        } else if (archetype && archetype->gun_type == "BURN") {
+            // Agneyastra: 2 fire shots with wider spread
+            shots_fired += 2;
+            for (int off : { -10, 10 }) {
+                float a = (angle + off) * (3.14159f / 180.0f);
+                Bullet b;
+                b.active = true; b.pos = nose;
+                b.vel = { std::cos(a) * PLAYER_BULLET_SPEED * 0.9f, std::sin(a) * PLAYER_BULLET_SPEED * 0.9f };
+                b.damage = dmg; b.radius = 5.5f;
                 b.color = COLOR_RED_BRIGHT;
-                b.pierce_remaining = is_pierce ? 3 : 0;
-                b.owner_player_id = player_id;
-                b.is_player_owned = true;
+                b.pierce_remaining = (is_pierce ? 2 : 0) + garuda_pierce_bonus;
+                b.owner_player_id = player_id; b.is_player_owned = true;
                 out_bullets.push_back(b);
             }
         } else {
-            shots_fired += 1;
-            Bullet b;
-            b.active = true;
-            b.pos = nose;
-            b.vel = { std::cos(rad) * PLAYER_BULLET_SPEED, std::sin(rad) * PLAYER_BULLET_SPEED };
-            b.damage = dmg;
-            b.radius = is_pierce ? 8.0f : PLAYER_BULLET_RADIUS;
-            b.color = is_pierce ? COLOR_GOLD_BRIGHT : (archetype ? archetype->accent_color : COLOR_GOLD);
-            // Garuda Interceptor: native piercing needles
-            b.pierce_remaining = is_pierce ? 4 : (is_garuda ? 2 : 0);
-            b.owner_player_id = player_id;
-            b.is_player_owned = true;
-            if (archetype && archetype->id == "narasimha") {
-                b.type = BulletType::NARASIMHA_CLAW;
+            if (buff_agneyastra_timer > 0) {
+                shots_fired += 3;
+                for (int off : { -16, 0, 16 }) {
+                    const float a = (angle + off) * (3.14159f / 180.0f);
+                    Bullet b;
+                    b.active = true;
+                    b.pos = nose;
+                    b.vel = { std::cos(a) * PLAYER_BULLET_SPEED, std::sin(a) * PLAYER_BULLET_SPEED };
+                    b.damage = dmg;
+                    b.radius = 6.0f;
+                    b.color = COLOR_RED_BRIGHT;
+                    b.pierce_remaining = (is_pierce ? 3 : 0) + garuda_pierce_bonus;
+                    b.owner_player_id = player_id;
+                    b.is_player_owned = true;
+                    out_bullets.push_back(b);
+                }
+            } else {
+                shots_fired += 1;
+                Bullet b;
+                b.active = true;
+                b.pos = nose;
+                b.vel = { std::cos(rad) * PLAYER_BULLET_SPEED, std::sin(rad) * PLAYER_BULLET_SPEED };
+                b.damage = dmg;
+                b.radius = is_pierce ? 8.0f : PLAYER_BULLET_RADIUS;
+                b.color = is_pierce ? COLOR_GOLD_BRIGHT : (archetype ? archetype->accent_color : COLOR_GOLD);
+                b.pierce_remaining = (is_pierce ? 4 : 0) + garuda_pierce_bonus;
+                b.owner_player_id = player_id;
+                b.is_player_owned = true;
+                if (archetype && archetype->id == "narasimha") b.type = BulletType::NARASIMHA_CLAW;
+                out_bullets.push_back(b);
             }
-            out_bullets.push_back(b);
         }
     }
 
@@ -384,6 +439,7 @@ struct Player {
         if (dash_charges <= 0 || is_dashing) return;
         dash_charges--;
         is_dashing = true;
+        just_dashed = true;
         dash_duration_timer = DASH_DURATION;
         invincibility_timer = DASH_DURATION + 0.1f;
         SoundSystem::instance().play_dash();
@@ -441,7 +497,7 @@ struct Player {
         }
     }
 
-    bool take_damage(int amount) {
+    bool take_damage(int amount, const char* damage_source = "Unknown hostile") {
         if (amount <= 0 || invincibility_timer > 0 || is_dashing || is_downed) return false;
 
         if (has_kavach_shield) {
@@ -463,6 +519,7 @@ struct Player {
             return true;
         }
 
+        last_damage_source = (damage_source && damage_source[0]) ? damage_source : "Unknown hostile";
         hp -= amount;
         invincibility_timer = PLAYER_INVINCIBILITY_TIME;
         SoundSystem::instance().play_hit();
@@ -529,10 +586,10 @@ struct Player {
                 float pct = std::clamp(self_revive_timer / REVIVE_TIME, 0.0f, 1.0f);
                 DrawRectangle(static_cast<int>(pos.x - 50.0f), static_cast<int>(pos.y + radius + 10.0f), 100, 8, DARKGRAY);
                 DrawRectangle(static_cast<int>(pos.x - 50.0f), static_cast<int>(pos.y + radius + 10.0f), static_cast<int>(100.0f * pct), 8, COLOR_GOLD_BRIGHT);
-                DrawText(TextFormat("SELF-REVIVING: %.0f%% [R]", pct * 100.0f), static_cast<int>(pos.x - 55.0f), static_cast<int>(pos.y + radius + 22.0f), 10, COLOR_GOLD_BRIGHT);
+                DrawText(TextFormat("SELF-REVIVING: %.0f%% [E]", pct * 100.0f), static_cast<int>(pos.x - 55.0f), static_cast<int>(pos.y + radius + 22.0f), 10, COLOR_GOLD_BRIGHT);
             } else {
                 const char* self_revive_hint = inventory.soma_vials > 0
-                    ? "[HOLD R + SOMA TO REVIVE (3.5s)]"
+                    ? "[HOLD E + SOMA TO REVIVE (3.5s)]"
                     : "[NO SOMA // WAIT FOR A REVIVE]";
                 DrawText(self_revive_hint, static_cast<int>(pos.x - 92.0f), static_cast<int>(pos.y + radius + 10.0f), 9,
                          inventory.soma_vials > 0 ? COLOR_GOLD : COLOR_MUTED);

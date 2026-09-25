@@ -116,6 +116,13 @@ public:
         return sorties;
     }
     const std::unordered_map<std::string, int>& ship_sortie_counts() const { return m_ship_sorties; }
+    const std::unordered_map<std::string, std::string>& ship_last_death_causes() const { return m_ship_last_death_cause; }
+    void set_ship_last_death_cause(const std::string& ship_id, const std::string& cause) {
+        if (!ship_id.empty() && !cause.empty()) m_ship_last_death_cause[ship_id] = cause;
+    }
+    void set_ship_last_death_causes(const std::unordered_map<std::string, std::string>& causes) {
+        m_ship_last_death_cause = causes;
+    }
     void merge_ship_sortie_counts(const std::unordered_map<std::string, int>& counts) {
         for (const auto& [ship_id, count] : counts) {
             if (!ship_id.empty()) m_ship_sorties[ship_id] = std::clamp(std::max(m_ship_sorties[ship_id], count), 0, SHIP_MASTERY_SORTIES);
@@ -159,6 +166,7 @@ private:
     std::vector<std::string> m_unlocked_ships;
     std::unordered_map<std::string, int> m_ship_upgrade_levels;
     std::unordered_map<std::string, int> m_ship_sorties;
+    std::unordered_map<std::string, std::string> m_ship_last_death_cause;
     std::function<void(const std::string&)> m_on_ship_unlocked;
 };
 

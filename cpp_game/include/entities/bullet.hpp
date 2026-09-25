@@ -12,6 +12,7 @@ struct Bullet {
     float radius = 5.0f;
     int damage = 25;
     bool is_enemy = false;
+    const char* damage_source = "Unknown hostile";
     uint8_t owner_player_id = 0;
     bool is_player_owned = true;
     bool grazed = false;

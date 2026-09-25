@@ -177,7 +177,7 @@ public:
             for (auto* p : squad) {
                 if (!p || p->is_downed) continue;
                 if (Vector2Distance(b.pos, p->pos) < (b.radius + p->radius)) {
-                    if (p->take_damage(b.damage)) {
+                    if (p->take_damage(b.damage, b.damage_source)) {
                         particles.emit_explosion(b.pos, COLOR_RED_BRIGHT, 10, 110.0f);
                         if (g_screen_shake_enabled) particles.trigger_screen_shake(7.0f, 0.25f);
                         SoundSystem::instance().play_sfx("hit.wav", 0.8f);
@@ -198,7 +198,7 @@ public:
                 if (!enemy.active) continue;
 
                 if (Vector2Distance(p->pos, enemy.pos) < (p->radius + enemy.radius)) {
-                    bool damaged = p->take_damage(PLAYER_CONTACT_DAMAGE);
+                    bool damaged = p->take_damage(PLAYER_CONTACT_DAMAGE, enemy.damage_source_name());
                     enemy.hp -= 30; // Contact recoil damage
                     if (damaged && g_screen_shake_enabled) particles.trigger_screen_shake(8.0f, 0.3f);
                     if (enemy.hp <= 0) {

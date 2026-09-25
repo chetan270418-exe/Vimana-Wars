@@ -34,6 +34,13 @@ public:
             }
         }
         m_starting_wave = CAMPAIGN_REALMS[m_selected_node].start_wave;
+        const int resume_wave = DBSystem::instance().continue_wave();
+        if (resume_wave > 1 && resume_wave <= m_max_unlocked_wave + 1) {
+            const int resume_act = std::clamp(CampaignActForWave(resume_wave), 1, static_cast<int>(CAMPAIGN_REALMS.size()));
+            m_selected_node = resume_act - 1;
+            const auto& resume_realm = CAMPAIGN_REALMS[m_selected_node];
+            m_starting_wave = std::clamp(resume_wave, resume_realm.start_wave, resume_realm.end_wave);
+        }
 
         m_btn_loadout = UI::Button({ SCREEN_WIDTH - 280, SCREEN_HEIGHT - 75, 250, 42 }, "SELECT DIFFICULTY >>", COLOR_GOLD_BRIGHT);
         m_btn_back = UI::Button({ 30, SCREEN_HEIGHT - 75, 180, 42 }, "<< MAIN MENU", COLOR_MUTED);
@@ -92,7 +99,7 @@ public:
         }
 
         // Header
-        const char* title = "MAHAYUDDHA CAMPAIGN MAP // 10 ACTS · 300 WAVES";
+        const char* title = "MAHAYUDDHA CAMPAIGN MAP // ACT I · 30 WAVES";
         DrawTextEx(font, title, { 35, 25 }, 22, 1.0f, COLOR_GOLD_BRIGHT);
 
         std::string sub = "SELECT SECTOR DESTINATION • HIGHEST CONQUERED WAVE: " + std::to_string(m_max_unlocked_wave);

@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <algorithm>
+#include <cmath>
 #include "core/types.hpp"
 #include "core/constants.hpp"
 #include "systems/network_socket.hpp"
@@ -25,6 +26,8 @@ struct RemotePeer {
     bool        is_ai_takeover = false;
     int         ping_ms = 20;
     InputPacket last_input;
+    uint32_t    last_input_packet_sequence = 0;
+    bool        has_input_packet_sequence = false;
 };
 
 class NetworkManager {
@@ -49,6 +52,8 @@ public:
         m_local_player_id = 0;
         m_is_connected = false;
         m_connection_timer = 0.0f;
+        m_has_server_sequence = false;
+        m_last_server_sequence = 0;
     }
 
     NetworkRole role() const { return m_role; }
@@ -66,6 +71,50 @@ public:
     void set_target_host(const std::string& ip, uint16_t port) {
         m_target_host_ip = ip;
         m_target_host_port = port;
+    }
+
+    static bool sequence_is_newer(uint32_t candidate, uint32_t previous) {
+        const uint32_t delta = candidate - previous;
+        return delta != 0 && delta < 0x80000000u;
+    }
+
+    static bool sanitize_input_packet(InputPacket& input) {
+        if (!std::isfinite(input.move_x) || !std::isfinite(input.move_y) ||
+            !std::isfinite(input.aim_x) || !std::isfinite(input.aim_y) ||
+            input.ping_type > static_cast<uint8_t>(PingType::WAIT)) {
+            return false;
+        }
+        input.move_x = std::clamp(input.move_x, -1.0f, 1.0f);
+        input.move_y = std::clamp(input.move_y, -1.0f, 1.0f);
+        input.aim_x = std::clamp(input.aim_x, 0.0f, static_cast<float>(SCREEN_WIDTH));
+        input.aim_y = std::clamp(input.aim_y, 0.0f, static_cast<float>(SCREEN_HEIGHT));
+        return true;
+    }
+
+    static bool validate_snapshot(const SnapshotPacket& snapshot) {
+        if (snapshot.wave_number < 1 ||
+            snapshot.wave_number > WAVES_PER_ACT * static_cast<int>(CAMPAIGN_REALMS.size()) ||
+            snapshot.boss_phase < 1 || snapshot.boss_phase > 3 || snapshot.team_combo < 0 ||
+            !std::isfinite(snapshot.boss_hp) || snapshot.boss_hp < 0.0f) {
+            return false;
+        }
+        for (const auto& player : snapshot.players) {
+            if (!std::isfinite(player.pos_x) || !std::isfinite(player.pos_y) ||
+                !std::isfinite(player.vel_x) || !std::isfinite(player.vel_y) ||
+                !std::isfinite(player.angle) || player.hp < 0 || player.combo < 0 || player.score < 0 ||
+                player.pos_x < -100.0f || player.pos_x > SCREEN_WIDTH + 100.0f ||
+                player.pos_y < -100.0f || player.pos_y > SCREEN_HEIGHT + 100.0f) {
+                return false;
+            }
+        }
+        for (const auto& enemy : snapshot.enemies) {
+            if (!std::isfinite(enemy.pos_x) || !std::isfinite(enemy.pos_y) || enemy.hp < 0 ||
+                enemy.pos_x < -200.0f || enemy.pos_x > SCREEN_WIDTH + 200.0f ||
+                enemy.pos_y < -200.0f || enemy.pos_y > SCREEN_HEIGHT + 200.0f) {
+                return false;
+            }
+        }
+        return true;
     }
 
     const std::vector<PlayerNetState>& players() const { return m_players; }
@@ -86,6 +135,7 @@ public:
         m_role = NetworkRole::HOST;
         m_local_player_id = 0;
         m_is_connected = true;
+        m_seq = 0;
         generate_room_code();
         m_players.clear();
         m_peers.clear();
@@ -117,6 +167,9 @@ public:
         m_target_host_port = host_port;
         m_is_connected = false;
         m_connection_timer = 0.0f;
+        m_seq = 0;
+        m_has_server_sequence = false;
+        m_last_server_sequence = 0;
 
         if (!m_socket.open(0)) { // Bind ephemeral client port
             std::cerr << "[NetworkManager] Failed to open client socket" << std::endl;
@@ -233,17 +286,21 @@ public:
     void send_input(const InputPacket& input) {
         if (m_role != NetworkRole::CLIENT || !m_socket.is_open()) return;
 
+        InputPacket sanitized = input;
+        if (!sanitize_input_packet(sanitized)) return;
+
         PacketHeader hdr;
         hdr.magic = VW_PACKET_MAGIC;
         hdr.version = VW_PACKET_VERSION;
         hdr.packet_type = static_cast<uint8_t>(PacketType::INPUT_SYNC);
         hdr.sequence = ++m_seq;
+        sanitized.seq = hdr.sequence;
         hdr.ack = m_tick;
         hdr.payload_size = sizeof(InputPacket);
 
         uint8_t packet[sizeof(PacketHeader) + sizeof(InputPacket)];
         std::memcpy(packet, &hdr, sizeof(PacketHeader));
-        std::memcpy(packet + sizeof(PacketHeader), &input, sizeof(InputPacket));
+        std::memcpy(packet + sizeof(PacketHeader), &sanitized, sizeof(InputPacket));
 
         m_socket.send_to(m_target_host_ip, m_target_host_port, packet, sizeof(packet));
     }
@@ -309,7 +366,9 @@ private:
             }
 
             // Accept new player
-            const LobbyMessage* msg = reinterpret_cast<const LobbyMessage*>(payload);
+            LobbyMessage message{};
+            std::memcpy(&message, payload, sizeof(message));
+            const LobbyMessage* msg = &message;
             if (msg->type != LobbyMessage::Type::JOIN) {
                 std::cerr << "[NetworkManager] Rejected non-join lobby packet" << std::endl;
                 return;
@@ -351,11 +410,19 @@ private:
 
             std::cout << "[NetworkManager] Accepted client " << p_name << " from " << ip << ":" << port << " as Player " << (int)assigned_id << std::endl;
         } else if (type == PacketType::INPUT_SYNC) {
-            if (len >= static_cast<int>(sizeof(InputPacket))) {
-                const InputPacket* in = reinterpret_cast<const InputPacket*>(payload);
+            if (len == static_cast<int>(sizeof(InputPacket))) {
+                InputPacket incoming{};
+                std::memcpy(&incoming, payload, sizeof(incoming));
+                if (incoming.seq != hdr.sequence || !sanitize_input_packet(incoming)) return;
                 for (auto& peer : m_peers) {
                     if (peer.ip == ip && peer.port == port) {
-                        peer.last_input = *in;
+                        if (peer.has_input_packet_sequence &&
+                            !sequence_is_newer(hdr.sequence, peer.last_input_packet_sequence)) {
+                            return;
+                        }
+                        peer.last_input = incoming;
+                        peer.last_input_packet_sequence = hdr.sequence;
+                        peer.has_input_packet_sequence = true;
                         peer.last_seen = 0.0f;
                         peer.ping_ms = std::max(5, (int)(hdr.ack % 60));
                         break;
@@ -374,16 +441,23 @@ private:
     }
 
     void handle_client_packet(PacketType type, const PacketHeader& hdr, const uint8_t* payload, int len, const std::string& ip, uint16_t port) {
+        if (ip != m_target_host_ip || port != m_target_host_port) return;
         if (type == PacketType::JOIN_ACCEPT) {
+            if (len != 0 || hdr.ack >= MAX_CO_OP_PLAYERS) return;
             m_is_connected = true;
             m_local_player_id = static_cast<uint8_t>(hdr.ack);
             m_ping_ms = 16;
             std::cout << "[NetworkManager] Successfully joined session! Assigned Player ID: " << (int)m_local_player_id << std::endl;
         } else if (type == PacketType::SNAPSHOT_SYNC) {
-            if (len >= static_cast<int>(sizeof(SnapshotPacket))) {
-                const SnapshotPacket* snap = reinterpret_cast<const SnapshotPacket*>(payload);
-                m_last_snapshot = *snap;
-                m_tick = snap->tick;
+            if (len == static_cast<int>(sizeof(SnapshotPacket)) &&
+                (!m_has_server_sequence || sequence_is_newer(hdr.sequence, m_last_server_sequence))) {
+                SnapshotPacket incoming{};
+                std::memcpy(&incoming, payload, sizeof(incoming));
+                if (!validate_snapshot(incoming)) return;
+                m_last_snapshot = incoming;
+                m_last_server_sequence = hdr.sequence;
+                m_has_server_sequence = true;
+                m_tick = incoming.tick;
                 m_is_connected = true;
                 m_ping_ms = std::max(8, (int)(m_seq - hdr.sequence));
             }
@@ -397,6 +471,8 @@ private:
     float         m_packet_loss_pct;
     uint32_t      m_tick;
     uint32_t      m_seq;
+    uint32_t      m_last_server_sequence = 0;
+    bool          m_has_server_sequence = false;
     bool          m_is_connected;
     uint8_t       m_local_player_id;
     std::string   m_target_host_ip;

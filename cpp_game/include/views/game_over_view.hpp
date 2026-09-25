@@ -16,15 +16,16 @@ namespace Vimana {
 
 class GameOverView : public IView {
 public:
-    GameOverView(bool is_victory = false)
-        : m_next_view(is_victory ? ViewType::VICTORY : ViewType::GAME_OVER), 
+GameOverView(bool is_victory = false)
+        : m_next_view(is_victory ? ViewType::VICTORY : ViewType::GAME_OVER),
           m_is_victory(is_victory),
           m_is_new_high_score(false),
           m_duration(0.0f),
           m_difficulty("normal"),
-          m_btn_replay({ SCREEN_WIDTH / 2.0f - 220, 470, 135, 40 }, "FLY AGAIN", COLOR_GOLD_BRIGHT, "", Vimana::UI::ButtonKind::PRIMARY),
-          m_btn_profile({ SCREEN_WIDTH / 2.0f - 75, 470, 150, 40 }, "PILOT PROFILE", COLOR_CYAN_BRIGHT, "", Vimana::UI::ButtonKind::SECONDARY),
-          m_btn_menu({ SCREEN_WIDTH / 2.0f + 85, 470, 135, 40 }, "MAIN MENU", COLOR_MUTED, "", Vimana::UI::ButtonKind::GHOST)
+          m_btn_continue({ SCREEN_WIDTH / 2.0f - 220, 470, 135, 40 }, "CONTINUE THIS REALM", COLOR_GOLD_BRIGHT, "", Vimana::UI::ButtonKind::PRIMARY),
+          m_btn_replay({ SCREEN_WIDTH / 2.0f - 75, 470, 150, 40 }, "FLY AGAIN", COLOR_CYAN_BRIGHT, "", Vimana::UI::ButtonKind::SECONDARY),
+          m_btn_profile({ SCREEN_WIDTH / 2.0f + 85, 470, 135, 40 }, "PILOT PROFILE", COLOR_MUTED, "", Vimana::UI::ButtonKind::GHOST),
+          m_btn_menu({ SCREEN_WIDTH / 2.0f + 230, 470, 135, 40 }, "MAIN MENU", COLOR_MUTED, "", Vimana::UI::ButtonKind::GHOST)
     {
         init();
     }
@@ -33,8 +34,9 @@ public:
         m_next_view = m_is_victory ? ViewType::VICTORY : ViewType::GAME_OVER;
     }
 
-    void set_results(bool victory, int score, int wave, int kills, int damage, const std::string& ship_name,
-                     float duration_seconds = 0.0f, const std::string& difficulty = "normal") {
+void set_results(bool victory, int score, int wave, int kills, int damage, const std::string& ship_name,
+                      float duration_seconds = 0.0f, const std::string& difficulty = "normal",
+                      const std::string& death_cause = "") {
         m_is_victory = victory;
         m_score = score;
         m_wave = wave;
@@ -43,6 +45,7 @@ public:
         m_ship = ship_name;
         m_duration = duration_seconds;
         m_difficulty = difficulty;
+        m_killed_by = victory ? "" : death_cause;
 
         int previous_high = DBSystem::instance().high_score();
         m_is_new_high_score = (score > previous_high && score > 0);
@@ -72,9 +75,11 @@ public:
         entry.kills = kills;
         entry.total_damage = damage;
         entry.duration_seconds = duration_seconds;
+        entry.death_cause = m_killed_by;
         DBSystem::instance().insert_score(entry);
         DBSystem::instance().update_high_score(score);
         DBSystem::instance().update_max_wave(wave);
+        if (!victory) DBSystem::instance().set_continue_wave(wave);
         DBSystem::instance().save_game();
 
         // Submit score to Sangha Cloud API asynchronously
@@ -82,12 +87,21 @@ public:
         AccountSystem::instance().sync_profile();
     }
 
+    void set_killed_by(const std::string& reason) { m_killed_by = reason; }
+
     void update(float dt, Vector2 mouse_pos) override {
+        if (!m_is_victory) {
+            if (m_btn_continue.update(mouse_pos)) {
+                m_next_view = ViewType::CAMPAIGN_MAP;
+            }
+        }
         if (m_btn_replay.update(mouse_pos)) {
             m_next_view = ViewType::CAMPAIGN_MAP;
-        } else if (m_btn_profile.update(mouse_pos)) {
+        }
+        if (m_btn_profile.update(mouse_pos)) {
             m_next_view = ViewType::PROFILE;
-        } else if (m_btn_menu.update(mouse_pos) || IsKeyPressed(KEY_ESCAPE)) {
+        }
+        if (m_btn_menu.update(mouse_pos) || IsKeyPressed(KEY_ESCAPE)) {
             m_next_view = ViewType::MENU;
         }
     }
@@ -107,7 +121,7 @@ public:
             Vector2 v_sz = MeasureTextEx(title_font, vic, 24, 1.0f);
             DrawTextEx(title_font, vic, { (SCREEN_WIDTH - v_sz.x) / 2.0f, card.y + 20 }, 24, 1.0f, COLOR_GOLD_BRIGHT);
 
-            const char* sub = "FINAL ARMADA VANQUISHED // TEN ACTS OF DHARMA RESTORED";
+            const char* sub = "ACT I CLEARED // THE HEAVENS HOLD";
             Vector2 s_sz = MeasureTextEx(body_font, sub, 11, 1.0f);
             DrawTextEx(body_font, sub, { (SCREEN_WIDTH - s_sz.x) / 2.0f, card.y + 50 }, 11, 1.0f, COLOR_CYAN_BRIGHT);
         } else {
@@ -134,8 +148,15 @@ public:
             DrawTextEx(title_font, pb_text, { (SCREEN_WIDTH - pb_sz.x) / 2.0f, pb_bar.y + 7 }, 12, 1.0f, COLOR_GOLD_BRIGHT);
         }
 
+        // What killed you
+        if (!m_is_victory) {
+            std::string death_txt = "DESTROYED BY: " + m_killed_by;
+            Vector2 d_sz = MeasureTextEx(body_font, death_txt.c_str(), 11, 1.0f);
+            DrawTextEx(body_font, death_txt.c_str(), { (SCREEN_WIDTH - d_sz.x) / 2.0f, card.y + 100 }, 11, 1.0f, COLOR_RED_BRIGHT);
+        }
+
         // Stats Block
-        float cy = card.y + (m_is_new_high_score ? 120.0f : 95.0f);
+        float cy = card.y + (m_is_new_high_score ? 120.0f : (m_is_victory ? 120.0f : 135.0f));
         float lx = card.x + 40.0f;
         float rx = card.x + card.width - 150.0f;
 
@@ -185,6 +206,9 @@ public:
         DrawText(footer_tag.c_str(), static_cast<int>(card.x + 30), static_cast<int>(card.y + card.height - 18), 10, COLOR_MUTED);
 
         // Action Buttons
+        if (!m_is_victory) {
+            m_btn_continue.draw(title_font);
+        }
         m_btn_replay.draw(title_font);
         m_btn_profile.draw(title_font);
         m_btn_menu.draw(title_font);
@@ -209,9 +233,11 @@ private:
     PerformanceRank m_rank = PerformanceRank::B_RANK;
     std::string m_rank_reason = "";
 
+    UI::Button m_btn_continue;
     UI::Button m_btn_replay;
     UI::Button m_btn_profile;
     UI::Button m_btn_menu;
+    std::string m_killed_by = "HULL INTEGRITY BREACHED";
 };
 
 } // namespace Vimana

@@ -75,7 +75,7 @@ public:
         Vector2 t_sz = MeasureTextEx(title_font, title.c_str(), 22, 1.0f);
         DrawTextEx(title_font, title.c_str(), { (SCREEN_WIDTH - t_sz.x) / 2.0f, 38 }, 22, 1.0f, COLOR_GOLD_BRIGHT);
 
-        const char* sub = m_campaign_complete ? "ALL 10 ACTS CONQUERED // CELESTIAL ARMADA VICTORY" :
+        const char* sub = m_campaign_complete ? "ACT I CLEARED // CELESTIAL ARMADA VICTORY" :
                           m_is_final ? "ACT COMPLETE // HOSTILE ARMADA ESCALATION INCOMING" :
                                        "ASTRAL TELEMETRY BREAKDOWN - COMBAT COMMENDATIONS";
         Vector2 s_sz = MeasureTextEx(body_font, sub, 11, 1.0f);

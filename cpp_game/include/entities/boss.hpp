@@ -51,6 +51,20 @@ struct Boss {
     float act_bullet_speed_mult = 1.0f;
     float act_attack_rate_mult = 1.0f;
 
+    const char* damage_source_name() const {
+        switch (id) {
+            case BossID::KUMBHAKARNA: return "Titan Kumbhakarna";
+            case BossID::RAVANA: return "Emperor Ravana";
+            case BossID::MAHISHASURA: return "Warlord Mahishasura";
+            case BossID::MAKARA: return "Makara Leviathan";
+            case BossID::INDRAJIT: return "Prince Indrajit";
+            case BossID::HIRANYAKASHIPU: return "Hiranyakashipu";
+            case BossID::MEGHNADA: return "Meghnada";
+            case BossID::VRITRA: return "Vritra";
+            default: return "Boss";
+        }
+    }
+
     void init(BossID boss_type) {
         active = true;
         id = boss_type;
@@ -171,6 +185,7 @@ struct Boss {
         max_hp = std::max(1, static_cast<int>(std::round(max_hp * hp_scale)));
         hp = max_hp;
         speed *= 1.0f + std::min(0.35f, 0.035f * escalation);
+        speed = std::min(speed, 180.0f + static_cast<float>(phase - 1) * 20.0f);
         act_bullet_speed_mult = difficulty_bullet_mult * (1.0f + std::min(1.4f, 0.08f * escalation));
         act_attack_rate_mult = 1.0f + std::min(1.5f, 0.10f * escalation);
     }
@@ -189,10 +204,10 @@ struct Boss {
         float hp_ratio = static_cast<float>(hp) / max_hp;
         if (hp_ratio < 0.35f && phase < 3) {
             phase = 3;
-            speed *= 1.35f;
+            speed = std::min(speed * 1.35f, 220.0f);
         } else if (hp_ratio < 0.70f && phase < 2) {
             phase = 2;
-            speed *= 1.2f;
+            speed = std::min(speed * 1.2f, 200.0f);
         }
 
         // Horizontal sway
@@ -218,22 +233,40 @@ struct Boss {
         attack_timer -= dt;
         special_timer -= dt;
 
+        // Telegraph for special attack
         if (special_timer <= 1.2f && special_timer > 0.0f) {
             is_telegraphing = true;
             telegraph_timer = special_timer;
-            // Freeze aim in final 0.6s so volley is dodgeable (readable telegraph)
             if (special_timer > 0.6f) telegraph_target = player_pos;
             telegraph_warning = attack_name;
         } else {
             is_telegraphing = false;
         }
 
+        // Telegraph for basic attack (readable patterns, not instant fire)
+        if (attack_timer <= 1.0f && attack_timer > 0.0f) {
+            is_telegraphing = true;
+            telegraph_target = player_pos;
+            if (id == BossID::RAVANA) telegraph_warning = (phase == 3) ? "VOID RING EXPANSION" : "VOID SPIRAL";
+            else if (id == BossID::KUMBHAKARNA) telegraph_warning = "SEISMIC STOMP";
+            else telegraph_warning = attack_name;
+        }
+
         if (attack_timer <= 0) {
+            is_telegraphing = false;
+            const auto first_new_bullet = out_bullets.size();
             execute_basic_attack(out_bullets, player_pos);
+            for (auto i = first_new_bullet; i < out_bullets.size(); ++i) {
+                out_bullets[i].damage_source = damage_source_name();
+            }
         }
 
         if (special_timer <= 0) {
+            const auto first_new_bullet = out_bullets.size();
             execute_special_attack(out_bullets, player_pos);
+            for (auto i = first_new_bullet; i < out_bullets.size(); ++i) {
+                out_bullets[i].damage_source = damage_source_name();
+            }
         }
     }
 
@@ -274,19 +307,37 @@ struct Boss {
                 out_bullets.push_back(b);
             }
         } else if (id == BossID::RAVANA) {
-            // Spiral void ring
-            int count = (phase == 3) ? 14 : 10;
-            for (int i = 0; i < count; ++i) {
-                float ang = (i * (360.0f / count) + GetTime() * 40.0f) * (3.14159f / 180.0f);
-                Bullet b;
-                b.active = true;
-                b.is_enemy = true;
-                b.pos = pos;
-                b.vel = { std::cos(ang) * ENEMY_BULLET_SPEED * 0.9f * act_bullet_speed_mult, std::sin(ang) * ENEMY_BULLET_SPEED * 0.9f * act_bullet_speed_mult };
-                b.damage = 18;
-                b.color = COLOR_RED_BRIGHT;
-                b.radius = 6.0f;
-                out_bullets.push_back(b);
+            // Void Spiral (phases 1-2) or Void Ring Expansion (phase 3)
+            if (phase == 3) {
+                // Outward expanding ring — find the gaps between pulses
+                const int count = 12;
+                for (int i = 0; i < count; ++i) {
+                    float ang = (i * (360.0f / count)) * (3.14159f / 180.0f);
+                    Bullet b;
+                    b.active = true;
+                    b.is_enemy = true;
+                    b.pos = pos;
+                    b.vel = { std::cos(ang) * 260.0f * act_bullet_speed_mult, std::sin(ang) * 260.0f * act_bullet_speed_mult };
+                    b.damage = 18;
+                    b.color = COLOR_RED_BRIGHT;
+                    b.radius = 6.0f;
+                    out_bullets.push_back(b);
+                }
+            } else {
+                // Spiral void ring — rotating ring, find a safe gap
+                int count = 10;
+                for (int i = 0; i < count; ++i) {
+                    float ang = (i * (360.0f / count) + GetTime() * 40.0f) * (3.14159f / 180.0f);
+                    Bullet b;
+                    b.active = true;
+                    b.is_enemy = true;
+                    b.pos = pos;
+                    b.vel = { std::cos(ang) * ENEMY_BULLET_SPEED * 0.9f * act_bullet_speed_mult, std::sin(ang) * ENEMY_BULLET_SPEED * 0.9f * act_bullet_speed_mult };
+                    b.damage = 18;
+                    b.color = COLOR_RED_BRIGHT;
+                    b.radius = 6.0f;
+                    out_bullets.push_back(b);
+                }
             }
         } else if (id == BossID::HIRANYAKASHIPU) {
             // Pillar Barrage
@@ -302,6 +353,44 @@ struct Boss {
                 b.color = COLOR_GOLD_BRIGHT;
                 b.radius = 7.0f;
                 out_bullets.push_back(b);
+            }
+        } else if (id == BossID::KUMBHAKARNA) {
+            // Seismic Slam — two expanding rings outward from the boss position
+            for (int ring = 0; ring < 2; ++ring) {
+                const float side = (ring == 0) ? -1.0f : 1.0f;
+                const float ang = (base_ang + side * 35.0f) * (3.14159f / 180.0f);
+                Bullet b;
+                b.active = true; b.is_enemy = true; b.pos = pos;
+                b.vel = { std::cos(ang) * 200.0f * act_bullet_speed_mult, std::sin(ang) * 200.0f * act_bullet_speed_mult };
+                b.damage = 14; b.color = theme_color; b.radius = 8.0f;
+                out_bullets.push_back(b);
+            }
+        } else if (id == BossID::MAHISHASURA) {
+            // Blood Moon Barrage — wide-angle heavy spread with a narrow safe lane
+            const int count = phase == 3 ? 22 : (phase == 2 ? 16 : 12);
+            const float gap = 22.0f;
+            for (int i = 0; i < count; ++i) {
+                const float ang = (i * (360.0f / count) + gap) * (3.14159f / 180.0f);
+                Bullet b;
+                b.active = true; b.is_enemy = true; b.pos = pos;
+                b.vel = { std::cos(ang) * 240.0f * act_bullet_speed_mult, std::sin(ang) * 240.0f * act_bullet_speed_mult };
+                b.damage = 18; b.color = COLOR_RED_BRIGHT; b.radius = 7.0f;
+                out_bullets.push_back(b);
+            }
+        } else if (id == BossID::INDRAJIT) {
+            // Phantom Arrow Volley — dual-direction fan of piercing shots
+            const int count = phase == 3 ? 14 : 10;
+            for (int i = 0; i < count / 2; ++i) {
+                const float ang1 = (base_ang + i * (180.0f / (count / 2))) * (3.14159f / 180.0f);
+                const float ang2 = (base_ang - i * (180.0f / (count / 2)) + 180.0f) * (3.14159f / 180.0f);
+                Bullet b1; b1.active = true; b1.is_enemy = true; b1.pos = pos;
+                b1.vel = { std::cos(ang1) * 380.0f * act_bullet_speed_mult, std::sin(ang1) * 380.0f * act_bullet_speed_mult };
+                b1.damage = 20; b1.color = COLOR_PURPLE_BRIGHT; b1.radius = 6.0f; b1.pierce_remaining = 2;
+                out_bullets.push_back(b1);
+                Bullet b2; b2.active = true; b2.is_enemy = true; b2.pos = pos;
+                b2.vel = { std::cos(ang2) * 380.0f * act_bullet_speed_mult, std::sin(ang2) * 380.0f * act_bullet_speed_mult };
+                b2.damage = 20; b2.color = COLOR_PURPLE_BRIGHT; b2.radius = 6.0f; b2.pierce_remaining = 2;
+                out_bullets.push_back(b2);
             }
         } else {
             // Standard multi-arc
@@ -322,7 +411,20 @@ struct Boss {
     void execute_special_attack(std::vector<Bullet>& out_bullets, Vector2 player_pos) {
         special_timer = ((phase == 3) ? 4.5f : 6.5f) / act_attack_rate_mult;
 
-        if (id == BossID::MAKARA) {
+        if (id == BossID::KUMBHAKARNA) {
+            // Ground Pound — three columns of fast vertical slams with safe lanes
+            const int columns = 5;
+            const int safe_col = std::clamp(static_cast<int>(player_pos.x / (SCREEN_WIDTH / static_cast<float>(columns))), 1, columns - 2);
+            for (int col = 0; col < columns; ++col) {
+                if (std::abs(col - safe_col) <= 1) continue;
+                Bullet b;
+                b.active = true; b.is_enemy = true;
+                b.pos = { (col + 0.5f) * SCREEN_WIDTH / columns, pos.y };
+                b.vel = { 0.0f, 380.0f * act_bullet_speed_mult };
+                b.damage = 22; b.color = theme_color; b.radius = 9.0f;
+                out_bullets.push_back(b);
+            }
+        } else if (id == BossID::MAKARA) {
             // Rotating ocean ring with a small safe lane, creating movement rather than a wall.
             const int count = phase == 3 ? 24 : 18;
             const float rotation = static_cast<float>(GetTime() * 31.0);
@@ -396,6 +498,20 @@ struct Boss {
                 b.damage = 22;
                 b.color = COLOR_PURPLE_BRIGHT;
                 b.radius = 7.0f;
+                out_bullets.push_back(b);
+            }
+        } else if (id == BossID::RAVANA) {
+            // Void Collapse — 4 corners fire outward; dodge to center
+            for (int corner = 0; corner < 4; ++corner) {
+                const float sx = (corner & 1) ? SCREEN_WIDTH - 40.0f : 40.0f;
+                const float sy = (corner & 2) ? SCREEN_HEIGHT - 40.0f : 40.0f;
+                Bullet b;
+                b.active = true; b.is_enemy = true;
+                b.pos = { sx, sy };
+                // Fire outward from corners (away from center)
+                const float ang = std::atan2(pos.y - sy, pos.x - sx) * (3.14159f / 180.0f);
+                b.vel = { std::cos(ang) * 280.0f * act_bullet_speed_mult, std::sin(ang) * 280.0f * act_bullet_speed_mult };
+                b.damage = 24; b.color = COLOR_RED_BRIGHT; b.radius = 8.0f;
                 out_bullets.push_back(b);
             }
         } else if (id == BossID::MAHISHASURA) {

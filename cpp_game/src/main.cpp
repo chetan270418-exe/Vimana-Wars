@@ -48,6 +48,7 @@ int main() {
     SoundSystem::instance().init();
     AssetManager::instance().init();
     DBSystem::instance().init();
+    if (g_fullscreen_enabled && !IsWindowFullscreen()) ToggleFullscreen();
     NetworkManager::instance().init();
     AccountSystem::instance().init();
     AchievementSystem::instance().init();
@@ -88,6 +89,12 @@ int main() {
     while (!WindowShouldClose() && !quit_requested) {
         float dt = GetFrameTime();
         if (dt > 0.1f) dt = 0.1f; // Cap delta time against hitches
+
+        if (IsKeyPressed(KEY_F11)) {
+            ToggleFullscreen();
+            g_fullscreen_enabled = IsWindowFullscreen();
+            DBSystem::instance().save_game();
+        }
 
         SoundSystem::instance().update_music();
         DebugOverlay::instance().update();
@@ -151,7 +158,7 @@ int main() {
                 loadout_view->init();
                 current_view = loadout_view.get();
             } else if (next == ViewType::SHIP_SELECT) {
-                ship_select_view->set_return_view(current_view_type == ViewType::LOADOUT ? ViewType::LOADOUT : ViewType::MENU);
+                ship_select_view->set_return_view(ViewType::LOADOUT);
                 ship_select_view->init();
                 current_view = ship_select_view.get();
             } else if (next == ViewType::CODEX) {
@@ -218,8 +225,10 @@ int main() {
                 bool is_vic = (next == ViewType::VICTORY);
                 const auto& p = game_view->player();
                 game_over_view->set_results(is_vic, p.score, game_view->current_wave(), p.kills, p.total_damage_dealt,
-                                           p.archetype ? p.archetype->name : "Pushpaka",
-                                           game_view->run_duration(), game_view->difficulty_string());
+                                            p.archetype ? p.archetype->name : "Pushpaka",
+                                            game_view->run_duration(), game_view->difficulty_string(),
+                                            is_vic ? "" : game_view->death_cause());
+                game_over_view->set_killed_by(is_vic ? "" : game_view->death_cause());
                 current_view = game_over_view.get();
             }
 

@@ -24,9 +24,9 @@ public:
           m_btn_launch({ SCREEN_WIDTH - 290, SCREEN_HEIGHT - 75, 260, 44 }, "ENGAGE MISSION >>", COLOR_GOLD_BRIGHT),
           m_btn_change_ship({ 50, 420, 200, 36 }, "CHANGE VIMANA", COLOR_CYAN_BRIGHT),
           m_btn_back({ 50, SCREEN_HEIGHT - 75, 170, 44 }, "<< CAMPAIGN MAP", COLOR_MUTED),
-          m_btn_buy_kavach({ 680, 195, 120, 30 }, "BUY (120 P)", COLOR_GOLD),
-          m_btn_buy_soma({ 680, 260, 120, 30 }, "BUY (100 P)", COLOR_GREEN_BRIGHT),
-          m_btn_buy_vajra({ 680, 325, 120, 30 }, "BUY (80 P)", COLOR_CYAN_BRIGHT)
+          m_btn_buy_kavach({ 680, 195, 120, 30 }, "BUY", COLOR_GOLD),
+          m_btn_buy_soma({ 680, 260, 120, 30 }, "BUY", COLOR_GREEN_BRIGHT),
+          m_btn_buy_vajra({ 680, 325, 120, 30 }, "BUY", COLOR_CYAN_BRIGHT)
     {
         init();
     }
@@ -34,6 +34,9 @@ public:
     void init() override {
         m_next_view = ViewType::LOADOUT;
         m_ship_spin_angle = 0.0f;
+        m_btn_buy_kavach.set_label("BUY (" + std::to_string(COST_KAVACH_SHIELD) + " P)");
+        m_btn_buy_soma.set_label("BUY (" + std::to_string(COST_SOMA_VIAL) + " P)");
+        m_btn_buy_vajra.set_label("BUY (" + std::to_string(COST_VAJRA_FLARE) + " P)");
     }
 
     void set_mission_target(int starting_wave, const ShipArchetype* ship, const ConsumableInventory& inv) {

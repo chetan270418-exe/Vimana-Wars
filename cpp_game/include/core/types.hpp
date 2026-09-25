@@ -232,6 +232,7 @@ struct ScoreEntry {
     int         kills           = 0;
     int         total_damage    = 0;
     float       duration_seconds= 0.0f;
+    std::string death_cause     = "";
     std::string created_at      = "";
 };
 

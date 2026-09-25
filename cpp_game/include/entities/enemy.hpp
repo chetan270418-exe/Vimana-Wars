@@ -40,6 +40,18 @@ struct Enemy {
     bool is_elite = false;
     Color elite_tint = COLOR_GOLD_BRIGHT;
 
+    const char* damage_source_name() const {
+        switch (type) {
+            case EnemyType::ASURA_CHASER: return "Asura Chaser";
+            case EnemyType::ASURA_TANK: return "Asura Tank";
+            case EnemyType::ASURA_SHOOTER: return "Asura Shooter";
+            case EnemyType::ASURA_KAMIKAZE: return "Asura Kamikaze";
+            case EnemyType::ASURA_HEALER: return "Asura Healer";
+            case EnemyType::ASURA_SNIPER: return "Asura Sniper";
+            default: return "Asura hostile";
+        }
+    }
+
     void init(EnemyType t, Vector2 spawn_pos, float speed_mult = 1.0f, float hp_mult = 1.0f, bool elite = false) {
         active = true;
         type = t;
@@ -51,42 +63,6 @@ struct Enemy {
         if (is_elite) {
             hp_mult *= ELITE_HP_MULT;
             speed_mult *= ELITE_SPEED_MULT;
-        }
-
-        // Compact role glyphs keep enemy behavior readable without requiring
-        // the player to memorize every sprite silhouette.
-        Vector2 glyph = { pos.x, pos.y - radius - (is_elite ? 28.0f : 10.0f) };
-        Color glyph_color = COLOR_RED_BRIGHT;
-        switch (type) {
-            case EnemyType::ASURA_CHASER:
-                glyph_color = COLOR_ORANGE_BRIGHT;
-                DrawTriangle({ glyph.x, glyph.y - 5 }, { glyph.x - 5, glyph.y + 4 }, { glyph.x + 5, glyph.y + 4 }, glyph_color);
-                break;
-            case EnemyType::ASURA_TANK:
-                glyph_color = COLOR_GOLD_BRIGHT;
-                DrawRectangle(static_cast<int>(glyph.x - 4), static_cast<int>(glyph.y - 4), 8, 8, glyph_color);
-                break;
-            case EnemyType::ASURA_HEALER:
-                glyph_color = COLOR_GREEN_BRIGHT;
-                DrawCircleLines(static_cast<int>(glyph.x), static_cast<int>(glyph.y), 5, glyph_color);
-                DrawLine(static_cast<int>(glyph.x - 3), static_cast<int>(glyph.y), static_cast<int>(glyph.x + 3), static_cast<int>(glyph.y), glyph_color);
-                DrawLine(static_cast<int>(glyph.x), static_cast<int>(glyph.y - 3), static_cast<int>(glyph.x), static_cast<int>(glyph.y + 3), glyph_color);
-                break;
-            case EnemyType::ASURA_SNIPER:
-                glyph_color = COLOR_CYAN_BRIGHT;
-                DrawCircleLines(static_cast<int>(glyph.x), static_cast<int>(glyph.y), 5, glyph_color);
-                DrawLine(static_cast<int>(glyph.x - 7), static_cast<int>(glyph.y), static_cast<int>(glyph.x + 7), static_cast<int>(glyph.y), glyph_color);
-                DrawLine(static_cast<int>(glyph.x), static_cast<int>(glyph.y - 7), static_cast<int>(glyph.x), static_cast<int>(glyph.y + 7), glyph_color);
-                break;
-            case EnemyType::ASURA_KAMIKAZE:
-                glyph_color = COLOR_RED_BRIGHT;
-                DrawCircle(static_cast<int>(glyph.x), static_cast<int>(glyph.y), 5, glyph_color);
-                DrawCircleLines(static_cast<int>(glyph.x), static_cast<int>(glyph.y), 8, COLOR_GOLD_BRIGHT);
-                break;
-            case EnemyType::ASURA_SHOOTER:
-                glyph_color = COLOR_PURPLE_BRIGHT;
-                DrawPoly(glyph, 4, 6.0f, 45.0f, glyph_color);
-                break;
         }
 
         switch (type) {
@@ -172,6 +148,7 @@ struct Enemy {
                         Bullet b;
                         b.active = true;
                         b.is_enemy = true;
+                        b.damage_source = damage_source_name();
                         b.pos = pos;
                         b.vel = { std::cos(rad) * ENEMY_BULLET_SPEED, std::sin(rad) * ENEMY_BULLET_SPEED };
                         b.damage = 14;
@@ -201,6 +178,7 @@ struct Enemy {
                     Bullet b;
                     b.active = true;
                     b.is_enemy = true;
+                    b.damage_source = damage_source_name();
                     b.pos = pos;
                     b.vel = Vector2Scale(dir, ENEMY_BULLET_SPEED * 1.1f);
                     b.damage = 12;
@@ -246,6 +224,7 @@ struct Enemy {
                     Bullet b;
                     b.active = true;
                     b.is_enemy = true;
+                    b.damage_source = damage_source_name();
                     b.pos = pos;
                     b.vel = Vector2Scale(dir, ENEMY_BULLET_SPEED * 2.2f);
                     b.damage = 30;
@@ -295,6 +274,35 @@ struct Enemy {
             // Procedural geometric fallback
             DrawCircle(static_cast<int>(pos.x), static_cast<int>(pos.y), radius, tint);
             DrawCircleLines(static_cast<int>(pos.x), static_cast<int>(pos.y), radius, COLOR_RED_BRIGHT);
+        }
+
+        // Role glyphs are presentation only: draw them during rendering, never
+        // from init()/update(), where Raylib draw calls have no active frame.
+        const Vector2 glyph = { pos.x, pos.y - radius - (is_elite ? 28.0f : 10.0f) };
+        switch (type) {
+            case EnemyType::ASURA_CHASER:
+                DrawTriangle({ glyph.x, glyph.y - 5 }, { glyph.x - 5, glyph.y + 4 }, { glyph.x + 5, glyph.y + 4 }, COLOR_ORANGE_BRIGHT);
+                break;
+            case EnemyType::ASURA_TANK:
+                DrawRectangle(static_cast<int>(glyph.x - 4), static_cast<int>(glyph.y - 4), 8, 8, COLOR_GOLD_BRIGHT);
+                break;
+            case EnemyType::ASURA_HEALER:
+                DrawCircleLines(static_cast<int>(glyph.x), static_cast<int>(glyph.y), 5, COLOR_GREEN_BRIGHT);
+                DrawLine(static_cast<int>(glyph.x - 3), static_cast<int>(glyph.y), static_cast<int>(glyph.x + 3), static_cast<int>(glyph.y), COLOR_GREEN_BRIGHT);
+                DrawLine(static_cast<int>(glyph.x), static_cast<int>(glyph.y - 3), static_cast<int>(glyph.x), static_cast<int>(glyph.y + 3), COLOR_GREEN_BRIGHT);
+                break;
+            case EnemyType::ASURA_SNIPER:
+                DrawCircleLines(static_cast<int>(glyph.x), static_cast<int>(glyph.y), 5, COLOR_CYAN_BRIGHT);
+                DrawLine(static_cast<int>(glyph.x - 7), static_cast<int>(glyph.y), static_cast<int>(glyph.x + 7), static_cast<int>(glyph.y), COLOR_CYAN_BRIGHT);
+                DrawLine(static_cast<int>(glyph.x), static_cast<int>(glyph.y - 7), static_cast<int>(glyph.x), static_cast<int>(glyph.y + 7), COLOR_CYAN_BRIGHT);
+                break;
+            case EnemyType::ASURA_KAMIKAZE:
+                DrawCircle(static_cast<int>(glyph.x), static_cast<int>(glyph.y), 5, COLOR_RED_BRIGHT);
+                DrawCircleLines(static_cast<int>(glyph.x), static_cast<int>(glyph.y), 8, COLOR_GOLD_BRIGHT);
+                break;
+            case EnemyType::ASURA_SHOOTER:
+                DrawPoly(glyph, 4, 6.0f, 45.0f, COLOR_PURPLE_BRIGHT);
+                break;
         }
 
         // Mini HP Bar for Tanks & Healers

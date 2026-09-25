@@ -35,14 +35,17 @@ public:
         m_btn_toggle_fleet = UI::Button({ 35, 478, 200, 32 }, "VIEW FULL FLEET [TAB]", COLOR_MUTED, "", UI::ButtonKind::GHOST);
 
         // Consumable store buttons
-        m_btn_buy_kavach = UI::Button({ 520, 362, 95, 32 }, "KAVACH (120)", COLOR_CYAN, "", UI::ButtonKind::SECONDARY);
-        m_btn_buy_soma = UI::Button({ 630, 362, 95, 32 }, "SOMA (100)", COLOR_GREEN_BRIGHT, "", UI::ButtonKind::SECONDARY);
-        m_btn_buy_vajra = UI::Button({ 740, 362, 95, 32 }, "VAJRA (80)", COLOR_ORANGE_BRIGHT, "", UI::ButtonKind::SECONDARY);
+        m_btn_buy_kavach = UI::Button({ 520, 362, 95, 32 }, "KAVACH", COLOR_CYAN, "", UI::ButtonKind::SECONDARY);
+        m_btn_buy_soma = UI::Button({ 630, 362, 95, 32 }, "SOMA", COLOR_GREEN_BRIGHT, "", UI::ButtonKind::SECONDARY);
+        m_btn_buy_vajra = UI::Button({ 740, 362, 95, 32 }, "VAJRA", COLOR_ORANGE_BRIGHT, "", UI::ButtonKind::SECONDARY);
+        m_btn_buy_kavach.set_label("KAVACH (" + std::to_string(COST_KAVACH_SHIELD) + ")");
+        m_btn_buy_soma.set_label("SOMA (" + std::to_string(COST_SOMA_VIAL) + ")");
+        m_btn_buy_vajra.set_label("VAJRA (" + std::to_string(COST_VAJRA_FLARE) + ")");
     }
 
     void update(float dt, Vector2 mouse_pos) override {
         int max_wave = DBSystem::instance().max_wave();
-        // Starter-only by default (Pushpaka/Tripura/Garuda). Full 60-ship fleet behind TAB toggle.
+        // Starter-only by default (Pushpaka/Tripura/Garuda). Full fleet behind TAB toggle.
         size_t fleet_size = m_show_all ? SHIP_FLEET.size() : 3;
         if (m_selected_idx >= fleet_size) m_selected_idx = 0;
         const auto& current_ship = m_show_all ? SHIP_FLEET[m_selected_idx] : SHIP_FLEET[m_selected_idx % 3];
@@ -85,7 +88,7 @@ public:
                 }
             }
         } else {
-            if (m_btn_launch.update(mouse_pos) || IsKeyPressed(KEY_ENTER)) {
+            if (is_unlocked && (m_btn_launch.update(mouse_pos) || IsKeyPressed(KEY_ENTER))) {
                 m_next_view = (m_return_view == ViewType::LOADOUT) ? ViewType::LOADOUT : ViewType::GAMEPLAY;
             }
         }

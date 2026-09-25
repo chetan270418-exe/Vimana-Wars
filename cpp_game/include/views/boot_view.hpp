@@ -195,7 +195,7 @@ public:
             DrawTextEx(font, title, { (SCREEN_WIDTH - tsz.x) / 2.0f, 140 }, 60, 2.0f, COLOR_GOLD_BRIGHT);
         }
 
-        const char* tagline = "CELESTIAL ASTRAL COMBAT // 10 ACTS · 300 WAVES";
+        const char* tagline = "CELESTIAL ASTRAL COMBAT // ACT I · 30 WAVES";
         Vector2 tl_sz = MeasureTextEx(font, tagline, 13, 1.0f);
         DrawTextEx(font, tagline, { (SCREEN_WIDTH - tl_sz.x) / 2.0f, 310 }, 13, 1.0f, COLOR_CYAN_BRIGHT);
 

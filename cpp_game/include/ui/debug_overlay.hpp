@@ -28,13 +28,13 @@ public:
             std::cout << "[DEBUG] Hitboxes: " << (show_hitboxes ? "ON" : "OFF") << std::endl;
         }
 
-        // F2: Skip to Next Wave (always safe - dev helper)
+#if defined(_DEBUG) || defined(VIMANA_DEBUG)
+        // F2: Skip to Next Wave - DEBUG BUILD ONLY
         if (IsKeyPressed(KEY_F2)) {
             skip_wave_requested = true;
             std::cout << "[DEBUG] Skip Wave Triggered" << std::endl;
         }
 
-#if defined(_DEBUG) || defined(VIMANA_DEBUG)
         // F3: Add 1000 Prana Shards - DEBUG BUILD ONLY
         if (IsKeyPressed(KEY_F3)) {
             CurrencySystem::instance().add_prana_shards(1000);

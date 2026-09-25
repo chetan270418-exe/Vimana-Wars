@@ -24,6 +24,7 @@ public:
 
     // ── AUDIO CHANNELS ──────────────────────────────────────────────────────
     void play_sfx(const std::string& sound_file, float volume_mult = 1.0f) {
+        if (!IsAudioDeviceReady()) return;
         Sound snd = AssetManager::instance().get_sound(sound_file);
         if (snd.stream.buffer != nullptr) {
             SetSoundVolume(snd, m_sfx_volume * volume_mult * m_master_volume);
@@ -32,6 +33,7 @@ public:
     }
 
     void play_ui(const std::string& sound_file, float volume_mult = 1.0f) {
+        if (!IsAudioDeviceReady()) return;
         Sound snd = AssetManager::instance().get_sound(sound_file);
         if (snd.stream.buffer != nullptr) {
             SetSoundVolume(snd, m_ui_volume * volume_mult * m_master_volume);
@@ -40,6 +42,7 @@ public:
     }
 
     void play_boss(const std::string& sound_file, float volume_mult = 1.0f) {
+        if (!IsAudioDeviceReady()) return;
         Sound snd = AssetManager::instance().get_sound(sound_file);
         if (snd.stream.buffer != nullptr) {
             SetSoundVolume(snd, m_boss_volume * volume_mult * m_master_volume);
@@ -48,6 +51,7 @@ public:
     }
 
     void play_music(const std::string& music_file) {
+        if (!IsAudioDeviceReady()) return;
         AssetManager::instance().load_music(music_file);
         AssetManager::instance().set_music_volume(m_music_volume * m_master_volume);
     }
@@ -117,7 +121,7 @@ public:
     // ── VOLUME SETTERS & GETTERS ────────────────────────────────────────────
     void set_master_volume(float vol) {
         m_master_volume = std::clamp(vol, 0.0f, 1.0f);
-        SetMasterVolume(m_master_volume);
+        if (IsAudioDeviceReady()) SetMasterVolume(m_master_volume);
     }
 
     void set_sfx_volume(float vol) {

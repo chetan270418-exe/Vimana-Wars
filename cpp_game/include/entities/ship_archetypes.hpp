@@ -11,7 +11,7 @@ struct ShipArchetype {
     std::string id;
     std::string name;
     std::string subtitle;
-    std::string role; // Balanced, Tank, Vanguard, Piercing, Support, Ultimate
+    std::string role;
     int max_hp;
     float speed;
     float shoot_cooldown;
@@ -24,6 +24,7 @@ struct ShipArchetype {
     Color accent_color;
     std::string boss_unlock_id = {};
     std::string boss_unlock_name = {};
+    std::string gun_type = "STANDARD"; // STANDARD, BURST, PIERCE, BURN
 };
 
 inline const std::array<ShipArchetype, 60> SHIP_FLEET = {{
@@ -33,9 +34,9 @@ inline const std::array<ShipArchetype, 60> SHIP_FLEET = {{
     { "garuda",      "Garuda",        "Sky Predator",                  "High Agility",     80, 380.0f, 0.11f, 18, 3, 1.1f,  0, 0,    "garuda.png",                      COLOR_CYAN_BRIGHT },
 
     // ── TIER 2: EARLY CAMPAIGN (Wave 1-8) ────────────────────────────────────
-    { "vajra",       "Vajra Spear",   "Thunder Interceptor",           "Burst",            90, 340.0f, 0.14f, 28, 2, 1.4f,  2, 350,  "phase9_commander_ship_01.png",    COLOR_CYAN },
-    { "naga",        "Naga Coil",     "Venom Infiltrator",             "Piercing",         95, 320.0f, 0.13f, 26, 2, 1.5f,  3, 380,  "phase9_commander_ship_02.png",    COLOR_GREEN_BRIGHT },
-    { "agneyastra",  "Agneyastra",    "Flame Chariot",                 "Burn DPS",        110, 290.0f, 0.16f, 32, 2, 1.7f,  4, 420,  "phase9_commander_ship_03.png",    COLOR_RED_BRIGHT },
+    { "vajra",       "Vajra Spear",   "Thunder Interceptor",           "Burst",            90, 340.0f, 0.14f, 28, 4, 1.4f,  2, 350,  "phase9_commander_ship_01.png",    COLOR_CYAN, {}, {}, "BURST" },
+    { "naga",        "Naga Coil",     "Venom Infiltrator",             "Piercing",         95, 320.0f, 0.13f, 26, 3, 1.5f,  3, 380,  "phase9_commander_ship_02.png",    COLOR_GREEN_BRIGHT, {}, {}, "PIERCE" },
+    { "agneyastra",  "Agneyastra",    "Flame Chariot",                 "Burn DPS",        110, 290.0f, 0.16f, 32, 2, 1.7f,  4, 420,  "phase9_commander_ship_03.png",    COLOR_RED_BRIGHT, {}, {}, "BURN" },
     { "soma",        "Soma Ark",      "Lunar Sanctuary",               "Shielding",       125, 270.0f, 0.18f, 24, 2, 1.8f,  5, 450,  "phase9_commander_ship_04.png",    COLOR_PURPLE_BRIGHT },
     { "garuda_prime","Garuda Prime",  "Supersonic Astral Interceptor", "Hypersonic Strike", 95, 410.0f, 0.10f, 26, 3, 1.0f, 5, 500,  "phase8_wisedawn_shaded_ship_0.png",{ 70, 220, 255, 255 } },
     { "kubera",      "Kubera Galleon","Treasury Citadel",              "Wealth & Armor",  140, 250.0f, 0.19f, 34, 1, 2.0f,  6, 480,  "phase9_commander_ship_05.png",    COLOR_GOLD_BRIGHT },

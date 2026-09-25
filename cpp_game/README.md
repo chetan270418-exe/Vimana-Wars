@@ -16,14 +16,13 @@ A high-performance, native C++20 port of **Vimana Wars** built with **Raylib 6.0
   - **Object Pools (`ObjectPool<T>`)**: Preallocated memory pools for bullets and particles ensuring zero heap allocations during intense bullet hell combat.
   - **Circular Ring Buffers (`RingBuffer<T>`)**: Zero-overhead FIFO queue for floating combat damage numbers.
   - **Hierarchical State Machine (`StateMachine`)**: Robust management of screens and multi-phase boss attack states.
-- **60-Ship Hangar**:
-  - Three starter ships, campaign-unlocked and shard-purchased vessels, plus eight boss-salvage signature ships.
-  - Airavata is a heavy tank, Kamadhenu regenerates hull, and Narasimha gains damage as its hull falls.
-  - Ship frame upgrades persist and improve hull, weapon damage, speed, and dash recovery.
-- **Campaign & Boss Encounters (10 Acts / 300 Waves)**:
-  - Each act contains 30 increasingly difficult waves, with a boss-and-escort fleet every fifth wave.
-  - Eight distinct bosses rotate through the campaign: Kumbhakarna, Ravana, Mahishasura, Makara, Indrajit, Hiranyakashipu, Meghnada, and Vritra.
-  - Realm modifiers and enemy pressure escalate between acts; clearing Act X completes the campaign.
+- **Hangar (Starter Ships + Unlockable Fleet)**:
+   - Three starter ships (Pushpaka/Tripura/Garuda) with unique guns; Vajra [BURST], Naga [PIERCE], Agneyastra [BURN] beyond Act I.
+   - Airavata is a heavy tank, Kamadhenu regenerates hull, and Narasimha gains damage as its hull falls.
+   - Ship frame upgrades persist and improve hull, weapon damage, speed, and dash recovery.
+- **Campaign & Boss Encounters (Act I: 30 Waves)**:
+   - Waves escalate through five distinct act beats culminating in Kumbhakarna and Ravana boss encounters with 3 unique telegraph patterns each.
+   - Act II and beyond are planned as Endless Mode after Act I is polished.
 - **Prana Shards & Consumables Armory**:
   - Earn Prana Shards from waves, bosses, and duels.
   - Spend in the Armory to unlock ships early or purchase pre-run consumables:
@@ -31,9 +30,9 @@ A high-performance, native C++20 port of **Vimana Wars** built with **Raylib 6.0
     - 🧪 **Soma Vial** (`C` key): Mid-run emergency restorative heal.
     - ⚡ **Vajra Flare** (`V` key): Tactical 24-blade sub-screen clear.
 - **Multiplayer & Training Modes**:
-  - **Local 1v1 PvP**: Same-keyboard combat (P1: WASD + Space/Q vs P2: Arrows + Enter/Slash).
+  - **Local 1v1 PvP**: Same-keyboard combat (P1: WASD + Space/Q; P2: Arrows + Right Ctrl/Slash, abilities on Numpad 1–3).
   - **AI Bot Training**: Practice vs customizable AI bot with 3 difficulty levels (**Novice**, **Skilled**, **Asura Master**).
-  - **Sangha Lobby Browser**: Lobby discovery connects to the Flask backend; real-time combat networking remains LAN/local.
+  - **Sangha Lobby Browser**: Lobby discovery/UDP room prototypes exist, but cross-client combat replication is not wired end-to-end. Local same-keyboard PvP is playable; do not treat the lobby as online co-op yet.
 - **Database Integration**:
   - Embedded SQLite3 engine reading/writing directly to `leaderboard.db`.
   - JSON save system storing pilot progression in `~/.vimana_wars/save.json`.
@@ -45,13 +44,16 @@ A high-performance, native C++20 port of **Vimana Wars** built with **Raylib 6.0
 | Action | Player 1 (WASD) | Player 2 (Local Duel) |
 |---|---|---|
 | **Move** | `W`, `A`, `S`, `D` | Arrow Keys (`Up`, `Down`, `Left`, `Right`) |
-| **Aim & Shoot** | Mouse Cursor + `LMB` / `Space` | Facing direction + `Right Ctrl` (ENTER reserved for confirm) |
+| **Aim & Shoot** | Mouse Cursor + `LMB` / `Space` | Facing direction + `Right Ctrl` |
 | **Vayu Dash** | `Left Shift` / `RMB` | `Slash` (`/`) / `Right Shift` |
-| **Sudarshana Chakram** | `Q` (E = revive) | — |
+| **Sudarshana Chakram** | `Q` (revive = `E`) | Numpad `1` |
 | **Brahmastra Bomb** | `F` | — |
-| **Soma Vial Heal** | `C` | — |
-| **Vajra Flare** | `V` | — |
+| **Soma Vial Heal** | `C` | Numpad `2` |
+| **Vajra Flare** | `V` | Numpad `3` |
 | **Pause / Menu** | `ESC` or `P` | `ESC` |
+
+`ENTER` confirms selections in menus; Player 2 fires with `Right Ctrl` during local combat.
+`P` opens the pilot profile from the main menu and pauses during gameplay. Gamepad input is not implemented yet; the current build is keyboard/mouse only. `F11` toggles fullscreen.
 
 ---
 
@@ -59,3 +61,4 @@ A high-performance, native C++20 port of **Vimana Wars** built with **Raylib 6.0
 
 - **Launch Game**: Run `start.bat` in this folder or `start_cpp_game.bat` in the repository root.
 - **Build / Recompile**: Run `build.bat` in this folder.
+- **Run C++ audit smoke checks**: Run `test_audit.bat` for ship registry, boss/wave simulation, networking validation helpers, Continue-wave selection, and SQLite migration/score round-trip checks.
