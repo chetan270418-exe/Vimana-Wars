@@ -26,6 +26,7 @@ struct Player {
     // Weapon & Cooldowns
     float shoot_cooldown = 0.15f;
     float shoot_timer = 0.0f;
+    float firing_recoil = 0.0f;
     int bullet_damage = 25;
     int shot_counter = 0; // For Surya 7th shot pierce
     int signature_shot_counter = 0; // Per-ship cadence, separate from boon cadence
@@ -111,6 +112,7 @@ struct Player {
         is_dashing = false;
         dash_duration_timer = 0.0f;
         dash_timer = 0.0f;
+        firing_recoil = 0.0f;
         invincibility_timer = 0.0f;
         has_kavach_shield = false;
         kavach_timer = 0.0f;
@@ -161,6 +163,7 @@ struct Player {
     void update(float dt) {
         // Timers
         if (shoot_timer > 0) shoot_timer -= dt;
+        firing_recoil = std::max(0.0f, firing_recoil - dt * 28.0f);
         if (invincibility_timer > 0) invincibility_timer -= dt;
         if (chakram_timer > 0) chakram_timer -= dt;
 
@@ -183,6 +186,9 @@ struct Player {
         if (archetype && archetype->id == "kamadhenu") {
             regen_rate += 3.0f;
         }
+        if (archetype && archetype->id == "dhanvantari") {
+            regen_rate += 4.0f;
+        }
         if (has_boon(BoonType::VARUNA_OCEANIC_WARD)) {
             regen_rate += 2.0f;
         }
@@ -198,15 +204,16 @@ struct Player {
         }
 
         // Signature defensive passives: Pushpaka's longer ward and Nandi's compact aegis.
-        if (archetype && (archetype->id == "pushpaka" || archetype->id == "nandi_aegis") && !is_downed) {
+        if (archetype && (archetype->id == "pushpaka" || archetype->id == "nandi_aegis" || archetype->id == "soma") && !is_downed) {
             const bool nandi_aegis = archetype->id == "nandi_aegis";
-            const float shield_cycle = nandi_aegis ? 10.0f : 12.0f;
+            const bool soma_ark = archetype->id == "soma";
+            const float shield_cycle = nandi_aegis ? 10.0f : (soma_ark ? 15.0f : 12.0f);
             if (!has_kavach_shield) {
                 kavach_auto_timer += dt;
                 if (kavach_auto_timer >= shield_cycle) {
                     kavach_auto_timer = 0.0f;
                     has_kavach_shield = true;
-                    kavach_timer = nandi_aegis ? 2.0f : 3.0f;
+                    kavach_timer = nandi_aegis ? 2.0f : (soma_ark ? 1.5f : 3.0f);
                 }
             } else {
                 kavach_auto_timer = 0.0f;
@@ -327,6 +334,7 @@ struct Player {
         float cd = (buff_overdrive_timer > 0) ? shoot_cooldown * 0.45f : shoot_cooldown;
         if (shoot_timer > 0) return;
         shoot_timer = cd;
+        firing_recoil = 5.0f;
         just_shot = true;
         shot_counter = (shot_counter % 7) + 1;
         const bool is_amogha = archetype && archetype->id == "amogha_lancer";
@@ -349,7 +357,8 @@ struct Player {
             dmg = static_cast<int>(dmg * 1.4f);
         }
 
-        bool is_pierce = (has_boon(BoonType::SURYA_RADIANT_PIERCE) && (shot_counter % 7 == 0));
+        const bool surya_flare = archetype && archetype->id == "surya";
+        bool is_pierce = ((surya_flare || has_boon(BoonType::SURYA_RADIANT_PIERCE)) && (shot_counter % 7 == 0));
         bool is_tripura = (archetype && archetype->id == "tripura");
         bool is_garuda = (archetype && (archetype->id == "garuda" || archetype->id == "garuda_prime" || archetype->id == "garuda_apex"));
         const int garuda_pierce_bonus = is_garuda ? 2 : 0;
@@ -453,6 +462,10 @@ struct Player {
         just_dashed = true;
         dash_duration_timer = DASH_DURATION;
         invincibility_timer = DASH_DURATION + 0.1f;
+        if (archetype && archetype->id == "varaha") {
+            has_kavach_shield = true;
+            kavach_timer = std::max(kavach_timer, 0.65f);
+        }
         SoundSystem::instance().play_dash();
         SoundSystem::instance().play_thruster();
     }
@@ -554,7 +567,7 @@ struct Player {
         }
 
         // Dash trail & i-frames flicker
-        if (invincibility_timer > 0 && !is_dashing) {
+        if (!g_reduce_flashes && invincibility_timer > 0 && !is_dashing) {
             if (static_cast<int>(GetTime() * 20) % 2 == 0) return; // Flash
         }
 
@@ -576,15 +589,18 @@ struct Player {
                             ColorAlpha(COLOR_GOLD_BRIGHT, 0.75f));
         }
 
+        const float aim_rad = angle * (3.14159f / 180.0f);
+        const Vector2 sprite_pos = { pos.x - std::cos(aim_rad) * firing_recoil,
+                                     pos.y - std::sin(aim_rad) * firing_recoil };
         if (tex.id > 0) {
             Rectangle src = { 0.0f, 0.0f, static_cast<float>(tex.width), static_cast<float>(tex.height) };
-            Rectangle dest = { pos.x, pos.y, radius * 2.2f, radius * 2.2f };
+            Rectangle dest = { sprite_pos.x, sprite_pos.y, radius * 2.2f, radius * 2.2f };
             Vector2 origin = { dest.width / 2.0f, dest.height / 2.0f };
             DrawTexturePro(tex, src, dest, origin, angle + 90.0f, tint);
         } else {
             // Procedural geometric ship
-            DrawCircle(static_cast<int>(pos.x), static_cast<int>(pos.y), radius, archetype ? archetype->accent_color : COLOR_GOLD);
-            DrawCircleLines(static_cast<int>(pos.x), static_cast<int>(pos.y), radius, COLOR_PARCHMENT);
+            DrawCircle(static_cast<int>(sprite_pos.x), static_cast<int>(sprite_pos.y), radius, archetype ? archetype->accent_color : COLOR_GOLD);
+            DrawCircleLines(static_cast<int>(sprite_pos.x), static_cast<int>(sprite_pos.y), radius, COLOR_PARCHMENT);
         }
 
         // Co-op Downed Beacon

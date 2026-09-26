@@ -177,7 +177,7 @@ public:
         m_btn_switch_pilot.draw(font);
         m_btn_logout.draw(font);
 
-        UI::DrawScanlines();
+        if (g_scanlines_enabled) UI::DrawScanlines();
     }
 
     ViewType next_view() const override { return m_next_view; }

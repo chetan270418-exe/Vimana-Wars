@@ -1,13 +1,17 @@
 #pragma once
+#include <array>
+#include <algorithm>
 #include <string>
 #include <vector>
 #include <unordered_set>
+#include <utility>
 #include <fstream>
 #include <filesystem>
 #include <iostream>
 #include "raylib.h"
 #include "json.hpp"
 #include "core/constants.hpp"
+#include "entities/boss.hpp"
 #include "ui/vedic_theme.hpp"
 #include "systems/sound_system.hpp"
 #include "systems/http_client.hpp"
@@ -27,8 +31,15 @@ inline const std::vector<AchievementDef> ALL_ACHIEVEMENTS = {
     { "WAVE_5",            "Survivor of Swarga",     "Clear wave 5 and penetrate the astral defenses.",  "CAMPAIGN" },
     { "WAVE_15",           "Kshatriya Vanguard",     "Reach wave 15 deep in the cosmic void.",           "CAMPAIGN" },
     { "WAVE_30",           "Act I Vanguard",         "Clear the first 30-wave act of Mahayuddha.",       "ULTIMATE" },
-    { "BOSS_1",            "Kumbhakarna Defeated",   "Defeat the first act's guardian titan.",            "BOSS" },
-    { "BOSS_5",            "Ravana Overthrown",      "Defeat Emperor Ravana in a boss encounter.",        "BOSS" },
+    { "BOSS_1",            "Kumbhakarna Defeated",   "Defeat Titan Kumbhakarna.",                         "BOSS" },
+    { "BOSS_5",            "Ravana Overthrown",      "Defeat Emperor Ravana.",                           "BOSS" },
+    { "BOSS_MAHISHASURA",  "Mahishasura Broken",     "Defeat Warlord Mahishasura.",                      "BOSS" },
+    { "BOSS_MAKARA",       "Leviathan Hunted",       "Defeat the Makara Leviathan.",                     "BOSS" },
+    { "BOSS_INDRAJIT",     "Indrajit's Gambit",      "Defeat Prince Indrajit.",                          "BOSS" },
+    { "BOSS_HIRANYAKASHIPU","Tyrant Cast Down",      "Defeat Hiranyakashipu.",                          "BOSS" },
+    { "BOSS_MEGHNADA",     "Storm Silenced",         "Defeat Meghnada.",                                 "BOSS" },
+    { "BOSS_VRITRA",       "Sky Unsealed",           "Defeat Vritra.",                                   "BOSS" },
+    { "BOSS_ARCHIVE",      "Guardian Archive",       "Defeat all eight campaign guardians.",             "BOSS" },
     { "PERFECT_WAVE",      "Untouched Warrior",      "Clear an entire wave taking zero damage.",         "SKILL" },
     { "COMBO_25",          "Combo Disciple",         "Build a sustained x25 combat strike streak.",      "COMBAT" },
     { "COMBO_50",          "Divya Astra Resonance",  "Achieve the legendary x50 maximum combo.",         "COMBAT" },
@@ -38,7 +49,6 @@ inline const std::vector<AchievementDef> ALL_ACHIEVEMENTS = {
     { "ALL_BOONS",         "Deva Blessed",           "Equip all available divine boons during a run.",   "BUILD" },
     { "UNLOCK_SHIP",       "Astral Shipwright",      "Commission a new Vimana with astral prana.",       "PROGRESSION" },
     { "ALL_SHIPS",         "Supreme Armada",         "Command all 62 Vimanas in the celestial fleet.",   "PROGRESSION" },
-    { "DAILY_WIN",         "Daily Devotion",         "Complete a daily cosmic challenge sortie.",        "EVENT" },
     { "IRON_MODE",         "Iron Ascetic",           "Survive a campaign sortie on Chakravyuha tier.",   "MASTERY" },
     { "LEADERBOARD_TOP10", "Sangha Vanguard",        "Enter the top 10 rankings on the cloud leaderboard.","ONLINE" },
     { "REGISTER",          "Sangha Commissioned",    "Create an authenticated Sangha pilot account.",    "ACCOUNT" },
@@ -47,6 +57,20 @@ inline const std::vector<AchievementDef> ALL_ACHIEVEMENTS = {
 
 class AchievementSystem {
 public:
+    static const std::array<std::pair<BossID, const char*>, 8>& boss_achievement_ids() {
+        static const std::array<std::pair<BossID, const char*>, 8> ids = {{
+            { BossID::KUMBHAKARNA, "BOSS_1" },
+            { BossID::RAVANA, "BOSS_5" },
+            { BossID::MAHISHASURA, "BOSS_MAHISHASURA" },
+            { BossID::MAKARA, "BOSS_MAKARA" },
+            { BossID::INDRAJIT, "BOSS_INDRAJIT" },
+            { BossID::HIRANYAKASHIPU, "BOSS_HIRANYAKASHIPU" },
+            { BossID::MEGHNADA, "BOSS_MEGHNADA" },
+            { BossID::VRITRA, "BOSS_VRITRA" }
+        }};
+        return ids;
+    }
+
     static AchievementSystem& instance() {
         static AchievementSystem sys;
         return sys;
@@ -106,6 +130,19 @@ public:
                 }
             });
         }
+    }
+
+    void check_and_award_boss(BossID defeated_boss) {
+        for (const auto& entry : boss_achievement_ids()) {
+            if (entry.first == defeated_boss) {
+                check_and_award(entry.second);
+                break;
+            }
+        }
+
+        const bool all_defeated = std::all_of(boss_achievement_ids().begin(), boss_achievement_ids().end(),
+            [this](const auto& entry) { return is_unlocked(entry.second); });
+        if (all_defeated) check_and_award("BOSS_ARCHIVE");
     }
 
     void notify_event(const std::string& title, const std::string& description) {

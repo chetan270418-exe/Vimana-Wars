@@ -406,7 +406,7 @@ public:
         std::string srv_info = "SERVER: " + AccountSystem::instance().api_base();
         DrawText(srv_info.c_str(), SCREEN_WIDTH - 300, 535, 10, COLOR_MUTED);
 
-        UI::DrawScanlines();
+        if (g_scanlines_enabled) UI::DrawScanlines();
     }
 
     ViewType next_view() const override { return m_next_view; }

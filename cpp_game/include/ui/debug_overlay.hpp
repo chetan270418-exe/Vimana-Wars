@@ -1,4 +1,6 @@
 #pragma once
+#include <algorithm>
+#include <array>
 #include <iostream>
 #include <string>
 #include "raylib.h"
@@ -21,7 +23,11 @@ public:
     bool skip_wave_requested = false;
     bool boss_jump_requested = false;
 
-    void update() {
+    void update(float frame_dt) {
+        m_frame_times_ms[m_frame_write] = std::max(0.0f, frame_dt * 1000.0f);
+        m_frame_write = (m_frame_write + 1) % FRAME_SAMPLE_COUNT;
+        m_frame_count = std::min(m_frame_count + 1, FRAME_SAMPLE_COUNT);
+
         // F1: Toggle Hitboxes (always safe)
         if (IsKeyPressed(KEY_F1)) {
             show_hitboxes = !show_hitboxes;
@@ -68,7 +74,46 @@ public:
     bool show_net_overlay = false;
 
     void draw() const {
-        if (show_fps_graph || god_mode) {
+        if (show_fps_graph) {
+            constexpr int panel_x = SCREEN_WIDTH - 270;
+            constexpr int panel_y = SCREEN_HEIGHT - 170;
+            DrawRectangle(panel_x, panel_y, 255, 155, { 0, 0, 0, 215 });
+            DrawRectangleLines(panel_x, panel_y, 255, 155, COLOR_CYAN_BRIGHT);
+            DrawText("FRAME PROFILE // F7 TO HIDE", panel_x + 10, panel_y + 8, 10, COLOR_GOLD_BRIGHT);
+
+            float average_ms = 0.0f;
+            float peak_ms = 0.0f;
+            for (int i = 0; i < m_frame_count; ++i) {
+                const float sample = m_frame_times_ms[(m_frame_write + FRAME_SAMPLE_COUNT - m_frame_count + i) % FRAME_SAMPLE_COUNT];
+                average_ms += sample;
+                peak_ms = std::max(peak_ms, sample);
+            }
+            if (m_frame_count > 0) average_ms /= static_cast<float>(m_frame_count);
+
+            DrawText(TextFormat("FPS %d // FRAME %.1f ms", GetFPS(), m_frame_count ? m_frame_times_ms[(m_frame_write + FRAME_SAMPLE_COUNT - 1) % FRAME_SAMPLE_COUNT] : 0.0f),
+                     panel_x + 10, panel_y + 25, 10, COLOR_PARCHMENT);
+            DrawText(TextFormat("AVG %.1f ms // PEAK %.1f ms // %d SAMPLES", average_ms, peak_ms, m_frame_count),
+                     panel_x + 10, panel_y + 41, 9, COLOR_MUTED);
+
+            const int graph_x = panel_x + 10;
+            const int graph_y = panel_y + 62;
+            constexpr int graph_width = 235;
+            constexpr int graph_height = 80;
+            DrawRectangle(graph_x, graph_y, graph_width, graph_height, { 10, 16, 26, 255 });
+            DrawLine(graph_x, graph_y + graph_height - 1, graph_x + graph_width, graph_y + graph_height - 1, COLOR_MUTED);
+            const float slot_width = static_cast<float>(graph_width) / FRAME_SAMPLE_COUNT;
+            for (int i = 0; i < m_frame_count; ++i) {
+                const int sample_index = (m_frame_write + FRAME_SAMPLE_COUNT - m_frame_count + i) % FRAME_SAMPLE_COUNT;
+                const float ms = m_frame_times_ms[sample_index];
+                const float normalized = std::clamp(ms / 50.0f, 0.0f, 1.0f);
+                const int height = std::max(1, static_cast<int>(normalized * (graph_height - 4)));
+                const int x = graph_x + static_cast<int>((FRAME_SAMPLE_COUNT - m_frame_count + i) * slot_width);
+                const Color color = ms > 33.3f ? COLOR_RED_BRIGHT : ms > 20.0f ? COLOR_GOLD_BRIGHT : COLOR_CYAN_BRIGHT;
+                DrawRectangle(x, graph_y + graph_height - height - 1,
+                              std::max(1, static_cast<int>(slot_width)), height, color);
+            }
+            DrawText("50 ms", graph_x + graph_width - 33, graph_y + 2, 8, COLOR_MUTED);
+        } else if (god_mode) {
             DrawRectangle(SCREEN_WIDTH - 180, SCREEN_HEIGHT - 65, 170, 55, { 0, 0, 0, 180 });
             DrawRectangleLines(SCREEN_WIDTH - 180, SCREEN_HEIGHT - 65, 170, 55, COLOR_MUTED);
 
@@ -96,6 +141,11 @@ public:
     }
 
 private:
+    static constexpr int FRAME_SAMPLE_COUNT = 120;
+    std::array<float, FRAME_SAMPLE_COUNT> m_frame_times_ms{};
+    int m_frame_write = 0;
+    int m_frame_count = 0;
+
     DebugOverlay() = default;
 };
 

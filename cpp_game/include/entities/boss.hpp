@@ -577,7 +577,7 @@ struct Boss {
             DrawCircle(static_cast<int>(telegraph_target.x), static_cast<int>(telegraph_target.y), 5.0f, theme_color);
         }
 
-        Color tint = (hit_flash > 0) ? WHITE : COLOR_PARCHMENT;
+        Color tint = (!g_reduce_flashes && hit_flash > 0) ? WHITE : COLOR_PARCHMENT;
         if (tex.id > 0) {
             Rectangle src = { 0.0f, 0.0f, static_cast<float>(tex.width), static_cast<float>(tex.height) };
             Rectangle dest = { pos.x, pos.y, radius * 2.3f, radius * 2.3f };

@@ -39,6 +39,8 @@ public:
             particles.add_floating_text(player.pos,
                 shielded ? "DAMAGE BLOCKED" : "-" + std::to_string(hp_lost) + " HP",
                 shielded ? COLOR_CYAN_BRIGHT : COLOR_RED_BRIGHT);
+            particles.emit_shield_ripple(player.pos, shielded ? 58.0f : 48.0f,
+                                         shielded ? COLOR_CYAN_BRIGHT : COLOR_RED_BRIGHT);
             if (g_screen_shake_enabled) {
                 particles.trigger_screen_shake(shielded ? 3.0f : 8.0f, shielded ? 0.12f : 0.25f);
             }

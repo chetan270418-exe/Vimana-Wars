@@ -8,14 +8,14 @@ Status: `[x]` source implementation present (see validation); `[~]` partial or n
 
 - [~] **01 Fix gameplay bugs:** use the 35-action [C++ audit task file](../IMPLEMENTATION_TASKS.md); several runtime/device cases still need live QA.
 - [x] **02 Mouse aiming:** combat has mouse-based aim and fire input.
-- [~] **03 Shooting feel:** primary weapons now play the existing `shoot.wav` alongside the muzzle-flash VFX; verify mix/volume during live play.
+- [~] **03 Shooting feel:** primary weapons trigger the existing muzzle flash/SFX and a short directional ship recoil; weapon balance and feel still need a hands-on pass.
 - [x] **04 Enemy targeting:** AI threat/targeting systems are present.
 - [x] **05 Wave progression:** act/wave campaign data and multi-enemy formations exist.
-- [~] **06 Damage feedback:** HP-loss/shield popups, impact bursts, and single hit SFX are wired for projectile/contact damage; live readability pass remains.
+- [~] **06 Damage feedback:** HP-loss/shield popups, colored impact bursts/ripples, screen shake, and single hit SFX are wired for projectile/contact damage; live readability pass remains.
 - [x] **07 Player death/revive:** downed state, revives, and individual lives exist; new rule variants added in this slice.
-- [~] **08 Boss mechanics:** overlapping special telegraphs keep priority; boss damage/shield hit-confirm now reflects actual HP applied; boss pattern QA remains.
+- [~] **08 Boss mechanics:** all eight bosses retain unique attack/phase patterns; telegraph HUD names the incoming boss attack generically, and phase-transition VFX/SFX remain wired. Boss pattern QA remains.
 - [x] **09 Pause system:** pause and abort-confirmation overlay exist.
-- [ ] **10 Performance profiling:** no documented profiling baseline or target hardware pass yet.
+- [~] **10 Performance profiling:** F7 now graphs the latest 120 uncapped frame times with current/average/peak milliseconds; target-hardware baseline and release-build profiling remain.
 
 ## Phase 2 — Progression
 
@@ -28,7 +28,7 @@ Status: `[x]` source implementation present (see validation); `[~]` partial or n
 - [x] **17 Combo:** player/team combo systems exist.
 - [x] **18 Rank:** wave/run result rank is present.
 - [x] **19 Rewards:** wave rewards remain; one-time score/wave/victory run payout is now shown and saved.
-- [~] **20 Achievements:** trophy archive is reachable from the menu; implemented boon, ship, co-op, hard-act, leaderboard, and sortie triggers are wired. Daily-win remains unavailable until a daily challenge mode exists.
+- [~] **20 Achievements:** trophy archive includes reachable individual awards for all eight bosses plus an all-guardians award; removed the unearnable daily-event trophy. Remaining trigger coverage and cloud sync need live verification.
 
 ## Phase 3 — UI
 
@@ -37,8 +37,8 @@ Status: `[x]` source implementation present (see validation); `[~]` partial or n
 - [x] **23 Ship selection:** browsing and locked-launch guard exist; last equipped ship is restored.
 - [x] **24 Loadout:** tactical supply preparation exists and now shares purchase caps/persistence.
 - [x] **25 Campaign map:** act selection and continue-wave behavior exist.
-- [ ] **26 Mission briefing:** no separate mission-brief page yet.
-- [~] **27 Loading screen:** full-screen hero-art boot splash now has staged progress, percentage, skip controls, and a fallback; core assets still initialize before the view, so this is not asynchronous loading.
+- [~] **26 Mission briefing:** loadout now leads to a briefing with act/wave, story transmission, realm hazard, guardian, difficulty, and ship signature before launch; visual/readability QA remains.
+- [~] **27 Loading screen:** full-screen splash incrementally preloads fleet, boss, realm, and backdrop textures with real asset progress and fallback art; engine/font initialization still precedes the splash, and continuation waits for preload completion.
 - [x] **28 HUD:** mission act/wave, score, animated combo, live contact count, realm, ship, mode, and difficulty are visible in the gameplay header.
 - [x] **29 Pause screen:** present.
 - [x] **30 Victory:** result view exists.
@@ -48,7 +48,7 @@ Status: `[x]` source implementation present (see validation); `[~]` partial or n
 ## Phase 4 — Content
 
 - [x] **33 More ships:** added two late-act, progression-locked ships using the existing Phase 9 sprites; the fleet catalog and achievement target now include 62 ships.
-- [~] **34 Unique ship abilities:** the 62-ship catalog exposes hull stats, roles, and weapon profiles; Amogha Lancer and Nandi Aegis have new, test-covered combat passives. Most ships still share their archetype's weapon/passive behavior rather than each having a bespoke active Astra.
+- [~] **34 Unique ship abilities:** Amogha, Nandi, Soma, Dhanvantari, Surya, Varaha, and Kubera hulls now have distinct, test-covered combat passives; the rest of the 62-ship fleet still needs bespoke ability design and balance.
 - [x] **35 Enemy types:** multiple enemy archetypes are present.
 - [x] **36 Elite enemies:** elite spawning and behavior exist.
 - [x] **37 Mini-bosses:** three named mini-bosses recur at act waves 8/18/28, join mixed enemy formations, have boss sprites/nameplates, heavier health, distinct volleys, guaranteed supply drops, and Codex counters.
@@ -76,18 +76,18 @@ Status: `[x]` source implementation present (see validation); `[~]` partial or n
 
 ## Phase 6 — Final polish
 
-- [~] **56 Sound effects:** assets exist; UI now uses its own volume channel, transition cues are wired, and live device/mix QA remains.
-- [~] **57 Music:** category volume no longer double-applies master gain; same-track wave starts preserve playback; live mix QA remains.
+- [~] **56 Sound effects:** gameplay/UI SFX are wired, missing/decode-failed resources now emit one actionable diagnostic, and live device/mix QA remains.
+- [~] **57 Music:** combat loop is paired with looping act-specific ambience; music/ambience have separate stream volumes and share the music setting; live mix QA remains.
 - [~] **58 VFX:** combat particles, dash ghosts, boss phase rings, Astra effects, and damage feedback are wired; visual balance QA remains.
 - [x] **59 Screen shake:** implemented with an accessibility toggle.
 - [x] **60 Particles:** particle system is used for combat feedback.
 - [~] **61 UI transitions:** all view changes use the central fade/mandala transition except in-combat boon selection; subtle close/open audio cues added.
 - [ ] **62 Controller support:** gamepad UX is not complete.
-- [~] **63 Settings:** master/SFX/music/UI/boss levels and accessibility toggles persist; automated save audit exists, live control/resolution QA remains.
-- [~] **64 Accessibility:** colorblind mode now changes projectile shape/palette and threat-radar contrast; shake and scanline toggles persist; broader presets/readability remain.
+- [~] **63 Settings:** master/SFX/music/UI/boss levels and accessibility toggles persist, including reduced flashes; automated save audit exists, live control/resolution QA remains.
+- [~] **64 Accessibility:** colorblind mode changes projectile shape/palette and threat-radar contrast; shake, scanline, and reduced-flash settings persist. Scanlines now respect the toggle across views; reduced flashes suppresses invincibility blinking and hit flashes; broader presets/readability remain.
 - [ ] **65 FPS/performance optimization:** profile before setting optimization claims.
 - [x] **66 Save corruption protection:** malformed save is backed up; audit verifies this behavior.
-- [~] **67 Crash/error handling:** local guards exist; expand failure-injection tests.
+- [~] **67 Crash/error handling:** missing assets report once, failed asset lookups are cached, save-path filesystem exceptions are caught, and uncaught runtime exceptions are logged at the app boundary; expand failure-injection tests.
 - [~] **68 Final QA:** automated audit exists, hands-on matrix remains.
 - [~] **69 Build/package:** native build scripts exist; signed/release packaging not certified.
 - [ ] **70 Release version:** no completed release checklist/versioning workflow.
@@ -95,11 +95,12 @@ Status: `[x]` source implementation present (see validation); `[~]` partial or n
 ## Current implementation slice
 
 - [x] Run payout formula, once-per-run guard, save-on-award, result-page reward line.
-- [x] Pilot XP payout and level tracking, version-7 save migration default, menu progress meter, and post-run XP display.
+- [x] Pilot XP payout and level tracking, version-8 save migration default, menu progress meter, and post-run XP display.
 - [x] Primary-fire audio, player damage/shield hit feedback, actual boss damage accounting, and overlapping boss telegraph priority.
 - [x] Currency safety for negative spending, integer overflow, invalid ship IDs, and supply caps.
 - [x] Ten-act Codex/story coverage, recurring three-pattern mini-boss encounters, and gameplay hooks for every configured realm modifier.
-- [~] Bespoke ship identity: two new ships have unique tested passives; the remaining fleet still needs individual active-ability design and balance.
+- [~] Bespoke ship identity: seven passive designs are covered by tests across eight hulls; the remaining fleet still needs individual ability design and balance.
+- [x] Incremental boot preload, realm ambience streams, reduced-flash accessibility, and actionable missing-resource/fatal-error logging.
 - [x] Persistent equipped ship and tactical stock; Hangar purchases survive restart and stock is consumed on deploy.
 - [x] Multiplayer entry in the main menu and persistent Standard / Shared Squad Lives / Hardcore selector.
 - [x] Co-op rule behavior and HUD label; schema bumped to version 6 with backward-compatible defaults.

@@ -178,7 +178,7 @@ public:
         m_btn_back.draw(font);
         m_btn_refresh.draw(font);
 
-        UI::DrawScanlines();
+        if (g_scanlines_enabled) UI::DrawScanlines();
     }
 
     ViewType next_view() const override { return m_next_view; }

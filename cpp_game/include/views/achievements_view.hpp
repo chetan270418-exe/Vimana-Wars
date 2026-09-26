@@ -185,6 +185,14 @@ private:
         if (id == "PLAY_10") {
             return { std::clamp(m_match_count / 10.0f, 0.0f, 1.0f), std::to_string(m_match_count) + "/10 SORTIES" };
         }
+        if (id == "BOSS_ARCHIVE") {
+            int defeated = 0;
+            for (const auto& entry : AchievementSystem::boss_achievement_ids()) {
+                const std::string cloud_id = AchievementSystem::cloud_id_for(entry.second);
+                if (AchievementSystem::instance().is_unlocked(entry.second) || m_cloud_unlocked.contains(cloud_id)) ++defeated;
+            }
+            return { static_cast<float>(defeated) / 8.0f, std::to_string(defeated) + "/8 GUARDIANS" };
+        }
         if (id == "ALL_SHIPS" || id == "UNLOCK_SHIP") {
             int ready = 0;
             for (const auto& ship : SHIP_FLEET) {
@@ -194,13 +202,12 @@ private:
             return { std::clamp(static_cast<float>(ready) / target, 0.0f, 1.0f),
                      std::to_string(std::min(ready, target)) + "/" + std::to_string(target) + " SHIPS" };
         }
-        if (id == "DAILY_WIN") return { 0.0f, "DAILY EVENT MODE NOT AVAILABLE" };
         if (id == "IRON_MODE") return { 0.0f, "CLEAR AN ACT ON CHAKRAVYUHA" };
         if (id == "LEADERBOARD_TOP10") return { 0.0f, "TOP 10 CLOUD RANK" };
         if (id == "ALL_BOONS") return { 0.0f, "COLLECT ALL 9 UNIQUE BOONS" };
         if (id == "COOP_REVIVE") return { 0.0f, "REVIVE A DOWNED SQUADMATE" };
         if (id == "COOP_DUAL_ASTRA") return { 0.0f, "SYNC TWO SQUAD ASTRAS" };
-        if (id == "BOSS_1" || id == "BOSS_5") return { 0.0f, "DEFEAT THE NAMED BOSS" };
+        if (id.rfind("BOSS_", 0) == 0) return { 0.0f, "DEFEAT THE NAMED GUARDIAN" };
         if (id == "FIRST_BLOOD") return { 0.0f, "DESTROY YOUR FIRST ASURA" };
         if (id == "PERFECT_WAVE") return { 0.0f, "CLEAR A WAVE WITHOUT DAMAGE" };
         if (id == "COMBO_25") return { 0.0f, "REACH A X25 COMBO" };

@@ -8,8 +8,10 @@
 #include "core/types.hpp"
 #include "views/view_interface.hpp"
 #include "systems/asset_manager.hpp"
+#include "systems/sound_system.hpp"
 #include "systems/db_system.hpp"
 #include "systems/account_system.hpp"
+#include "entities/ship_archetypes.hpp"
 #include "ui/vedic_theme.hpp"
 
 namespace Vimana {
@@ -23,38 +25,65 @@ public:
     void init() override {
         m_next_view = ViewType::BOOT;
         m_timer = 0.0f;
-        m_duration = 2.5f;
         m_bar_pct = 0.0f;
-
-        // Staged boot presentation: the core systems are initialized before
-        // the first view is shown, so these are launch-sequence cues rather
-        // than claims about asynchronous asset loading.
+        SoundSystem::instance().play_music("combat_loop.mp3");
         m_load_steps = {
-            "FLIGHT SYSTEMS // INITIALIZING",
-            "PILOT PROFILE // SYNCHRONIZING",
-            "CAMPAIGN ROUTE // PREPARING",
-            "WEAPON SYSTEMS // CALIBRATING",
-            "FINAL LAUNCH CHECK",
+            "LOADING FLIGHT DECK",
+            "INDEXING CELESTIAL FLEET",
+            "MAPPING CAMPAIGN REALMS",
+            "PREPARING BOSS ARCHIVE",
             "READY FOR LAUNCH"
         };
         m_load_step = 0;
-        m_load_timer = 0.0f;
-        m_step_interval = m_duration / static_cast<float>(m_load_steps.size());
+        m_load_index = 0;
+        m_stage_ends.clear();
+        m_load_assets.clear();
+
+        auto add_asset = [&](const std::string& name) {
+            if (std::find(m_load_assets.begin(), m_load_assets.end(), name) == m_load_assets.end()) {
+                m_load_assets.push_back(name);
+            }
+        };
+        add_asset("hero_vimana_wars.png");
+        add_asset("vimana_wars_logo.png");
+        m_stage_ends.push_back(m_load_assets.size());
+        for (const auto& ship : SHIP_FLEET) add_asset(ship.sprite_file);
+        m_stage_ends.push_back(m_load_assets.size());
+        for (const char* image : { "realm_swarga.png", "realm_kshira_sagara.png", "realm_dandaka_void.png",
+                                   "realm_lanka_approach.png", "realm_setu_expanse.png", "realm_naraka_forge.png",
+                                   "realm_mahayuddha_citadel.png", "phase8_bg_blue_nebula_01.png",
+                                   "phase8_bg_purple_nebula_01.png", "phase8_bg_green_nebula_01.png",
+                                   "phase8_bg_starfield_01.png" }) {
+            add_asset(image);
+        }
+        m_stage_ends.push_back(m_load_assets.size());
+        for (const char* image : { "boss_kumbhakarna.png", "boss_ravana.png", "boss_mahishasura.png",
+                                   "boss_makara.png", "boss_indrajit.png", "boss_hiranyakashipu.png",
+                                   "boss_meghnada.png", "boss_vritra.png" }) {
+            add_asset(image);
+        }
+        m_stage_ends.push_back(m_load_assets.size());
     }
 
     void update(float dt, Vector2 /*mouse_pos*/) override {
         m_timer += dt;
-        m_bar_pct = std::min(1.0f, m_timer / m_duration);
 
-        m_load_timer += dt;
-        if (m_load_timer >= m_step_interval) {
-            m_load_timer -= m_step_interval;
-            if (m_load_step < (int)m_load_steps.size() - 1) m_load_step++;
+        // Raylib texture creation must stay on the render thread. Incremental
+        // loading keeps the boot frame responsive while making the bar real.
+        if (m_load_index < m_load_assets.size()) {
+            AssetManager::instance().get_texture(m_load_assets[m_load_index]);
+            ++m_load_index;
         }
+        m_bar_pct = m_load_assets.empty() ? 1.0f :
+            static_cast<float>(m_load_index) / static_cast<float>(m_load_assets.size());
+        m_load_step = 0;
+        while (m_load_step < static_cast<int>(m_stage_ends.size()) &&
+               m_load_index >= m_stage_ends[m_load_step]) ++m_load_step;
 
-        // The boot presentation can be skipped with keyboard or mouse.
-        if (m_timer >= m_duration || IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) ||
-            IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        // Launch automatically when ready; input can dismiss the final beat.
+        if (m_load_index >= m_load_assets.size() &&
+            (m_timer >= 0.75f || IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) ||
+             IsMouseButtonPressed(MOUSE_BUTTON_LEFT))) {
             m_next_view = ViewType::TITLE;
         }
     }
@@ -106,8 +135,7 @@ public:
         // Loading stage and percentage share one aligned, high-contrast panel.
         const Rectangle panel = { 58.0f, 440.0f, 784.0f, 112.0f };
         UI::DrawChamferedPanel(panel, COLOR_CYAN, { 7, 13, 25, 225 }, 5.0f);
-        const std::string stage = m_load_step < static_cast<int>(m_load_steps.size())
-            ? m_load_steps[m_load_step] : "READY FOR LAUNCH";
+        const std::string stage = m_load_steps[std::min(m_load_step, static_cast<int>(m_load_steps.size()) - 1)];
         DrawTextEx(font, stage.c_str(), { 78.0f, 458.0f }, 12, 1.0f, COLOR_PARCHMENT);
         const std::string percent = std::to_string(static_cast<int>(m_bar_pct * 100.0f)) + "%";
         const Vector2 percent_size = MeasureTextEx(font, percent.c_str(), 12, 1.0f);
@@ -126,13 +154,14 @@ public:
         }
         DrawRectangleLinesEx(bar_bg, 1.0f, ColorAlpha(COLOR_MUTED, 0.75f));
 
-        DrawText("VIMANA WARS  //  DESKTOP EDITION", 76, 521, 9, COLOR_MUTED);
-        const char* skip = "SPACE / ENTER / CLICK  //  SKIP";
-        const int skip_width = MeasureText(skip, 9);
-        DrawText(skip, SCREEN_WIDTH - skip_width - 78, 521, 9,
+        const std::string loaded = std::to_string(m_load_index) + " / " + std::to_string(m_load_assets.size()) + " ASSETS";
+        DrawText(loaded.c_str(), 76, 521, 9, COLOR_MUTED);
+        const char* prompt = m_load_index >= m_load_assets.size() ? "READY // PRESS KEY OR AUTOLAUNCH" : "LOADING ASSETS // PLEASE WAIT";
+        const int prompt_width = MeasureText(prompt, 9);
+        DrawText(prompt, SCREEN_WIDTH - prompt_width - 78, 521, 9,
                  ColorAlpha(COLOR_PARCHMENT, 0.65f + 0.3f * pulse));
 
-        UI::DrawScanlines();
+        if (g_scanlines_enabled) UI::DrawScanlines();
     }
 
     ViewType next_view()  const override { return m_next_view; }
@@ -140,13 +169,13 @@ public:
 
 private:
     ViewType m_next_view;
-    float    m_timer;
-    float    m_duration;
-    float    m_bar_pct;
-    float    m_load_timer;
-    float    m_step_interval;
+    float    m_timer = 0.0f;
+    float    m_bar_pct = 0.0f;
     int      m_load_step;
+    size_t   m_load_index = 0;
     std::vector<std::string> m_load_steps;
+    std::vector<size_t> m_stage_ends;
+    std::vector<std::string> m_load_assets;
 };
 
 // ── TITLE VIEW ────────────────────────────────────────────────────────────────
@@ -252,7 +281,7 @@ public:
         DrawText("v2.0 // DESKTOP EDITION // FINAL YEAR PROJECT",
             SCREEN_WIDTH / 2 - 140, SCREEN_HEIGHT - 28, 10, COLOR_MUTED);
 
-        UI::DrawScanlines();
+        if (g_scanlines_enabled) UI::DrawScanlines();
     }
 
     ViewType next_view()  const override { return m_next_view; }

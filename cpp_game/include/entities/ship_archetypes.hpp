@@ -29,6 +29,11 @@ struct ShipArchetype {
     std::string ability_description = {};
 };
 
+inline int ShipWavePranaReward(const ShipArchetype& ship, int amount) {
+    if (ship.id == "kubera" || ship.id == "kubera_vault") return amount + (amount > 0 ? amount / 5 : 0);
+    return amount;
+}
+
 inline const std::array<ShipArchetype, 62> SHIP_FLEET = {{
     // ── TIER 1: STARTER FLEET (Wave 0 — always unlocked) ─────────────────────
     { "pushpaka",    "Pushpaka",      "Celestial Cruiser",             "Balanced",        100, 300.0f, 0.15f, 25, 2, 1.6f,  0, 0,    "pushpaka.png",                    COLOR_GOLD },
@@ -120,6 +125,11 @@ inline std::string ShipSignatureName(const ShipArchetype& ship) {
     if (!ship.ability_name.empty()) return ship.ability_name;
     if (ship.id == "pushpaka") return "Kavach Ward";
     if (ship.id == "kamadhenu") return "Sustenance Field";
+    if (ship.id == "dhanvantari") return "Healing Current";
+    if (ship.id == "soma") return "Lunar Aegis";
+    if (ship.id == "surya") return "Radiant Pierce";
+    if (ship.id == "varaha") return "Earth-Upheaval Dash";
+    if (ship.id == "kubera" || ship.id == "kubera_vault") return "Divine Treasury";
     if (ship.id == "narasimha") return "Righteous Fury";
     if (ship.id == "tripura") return "Dreadnought Salvo";
     if (ship.id == "garuda" || ship.id == "garuda_prime" || ship.id == "garuda_apex") return "Predator's Pass";
@@ -133,6 +143,11 @@ inline std::string ShipSignatureDescription(const ShipArchetype& ship) {
     if (!ship.ability_description.empty()) return ship.ability_description;
     if (ship.id == "pushpaka") return "Periodically generates a short-lived automatic Kavach shield.";
     if (ship.id == "kamadhenu") return "Repairs hull integrity gradually during combat.";
+    if (ship.id == "dhanvantari") return "Restores 4 hull integrity per second while damaged.";
+    if (ship.id == "soma") return "Automatically raises a brief Kavach shield every fifteen seconds.";
+    if (ship.id == "surya") return "Every seventh primary shot pierces hostile craft.";
+    if (ship.id == "varaha") return "Each successful dash grants a brief Kavach shield.";
+    if (ship.id == "kubera" || ship.id == "kubera_vault") return "Earns 20% more Prana from wave-clear rewards.";
     if (ship.id == "narasimha") return "Weapon damage rises as hull integrity falls.";
     if (ship.id == "tripura") return "Fires a three-projectile heavy spread.";
     if (ship.id == "garuda" || ship.id == "garuda_prime" || ship.id == "garuda_apex") return "Piercing shots pass through additional hostile craft.";

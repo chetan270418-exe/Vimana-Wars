@@ -43,10 +43,11 @@ public:
         m_btn_boss_down = UI::Button({ cx - 110, 340, 40, 30 }, "-", COLOR_GOLD, "", UI::ButtonKind::SECONDARY);
         m_btn_boss_up = UI::Button({ cx + 70, 340, 40, 30 }, "+", COLOR_GOLD, "", UI::ButtonKind::SECONDARY);
 
-        m_btn_fullscreen = UI::Button({ cx + 20, 405, 190, 34 }, "TOGGLE FULLSCREEN", COLOR_CYAN_BRIGHT, "", UI::ButtonKind::SECONDARY);
-        m_btn_colorblind = UI::Button({ cx + 20, 160, 190, 34 }, "TOGGLE PALETTE", COLOR_GREEN_BRIGHT, "", UI::ButtonKind::SECONDARY);
-        m_btn_shake = UI::Button({ cx + 20, 245, 190, 34 }, "TOGGLE SHAKE", COLOR_CYAN_BRIGHT, "", UI::ButtonKind::SECONDARY);
-        m_btn_scanlines = UI::Button({ cx + 20, 330, 190, 34 }, "TOGGLE SCANLINES", COLOR_GOLD_BRIGHT, "", UI::ButtonKind::SECONDARY);
+        m_btn_fullscreen = UI::Button({ cx + 20, 395, 190, 34 }, "TOGGLE FULLSCREEN", COLOR_CYAN_BRIGHT, "", UI::ButtonKind::SECONDARY);
+        m_btn_colorblind = UI::Button({ cx + 20, 155, 190, 34 }, "TOGGLE PALETTE", COLOR_GREEN_BRIGHT, "", UI::ButtonKind::SECONDARY);
+        m_btn_shake = UI::Button({ cx + 20, 215, 190, 34 }, "TOGGLE SHAKE", COLOR_CYAN_BRIGHT, "", UI::ButtonKind::SECONDARY);
+        m_btn_reduce_flashes = UI::Button({ cx + 20, 275, 190, 34 }, "TOGGLE REDUCED FLASH", COLOR_PURPLE_BRIGHT, "", UI::ButtonKind::SECONDARY);
+        m_btn_scanlines = UI::Button({ cx + 20, 335, 190, 34 }, "TOGGLE SCANLINES", COLOR_GOLD_BRIGHT, "", UI::ButtonKind::SECONDARY);
 
         m_btn_back = UI::Button({ 40, 520, 110, 36 }, "SAVE & BACK", COLOR_MUTED, "", UI::ButtonKind::PRIMARY);
         m_btn_reset_defaults = UI::Button({ SCREEN_WIDTH - 230, 520, 190, 36 }, "RESET DEFAULTS", COLOR_RED_BRIGHT, "", UI::ButtonKind::DESTRUCTIVE);
@@ -67,6 +68,7 @@ public:
             g_colorblind_mode = false;
             g_screen_shake_enabled = true;
             g_scanlines_enabled = false;
+            g_reduce_flashes = false;
             if (IsWindowFullscreen()) ToggleFullscreen();
             g_fullscreen_enabled = false;
             DBSystem::instance().save_game();
@@ -129,6 +131,9 @@ public:
             }
             if (m_btn_shake.update(mouse_pos)) {
                 g_screen_shake_enabled = !g_screen_shake_enabled;
+            }
+            if (m_btn_reduce_flashes.update(mouse_pos)) {
+                g_reduce_flashes = !g_reduce_flashes;
             }
             if (m_btn_scanlines.update(mouse_pos)) {
                 g_scanlines_enabled = !g_scanlines_enabled;
@@ -222,25 +227,30 @@ public:
 
         } else if (m_active_tab == 2) {
             // ── ACCESSIBILITY TAB ──
-            DrawTextEx(body_font, "COLORBLIND COMBAT CUES", { cx - 220, 160 }, 13, 1.0f, COLOR_PARCHMENT);
+            DrawTextEx(body_font, "COLORBLIND COMBAT CUES", { cx - 220, 155 }, 13, 1.0f, COLOR_PARCHMENT);
             std::string cb_status = g_colorblind_mode ? "ACTIVE // SHAPE + CONTRAST CUES" : "OFF // STANDARD VEDIC COLORS";
-            DrawTextEx(body_font, cb_status.c_str(), { cx - 220, 180 }, 11, 1.0f, g_colorblind_mode ? COLOR_GREEN_BRIGHT : COLOR_MUTED);
+            DrawTextEx(body_font, cb_status.c_str(), { cx - 220, 175 }, 11, 1.0f, g_colorblind_mode ? COLOR_GREEN_BRIGHT : COLOR_MUTED);
             m_btn_colorblind.draw(title_font);
 
-            DrawTextEx(body_font, "SCREEN SHAKE", { cx - 220, 245 }, 13, 1.0f, COLOR_PARCHMENT);
+            DrawTextEx(body_font, "SCREEN SHAKE", { cx - 220, 215 }, 13, 1.0f, COLOR_PARCHMENT);
             std::string shake_status = g_screen_shake_enabled ? "ENABLED // FULL IMPACT FEEDBACK" : "DISABLED // STATIC CAMERA";
-            DrawTextEx(body_font, shake_status.c_str(), { cx - 220, 265 }, 11, 1.0f, g_screen_shake_enabled ? COLOR_CYAN_BRIGHT : COLOR_MUTED);
+            DrawTextEx(body_font, shake_status.c_str(), { cx - 220, 235 }, 11, 1.0f, g_screen_shake_enabled ? COLOR_CYAN_BRIGHT : COLOR_MUTED);
             m_btn_shake.draw(title_font);
 
-            DrawTextEx(body_font, "CRT SCANLINE OVERLAY", { cx - 220, 330 }, 13, 1.0f, COLOR_PARCHMENT);
+            DrawTextEx(body_font, "REDUCED FLASHES", { cx - 220, 275 }, 13, 1.0f, COLOR_PARCHMENT);
+            std::string flash_status = g_reduce_flashes ? "ON // REDUCED HIT / INVINCIBILITY FLASH" : "OFF // STANDARD HIT FLASHING";
+            DrawTextEx(body_font, flash_status.c_str(), { cx - 220, 295 }, 11, 1.0f, g_reduce_flashes ? COLOR_PURPLE_BRIGHT : COLOR_MUTED);
+            m_btn_reduce_flashes.draw(title_font);
+
+            DrawTextEx(body_font, "CRT SCANLINE OVERLAY", { cx - 220, 335 }, 13, 1.0f, COLOR_PARCHMENT);
             std::string scan_status = g_scanlines_enabled ? "ENABLED // RETRO WAR CONSOLE" : "DISABLED // CRISP HI-DEF";
-            DrawTextEx(body_font, scan_status.c_str(), { cx - 220, 350 }, 11, 1.0f, g_scanlines_enabled ? COLOR_GOLD_BRIGHT : COLOR_MUTED);
+            DrawTextEx(body_font, scan_status.c_str(), { cx - 220, 355 }, 11, 1.0f, g_scanlines_enabled ? COLOR_GOLD_BRIGHT : COLOR_MUTED);
             m_btn_scanlines.draw(title_font);
 
-            DrawTextEx(body_font, "DISPLAY MODE", { cx - 220, 405 }, 13, 1.0f, COLOR_PARCHMENT);
+            DrawTextEx(body_font, "DISPLAY MODE", { cx - 220, 395 }, 13, 1.0f, COLOR_PARCHMENT);
             const bool fullscreen = IsWindowFullscreen();
             const std::string display_status = fullscreen ? "FULLSCREEN ACTIVE" : "WINDOWED MODE";
-            DrawTextEx(body_font, display_status.c_str(), { cx - 220, 425 }, 11, 1.0f,
+            DrawTextEx(body_font, display_status.c_str(), { cx - 220, 415 }, 11, 1.0f,
                        fullscreen ? COLOR_CYAN_BRIGHT : COLOR_MUTED);
             m_btn_fullscreen.draw(title_font);
         }
@@ -274,6 +284,7 @@ private:
     UI::Button m_btn_fullscreen;
     UI::Button m_btn_colorblind;
     UI::Button m_btn_shake;
+    UI::Button m_btn_reduce_flashes;
     UI::Button m_btn_scanlines;
     UI::Button m_btn_back;
     UI::Button m_btn_reset_defaults;

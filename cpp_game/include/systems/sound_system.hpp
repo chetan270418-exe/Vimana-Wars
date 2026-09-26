@@ -56,6 +56,18 @@ public:
         AssetManager::instance().set_music_volume(m_music_volume);
     }
 
+    void play_realm_ambience(int realm_id) {
+        static constexpr const char* ambience_files[] = {
+            "ambience_swarga.wav", "ambience_kshira_sagara.wav", "ambience_dandaka_void.wav",
+            "ambience_lanka_approach.wav", "ambience_setu_expanse.wav", "ambience_naraka_forge.wav",
+            "ambience_mahayuddha_citadel.wav", "ambience_kshira_sagara.wav",
+            "ambience_dandaka_void.wav", "ambience_mahayuddha_citadel.wav"
+        };
+        if (!IsAudioDeviceReady() || realm_id < 1 || realm_id > 10) return;
+        AssetManager::instance().load_ambience(ambience_files[realm_id - 1]);
+        AssetManager::instance().set_ambience_volume(m_music_volume * 0.55f);
+    }
+
     void update_music() {
         AssetManager::instance().update_music();
     }
@@ -139,6 +151,7 @@ public:
     void set_music_volume(float vol) {
         m_music_volume = std::clamp(vol, 0.0f, 1.0f);
         AssetManager::instance().set_music_volume(m_music_volume);
+        AssetManager::instance().set_ambience_volume(m_music_volume * 0.55f);
     }
 
     float master_volume() const { return m_master_volume; }

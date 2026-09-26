@@ -99,7 +99,6 @@ public:
             });
         }
 
-        SoundSystem::instance().play_music("combat_loop.mp3");
     }
 
     void start_with_ship(
@@ -164,6 +163,9 @@ public:
         m_powerups.clear();
         m_wave_mgr.start_campaign(starting_wave, diff, num_players);
         ParallaxBackground::instance().set_realm(m_wave_mgr.get_realm_data());
+        SoundSystem::instance().play_music("combat_loop.mp3");
+        m_audio_realm_id = 0;
+        sync_realm_ambience();
 
         // Scale boss HP if starting on boss wave
         if (m_wave_mgr.is_boss_wave() && m_wave_mgr.get_boss().active) {
@@ -591,6 +593,7 @@ if (p.is_downed) {
 
         // -- 7. Bullets Update ---------------------------------------------------
         const int current_wave_num = m_wave_mgr.current_wave();
+        sync_realm_ambience();
         const bool vortex_drift = RealmModifierSystem::has_vortex_drift(current_wave_num);
         const bool reality_distortion = RealmModifierSystem::has_reality_distortion(current_wave_num);
         for (auto& b : m_bullets) {
@@ -669,8 +672,7 @@ if (p.is_downed) {
             std::string boss_ship_unlocked;
             if (boss_defeated) {
                 const BossID defeated_boss = m_wave_mgr.get_boss().id;
-                if (defeated_boss == BossID::KUMBHAKARNA) AchievementSystem::instance().check_and_award("BOSS_1");
-                if (defeated_boss == BossID::RAVANA) AchievementSystem::instance().check_and_award("BOSS_5");
+                AchievementSystem::instance().check_and_award_boss(defeated_boss);
                 boss_ship_unlocked = CurrencySystem::instance().unlock_boss_reward(m_wave_mgr.get_boss().ship_reward_key);
                 if (!boss_ship_unlocked.empty()) {
                     const ShipArchetype* reward_ship = GetShipArchetype(boss_ship_unlocked);
@@ -693,6 +695,7 @@ if (p.is_downed) {
             int act = CampaignActForWave(m_wave_mgr.current_wave());
             int wave_prana = PRANA_REWARD_WAVE_CLEAR + std::min(250, (act - 1) * 10) + (no_dmg ? BONUS_NO_DEATH : 0);
             if (boss_defeated) wave_prana += PRANA_REWARD_BOSS_DEFEAT;
+            if (m_squad[0].archetype) wave_prana = ShipWavePranaReward(*m_squad[0].archetype, wave_prana);
 
             CurrencySystem::instance().add_prana_shards(wave_prana);
             DBSystem::instance().update_max_wave(m_wave_mgr.current_wave());
@@ -815,16 +818,16 @@ if (p.is_downed) {
 
         // -- Boss Attack Telegraph Warning Banner -------------------------------
         if (boss_ptr && boss_ptr->active && boss_ptr->is_telegraphing) {
-            float pulse = 0.5f + 0.5f * std::sin(GetTime() * 18.0f);
+            float pulse = g_reduce_flashes ? 0.5f : 0.5f + 0.5f * std::sin(GetTime() * 18.0f);
             Rectangle warn_bar = { SCREEN_WIDTH / 2.0f - 240, 110, 480, 36 };
             UI::DrawChamferedPanel(warn_bar, COLOR_RED_BRIGHT, ColorAlpha(COLOR_RED_BRIGHT, 0.25f + 0.3f * pulse), 4.0f);
-            std::string warn_msg = "[!] WARNING: TITAN CHARGING [" + boss_ptr->telegraph_warning + "] [!]";
+            std::string warn_msg = "BOSS TELEGRAPH // " + boss_ptr->telegraph_warning + " // DODGE";
             Vector2 w_sz = MeasureTextEx(title_f, warn_msg.c_str(), 13, 1.0f);
             DrawTextEx(title_f, warn_msg.c_str(), { (SCREEN_WIDTH - w_sz.x) / 2.0f, warn_bar.y + 10 }, 13, 1.0f, WHITE);
         }
 
         if (boss_ptr && boss_ptr->active && m_boss_phase_flash_timer > 0.0f) {
-            float pulse = 0.65f + 0.35f * std::sin(GetTime() * 14.0f);
+            float pulse = g_reduce_flashes ? 0.82f : 0.65f + 0.35f * std::sin(GetTime() * 14.0f);
             float alpha = std::clamp(m_boss_phase_flash_timer / 0.45f, 0.0f, 1.0f);
             Rectangle phase_box = { SCREEN_WIDTH / 2.0f - 210, 148, 420, 34 };
             UI::DrawYantraPanel(phase_box, boss_ptr->theme_color, ColorAlpha(boss_ptr->theme_color, 0.18f + 0.20f * pulse), 4.0f, true);
@@ -850,9 +853,9 @@ if (p.is_downed) {
 
         // -- Low-HP Vignette & Critical Warning (above hull bar, not on it) -
         if (m_squad[0].hp <= 35 && !m_squad[0].is_downed) {
-            float pulse = 0.5f + 0.5f * std::sin(GetTime() * 10.0f);
-            DrawRectangleLinesEx({ 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT }, 10.0f, ColorAlpha(COLOR_RED_BRIGHT, 0.2f + 0.4f * pulse));
-            DrawText("[!] HULL CRITICAL // SOMA [C] [!]", SCREEN_WIDTH / 2 - 130, SCREEN_HEIGHT - 90, 12, ColorAlpha(COLOR_RED_BRIGHT, 0.8f + 0.2f * pulse));
+            float pulse = g_reduce_flashes ? 0.5f : 0.5f + 0.5f * std::sin(GetTime() * 10.0f);
+            DrawRectangleLinesEx({ 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT }, 10.0f, ColorAlpha(COLOR_RED_BRIGHT, g_reduce_flashes ? 0.3f : 0.2f + 0.4f * pulse));
+            DrawText("[!] HULL CRITICAL // SOMA [C] [!]", SCREEN_WIDTH / 2 - 130, SCREEN_HEIGHT - 90, 12, ColorAlpha(COLOR_RED_BRIGHT, g_reduce_flashes ? 0.85f : 0.8f + 0.2f * pulse));
         }
 
         // Story Transmission
@@ -944,6 +947,13 @@ if (p.is_downed) {
     }
 
 private:
+    void sync_realm_ambience() {
+        const int realm_id = CampaignActForWave(m_wave_mgr.current_wave());
+        if (realm_id == m_audio_realm_id) return;
+        m_audio_realm_id = realm_id;
+        SoundSystem::instance().play_realm_ambience(realm_id);
+    }
+
     struct Star { float x, y, z; };
     ViewType m_next_view;
     bool m_is_paused;
@@ -981,6 +991,7 @@ private:
     int m_last_boss_phase = 1;
     float m_boss_phase_flash_timer = 0.0f;
     Vector2 m_aim_pos = { SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f };
+    int m_audio_realm_id = 0;
 
     UI::Button m_btn_resume;
     UI::Button m_btn_restart_wave;

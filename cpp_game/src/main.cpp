@@ -1,5 +1,6 @@
 #include <memory>
 #include <algorithm>
+#include <exception>
 #include "raylib.h"
 #include "core/constants.hpp"
 #include "core/types.hpp"
@@ -17,6 +18,7 @@
 #include "views/menu_view.hpp"
 #include "views/campaign_map_view.hpp"
 #include "views/loadout_view.hpp"
+#include "views/mission_briefing_view.hpp"
 #include "views/ship_select_view.hpp"
 #include "views/difficulty_view.hpp"
 #include "views/game_view.hpp"
@@ -35,6 +37,7 @@
 using namespace Vimana;
 
 int main() {
+    try {
     // 1. Initialize Raylib Window
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_VSYNC_HINT);
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, WINDOW_TITLE);
@@ -65,6 +68,7 @@ int main() {
     auto menu_view = std::make_unique<MenuView>();
     auto campaign_map_view = std::make_unique<CampaignMapView>();
     auto loadout_view = std::make_unique<LoadoutView>();
+    auto mission_briefing_view = std::make_unique<MissionBriefingView>();
     auto ship_select_view = std::make_unique<ShipSelectView>();
     auto difficulty_view = std::make_unique<DifficultyView>();
     auto game_view = std::make_unique<GameView>();
@@ -87,7 +91,8 @@ int main() {
     // 5. Master Game Loop (QUIT breaks for safe teardown in section 6)
     bool quit_requested = false;
     while (!WindowShouldClose() && !quit_requested) {
-        float dt = GetFrameTime();
+        const float frame_dt = GetFrameTime();
+        float dt = frame_dt;
         if (dt > 0.1f) dt = 0.1f; // Cap delta time against hitches
 
         if (IsKeyPressed(KEY_F11)) {
@@ -97,7 +102,7 @@ int main() {
         }
 
         SoundSystem::instance().update_music();
-        DebugOverlay::instance().update();
+        DebugOverlay::instance().update(frame_dt);
         AccountSystem::instance().update();
         AchievementSystem::instance().update(dt);
 
@@ -157,6 +162,12 @@ int main() {
                 }
                 loadout_view->init();
                 current_view = loadout_view.get();
+            } else if (next == ViewType::MISSION_BRIEFING) {
+                mission_briefing_view->set_mission(loadout_view->starting_wave(),
+                                                   &loadout_view->selected_ship(),
+                                                   difficulty_view->selected_difficulty());
+                mission_briefing_view->init();
+                current_view = mission_briefing_view.get();
             } else if (next == ViewType::SHIP_SELECT) {
                 const bool from_campaign_flow = current_view_type == ViewType::CAMPAIGN_MAP ||
                     current_view_type == ViewType::DIFFICULTY_SELECT || current_view_type == ViewType::LOADOUT;
@@ -178,7 +189,7 @@ int main() {
                 }
                 current_view = difficulty_view.get();
             } else if (next == ViewType::GAMEPLAY) {
-                if (current_view_type == ViewType::LOADOUT) {
+                if (current_view_type == ViewType::LOADOUT || current_view_type == ViewType::MISSION_BRIEFING) {
                     game_view->start_with_ship(&loadout_view->selected_ship(), loadout_view->inventory(), loadout_view->starting_wave(), difficulty_view->selected_difficulty(), 1);
                 } else if (current_view_type == ViewType::SHIP_SELECT) {
                     game_view->start_with_ship(&ship_select_view->selected_ship(), ship_select_view->consumables(), 1, difficulty_view->selected_difficulty(), 1);
@@ -301,4 +312,21 @@ int main() {
     CloseWindow();
 
     return 0;
+    } catch (const std::exception& ex) {
+        TraceLog(LOG_ERROR, "[Fatal] Vimana Wars stopped: %s", ex.what());
+        if (IsAudioDeviceReady()) SoundSystem::instance().cleanup();
+        if (IsWindowReady()) {
+            AssetManager::instance().cleanup();
+            CloseWindow();
+        }
+        return 1;
+    } catch (...) {
+        TraceLog(LOG_ERROR, "[Fatal] Vimana Wars stopped by an unknown error.");
+        if (IsAudioDeviceReady()) SoundSystem::instance().cleanup();
+        if (IsWindowReady()) {
+            AssetManager::instance().cleanup();
+            CloseWindow();
+        }
+        return 1;
+    }
 }

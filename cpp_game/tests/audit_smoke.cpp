@@ -17,11 +17,13 @@
 #include "entities/player_controller.hpp"
 #include "entities/ship_archetypes.hpp"
 #include "systems/db_system.hpp"
+#include "systems/achievement_system.hpp"
 #include "systems/network_manager.hpp"
 #include "systems/realm_modifier_system.hpp"
 #include "systems/transition_manager.hpp"
 #include "systems/wave_manager.hpp"
 #include "views/campaign_map_view.hpp"
+#include "views/mission_briefing_view.hpp"
 
 using namespace Vimana;
 
@@ -53,6 +55,25 @@ int main() {
     assert(GetMiniBossIntelForActWave(8)->name == std::string("RIFT MAULER"));
     assert(GetMiniBossIntelForActWave(18)->name == std::string("SILENCE WARDEN"));
     assert(GetMiniBossIntelForActWave(28)->name == std::string("EMBER TYRANT"));
+
+    // Every listed achievement has a real ID, and all eight bosses map to a
+    // unique locally-defined trophy (including the all-guardians meta award).
+    std::unordered_set<std::string> achievement_ids;
+    for (const auto& achievement : ALL_ACHIEVEMENTS) {
+        assert(achievement_ids.insert(achievement.id).second);
+        assert(achievement.id != "DAILY_WIN");
+    }
+    assert(ALL_ACHIEVEMENTS.size() == 26);
+    assert(achievement_ids.contains("BOSS_ARCHIVE"));
+    std::unordered_set<std::string> boss_trophy_ids;
+    for (const auto& entry : AchievementSystem::boss_achievement_ids()) {
+        assert(boss_trophy_ids.insert(entry.second).second);
+        assert(achievement_ids.contains(entry.second));
+    }
+    assert(boss_trophy_ids.size() == 8);
+
+    MissionBriefingView briefing;
+    assert(briefing.next_view() == ViewType::MISSION_BRIEFING);
     WaveManager transmission_check;
     transmission_check.prepare_wave(286);
     assert(transmission_check.get_story_transmission().find("No more portals remain") != std::string::npos);
@@ -239,6 +260,7 @@ int main() {
     g_colorblind_mode = true;
     g_screen_shake_enabled = false;
     g_scanlines_enabled = true;
+    g_reduce_flashes = true;
     g_fullscreen_enabled = true;
     save_db.save_game();
 
@@ -262,6 +284,7 @@ int main() {
     g_colorblind_mode = false;
     g_screen_shake_enabled = true;
     g_scanlines_enabled = false;
+    g_reduce_flashes = false;
     g_fullscreen_enabled = false;
     save_db.load_save_game();
     assert(save_db.player_name() == "audit-save-pilot");
@@ -283,6 +306,7 @@ int main() {
     assert(SoundSystem::instance().ui_volume() == 0.63f);
     assert(SoundSystem::instance().boss_volume() == 0.74f);
     assert(g_colorblind_mode && !g_screen_shake_enabled && g_scanlines_enabled && g_fullscreen_enabled);
+    assert(g_reduce_flashes);
 
     const auto audit_save_path = audit_save_root / ".vimana_wars" / "save.json";
     {
@@ -318,6 +342,8 @@ int main() {
     assert(GetShipArchetype("nandi_aegis")->sprite_file == "phase9_commander_ship_50.png");
     assert(ShipSignatureName(*GetShipArchetype("amogha_lancer")) == "Needle Thread");
     assert(ShipSignatureName(*GetShipArchetype("nandi_aegis")) == "Living Aegis");
+    assert(ShipWavePranaReward(*GetShipArchetype("kubera"), 100) == 120);
+    assert(ShipWavePranaReward(*GetShipArchetype("pushpaka"), 100) == 100);
     Player amogha;
     amogha.init(GetShipArchetype("amogha_lancer"));
     const int amogha_base_damage = amogha.bullet_damage;
@@ -335,6 +361,27 @@ int main() {
     nandi.init(GetShipArchetype("nandi_aegis"));
     nandi.update(10.0f);
     assert(nandi.has_kavach_shield && nandi.kavach_timer > 1.9f);
+    Player soma;
+    soma.init(GetShipArchetype("soma"));
+    soma.update(15.0f);
+    assert(soma.has_kavach_shield && soma.kavach_timer > 1.4f);
+    Player dhanvantari;
+    dhanvantari.init(GetShipArchetype("dhanvantari"));
+    dhanvantari.hp -= 20;
+    dhanvantari.update(1.0f);
+    assert(dhanvantari.hp == dhanvantari.max_hp - 16);
+    Player surya;
+    surya.init(GetShipArchetype("surya"));
+    std::vector<Bullet> surya_shots;
+    for (int shot = 0; shot < 7; ++shot) {
+        surya.shoot_timer = 0.0f;
+        surya.try_shoot(surya_shots);
+    }
+    assert(surya_shots.size() == 7 && surya_shots.back().pierce_remaining > 0);
+    Player varaha;
+    varaha.init(GetShipArchetype("varaha"));
+    varaha.try_dash({ 1.0f, 0.0f });
+    assert(varaha.has_kavach_shield && varaha.kavach_timer > 0.6f);
     std::unordered_set<std::string> ship_ids;
     for (const auto& ship : SHIP_FLEET) {
         assert(!ship.id.empty());
@@ -349,6 +396,9 @@ int main() {
         std::vector<Bullet> ship_shots;
         firing_ship.try_shoot(ship_shots);
         assert(!ship_shots.empty());
+        assert(firing_ship.firing_recoil > 0.0f);
+        firing_ship.update(0.1f);
+        assert(firing_ship.firing_recoil < 5.0f);
         assert(firing_ship.shots_fired > 0);
         for (const auto& bullet : ship_shots) {
             assert(bullet.is_player_owned);

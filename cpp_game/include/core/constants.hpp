@@ -124,6 +124,7 @@ inline const Color COLOR_CB_HOSTILE_SHOT = { 255,  75, 205, 255 };
 inline bool  g_colorblind_mode        = false;
 inline bool  g_screen_shake_enabled   = true;
 inline bool  g_scanlines_enabled      = false;
+inline bool  g_reduce_flashes         = false;
 inline bool  g_fullscreen_enabled     = false;
 
 inline Color accessible_projectile_color(Color standard, bool hostile) {

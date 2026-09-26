@@ -7,7 +7,7 @@
 
 namespace Vimana {
 
-inline constexpr int SAVE_SCHEMA_VERSION = 7;
+inline constexpr int SAVE_SCHEMA_VERSION = 8;
 
 // ── Math Helpers ─────────────────────────────────────────────────────────────
 inline Vector2 Vector2Zero() { return { 0.0f, 0.0f }; }
@@ -38,6 +38,7 @@ enum class ViewType {
     CAMPAIGN_MAP,       // 10-act campaign map
     SHIP_SELECT,        // Vimana Hangar
     LOADOUT,            // Pre-mission loadout
+    MISSION_BRIEFING,   // Tactical objective, realm hazard, and launch confirmation
     DIFFICULTY_SELECT,  // 4-tier difficulty picker
     GAMEPLAY,           // Live combat
     WAVE_CLEAR,         // Post-wave tally S/A/B/C

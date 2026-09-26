@@ -156,9 +156,9 @@ public:
 
         std::string save_dir = home_dir + "/.vimana_wars";
         std::string save_path = save_dir + "/save.json";
-        if (!std::filesystem::exists(save_path)) return;
 
         try {
+            if (!std::filesystem::exists(save_path)) return;
             std::ifstream f(save_path);
             nlohmann::json j;
             f >> j;
@@ -229,6 +229,7 @@ public:
             if (j.contains("colorblind_mode")) g_colorblind_mode = j["colorblind_mode"].get<bool>();
             if (j.contains("screen_shake_enabled")) g_screen_shake_enabled = j["screen_shake_enabled"].get<bool>();
             if (j.contains("scanlines_enabled")) g_scanlines_enabled = j["scanlines_enabled"].get<bool>();
+            if (j.contains("reduce_flashes")) g_reduce_flashes = j["reduce_flashes"].get<bool>();
             if (j.contains("fullscreen_enabled")) g_fullscreen_enabled = j["fullscreen_enabled"].get<bool>();
             if (j.contains("tutorial_shown")) m_tutorial_shown = j["tutorial_shown"].get<bool>();
 
@@ -258,10 +259,10 @@ public:
         if (home_dir.empty()) return;
 
         std::string save_dir = home_dir + "/.vimana_wars";
-        std::filesystem::create_directories(save_dir);
         std::string save_path = save_dir + "/save.json";
 
         try {
+            std::filesystem::create_directories(save_dir);
             nlohmann::json j;
             if (std::filesystem::exists(save_path)) {
                 try {
@@ -301,6 +302,7 @@ public:
             j["colorblind_mode"] = g_colorblind_mode;
             j["screen_shake_enabled"] = g_screen_shake_enabled;
             j["scanlines_enabled"] = g_scanlines_enabled;
+            j["reduce_flashes"] = g_reduce_flashes;
             j["fullscreen_enabled"] = g_fullscreen_enabled;
 
             std::ofstream f(save_path, std::ios::trunc);

@@ -185,7 +185,7 @@ public:
             m_btn_rematch.draw(font);
         }
 
-        UI::DrawScanlines();
+        if (g_scanlines_enabled) UI::DrawScanlines();
     }
 
     ViewType next_view() const override { return m_next_view; }

@@ -334,7 +334,7 @@ struct Enemy {
             DrawLineEx(pos, aim_end, 1.5f, ColorAlpha(COLOR_RED_BRIGHT, 0.45f));
         }
 
-        Color tint = (hit_flash > 0) ? WHITE : COLOR_PARCHMENT;
+        Color tint = (!g_reduce_flashes && hit_flash > 0) ? WHITE : COLOR_PARCHMENT;
         if (type == EnemyType::ASURA_KAMIKAZE) {
             // Pulsing red kamikaze
             tint = ColorAlpha(COLOR_RED_BRIGHT, 0.85f + 0.15f * std::sin(GetTime() * 16.0f));

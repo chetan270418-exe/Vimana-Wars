@@ -77,7 +77,7 @@ public:
         }
 
         if (m_btn_launch.update(mouse_pos) || IsKeyPressed(KEY_ENTER)) {
-            m_next_view = ViewType::GAMEPLAY;
+            m_next_view = ViewType::MISSION_BRIEFING;
         } else if (m_btn_change_ship.update(mouse_pos)) {
             m_next_view = ViewType::SHIP_SELECT;
         } else if (m_btn_back.update(mouse_pos) || IsKeyPressed(KEY_ESCAPE)) {
