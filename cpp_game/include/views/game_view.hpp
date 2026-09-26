@@ -28,6 +28,7 @@
 #include "systems/network_manager.hpp"
 #include "systems/parallax_background.hpp"
 #include "systems/achievement_system.hpp"
+#include "systems/boon_system.hpp"
 #include "ui/hud.hpp"
 #include "ui/button.hpp"
 #include "ui/vedic_theme.hpp"
@@ -187,6 +188,11 @@ public:
 
 void apply_boon_and_resume(BoonType boon) {
         m_squad[0].apply_boon(boon);
+        const auto& owned_boons = m_squad[0].boons;
+        const bool has_every_boon = std::all_of(ALL_BOONS.begin(), ALL_BOONS.end(), [&](const BoonInfo& available) {
+            return std::find(owned_boons.begin(), owned_boons.end(), available.type) != owned_boons.end();
+        });
+        if (has_every_boon) AchievementSystem::instance().check_and_award("ALL_BOONS");
         m_is_paused = false;
         m_next_view = ViewType::GAMEPLAY;
 
@@ -221,11 +227,14 @@ void apply_boon_and_resume(BoonType boon) {
     int total_team_score() const { return m_total_team_score; }
     std::string death_cause() const { return m_death_cause.empty() ? "Unknown hostile" : m_death_cause; }
 
-    int grant_run_completion_reward(bool victory) {
+    int grant_run_completion_reward(bool victory, int& pilot_xp_reward) {
+        pilot_xp_reward = 0;
         if (m_run_reward_claimed) return 0;
         m_run_reward_claimed = true;
         const int reward = CurrencySystem::calculate_run_payout(player().score, current_wave(), victory);
         CurrencySystem::instance().add_prana_shards(reward);
+        pilot_xp_reward = DBSystem::calculate_pilot_xp(player().score, current_wave(), victory);
+        DBSystem::instance().add_pilot_xp(pilot_xp_reward);
         DBSystem::instance().save_game();
         return reward;
     }
@@ -370,7 +379,7 @@ if (p.is_downed) {
                         p.self_revive_timer = 0.0f;
                         p.last_stand_timer = 0.0f;
                         p.pos = { SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT * 0.78f };
-                        SoundSystem::instance().play_sfx("powerup.wav", 0.8f);
+                        SoundSystem::instance().play_ui_confirm();
                         const std::string remaining = m_coop_rule == CoopRule::SQUAD_LIVES
                             ? std::to_string(m_squad_lives_remaining) + " SQUAD LIVES REMAIN"
                             : "LIFE LOST — " + std::to_string(p.lives) + " REMAINING";
@@ -444,7 +453,13 @@ if (p.is_downed) {
                     }
                 }
                 if (boss_ptr && boss_ptr->active) {
-                    boss_ptr->take_damage(400);
+                    const int boss_damage = boss_ptr->take_damage(400);
+                    if (boss_damage > 0) {
+                        m_squad[0].total_damage_dealt += boss_damage;
+                        m_particles.add_floating_text(boss_ptr->pos, std::to_string(boss_damage), COLOR_GOLD_BRIGHT);
+                    } else {
+                        m_particles.add_floating_text(boss_ptr->pos, "BOSS SHIELDED", COLOR_CYAN_BRIGHT);
+                    }
                 }
                 m_particles.add_floating_text({ SCREEN_WIDTH / 2.0f - 110.0f, SCREEN_HEIGHT / 2.0f }, "BRAHMASTRA DETONATION!", COLOR_GOLD_BRIGHT);
             }
@@ -463,6 +478,7 @@ if (p.is_downed) {
         // Apply Realm Modifiers to speed
         const auto& realm = GetCampaignRealmForWave(m_wave_mgr.current_wave());
         float realm_spd_mult = RealmModifierSystem::player_speed_mult(m_wave_mgr.current_wave());
+        const float dash_distance_mult = RealmModifierSystem::dash_distance_mult(m_wave_mgr.current_wave());
 
         for (size_t i = 0; i < m_squad.size(); ++i) {
             auto& p = m_squad[i];
@@ -471,10 +487,12 @@ if (p.is_downed) {
                 continue;
             }
             p.current_speed = p.base_speed * realm_spd_mult;
+            p.dash_distance_multiplier = dash_distance_mult;
             if (m_team_transcendence_timer > 0) p.current_speed *= 1.10f; // Team Transcendence buff
 
             if (i < m_controllers.size()) {
                 m_controllers[i]->update(dt, p, m_bullets, mouse_pos, m_squad, m_enemies, boss_ptr);
+                if (p.revives_given > 0) AchievementSystem::instance().check_and_award("COOP_REVIVE");
             }
             p.update(dt);
 
@@ -530,7 +548,7 @@ if (p.is_downed) {
                     m_squad[0].score += SCORE_NEAR_MISS;
                     m_particles.add_floating_text({ m_squad[0].pos.x - 30.0f, m_squad[0].pos.y - 20.0f }, "NEAR MISS +25", COLOR_CYAN_BRIGHT);
                     if (g_screen_shake_enabled) m_particles.trigger_screen_shake(2.0f, 0.08f);
-                    SoundSystem::instance().play_sfx("ui_click.wav", 0.4f);
+                    SoundSystem::instance().play_sfx("dodge_chime.wav", 0.5f);
                 }
             }
         }
@@ -572,8 +590,17 @@ if (p.is_downed) {
         if (m_team_combo <= 1) m_last_milestone = 0;
 
         // -- 7. Bullets Update ---------------------------------------------------
+        const int current_wave_num = m_wave_mgr.current_wave();
+        const bool vortex_drift = RealmModifierSystem::has_vortex_drift(current_wave_num);
+        const bool reality_distortion = RealmModifierSystem::has_reality_distortion(current_wave_num);
         for (auto& b : m_bullets) {
             b.update(dt);
+            if (!b.active) continue;
+            if (vortex_drift) {
+                b.pos.x += std::sin(GetTime() * 2.0f + b.lifetime * 3.0f) * 26.0f * dt;
+            } else if (reality_distortion && b.is_enemy) {
+                b.pos.x += std::sin(GetTime() * 3.0f + b.lifetime * 4.0f) * 38.0f * dt;
+            }
         }
 
         // -- 8. Wave Manager & Threat-targeted Enemies ---------------------------
@@ -581,7 +608,9 @@ if (p.is_downed) {
 
         for (auto& e : m_enemies) {
             Vector2 target_pos = AIThreatTable::get_highest_threat_target(e.pos, m_squad);
-            e.update(dt, target_pos, m_bullets, m_enemies);
+            e.update(dt, target_pos, m_bullets, m_enemies,
+                     RealmModifierSystem::extra_flak_projectiles(current_wave_num),
+                     RealmModifierSystem::sniper_telegraph_multiplier(current_wave_num));
         }
 
         if (boss_ptr && boss_ptr->active) {
@@ -606,7 +635,8 @@ if (p.is_downed) {
         // -- 10. Combat Collisions with Squad Attribution ------------------------
         int prana_earned = 0;
         int pre_kills = m_squad[0].kills;
-        m_collisions.resolve_combat(m_squad, m_enemies, boss_ptr, m_bullets, m_powerups, m_particles, prana_earned);
+        m_collisions.resolve_combat(m_squad, m_enemies, boss_ptr, m_bullets, m_powerups, m_particles,
+                                    prana_earned, RealmModifierSystem::fire_damage_mult(current_wave_num));
 
         if (prana_earned > 0) {
             CurrencySystem::instance().add_prana_shards(prana_earned);
@@ -758,7 +788,8 @@ if (p.is_downed) {
         // Cockpit HUD (Squadron status, boss bar, combo meter, instruments, radar)
         Boss* boss_ptr = m_wave_mgr.is_boss_wave() ? &m_wave_mgr.get_boss() : nullptr;
         UI::HUD::draw(m_squad, m_wave_mgr.current_wave(), realm, boss_ptr, m_enemies, m_team_combo,
-                      m_team_transcendence_timer, title_f, body_f, m_coop_rule);
+                      m_team_transcendence_timer, title_f, body_f, m_coop_rule, m_difficulty,
+                      RealmModifierSystem::sensors_jammed(m_wave_mgr.current_wave(), static_cast<float>(GetTime())));
         if (m_is_coop_mode && m_coop_rule != CoopRule::REVIVE_MODE) {
             const std::string rule_text = m_coop_rule == CoopRule::SQUAD_LIVES
                 ? "SQUAD LIVES // " + std::to_string(m_squad_lives_remaining)

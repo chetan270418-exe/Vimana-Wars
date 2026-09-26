@@ -8,19 +8,19 @@ Status: `[x]` source implementation present (see validation); `[~]` partial or n
 
 - [~] **01 Fix gameplay bugs:** use the 35-action [C++ audit task file](../IMPLEMENTATION_TASKS.md); several runtime/device cases still need live QA.
 - [x] **02 Mouse aiming:** combat has mouse-based aim and fire input.
-- [~] **03 Shooting feel:** firing/impact feedback exists; continue tuning hit-confirmation and audiovisual layering.
+- [~] **03 Shooting feel:** primary weapons now play the existing `shoot.wav` alongside the muzzle-flash VFX; verify mix/volume during live play.
 - [x] **04 Enemy targeting:** AI threat/targeting systems are present.
 - [x] **05 Wave progression:** act/wave campaign data and multi-enemy formations exist.
-- [~] **06 Damage feedback:** particles, hit flashes, and shake exist; broader attack feedback needs playtest.
+- [~] **06 Damage feedback:** HP-loss/shield popups, impact bursts, and single hit SFX are wired for projectile/contact damage; live readability pass remains.
 - [x] **07 Player death/revive:** downed state, revives, and individual lives exist; new rule variants added in this slice.
-- [~] **08 Boss mechanics:** distinct bosses/phases/telegraphs exist; content and rendered behavior need further QA.
+- [~] **08 Boss mechanics:** overlapping special telegraphs keep priority; boss damage/shield hit-confirm now reflects actual HP applied; boss pattern QA remains.
 - [x] **09 Pause system:** pause and abort-confirmation overlay exist.
 - [ ] **10 Performance profiling:** no documented profiling baseline or target hardware pass yet.
 
 ## Phase 2 — Progression
 
 - [x] **11 Coins/Prana:** currency exists; run-completion payout is now added.
-- [ ] **12 Pilot XP:** no complete XP earning/level/reward loop yet.
+- [x] **12 Pilot XP:** run XP payout, local persistence, derived levels, menu progress bar, and post-run reward line are implemented; level perks/cloud sync are not included.
 - [x] **13 Ship unlocks:** wave/boss gates and Prana purchases exist; invalid catalog IDs are now rejected.
 - [x] **14 Ship upgrades:** persistent ship upgrade levels exist.
 - [x] **15 Save/load:** versioned local JSON save exists; schema 6 adds equipped vessel, co-op rule, and supply stock.
@@ -28,35 +28,35 @@ Status: `[x]` source implementation present (see validation); `[~]` partial or n
 - [x] **17 Combo:** player/team combo systems exist.
 - [x] **18 Rank:** wave/run result rank is present.
 - [x] **19 Rewards:** wave rewards remain; one-time score/wave/victory run payout is now shown and saved.
-- [~] **20 Achievements:** system/gallery exist; full unlock coverage and reward QA remain.
+- [~] **20 Achievements:** trophy archive is reachable from the menu; implemented boon, ship, co-op, hard-act, leaderboard, and sortie triggers are wired. Daily-win remains unavailable until a daily challenge mode exists.
 
 ## Phase 3 — UI
 
-- [~] **21 Main menu:** command-center layout exists; multiplayer is now reachable and the hero vessel follows the equipped ship.
+- [x] **21 Main menu:** cinematic flagship-art backdrop, animated text navigation, keyboard/mouse focus, pilot XP, equipped-ship preview, and all existing destinations are reachable.
 - [x] **22 Hangar:** `ShipSelectView` already serves as Hangar/Armory; reuse it.
 - [x] **23 Ship selection:** browsing and locked-launch guard exist; last equipped ship is restored.
 - [x] **24 Loadout:** tactical supply preparation exists and now shares purchase caps/persistence.
 - [x] **25 Campaign map:** act selection and continue-wave behavior exist.
 - [ ] **26 Mission briefing:** no separate mission-brief page yet.
-- [~] **27 Loading screen:** boot/title presentation exists, but there is no asset-aware deployment/loading page.
-- [~] **28 HUD:** gameplay HUD exists; keep refining information hierarchy and mode clarity.
+- [~] **27 Loading screen:** full-screen hero-art boot splash now has staged progress, percentage, skip controls, and a fallback; core assets still initialize before the view, so this is not asynchronous loading.
+- [x] **28 HUD:** mission act/wave, score, animated combo, live contact count, realm, ship, mode, and difficulty are visible in the gameplay header.
 - [x] **29 Pause screen:** present.
 - [x] **30 Victory:** result view exists.
 - [x] **31 Defeat:** result view includes death cause and now the Prana payout.
-- [~] **32 Micro animations/transitions:** buttons, particles, and transition system exist; consistency audit remains.
+- [x] **32 Micro animations/transitions:** view changes use eased fade timing and a rotating mandala transition cue; existing combo pulse remains.
 
 ## Phase 4 — Content
 
-- [~] **33 More ships:** large catalog exists; validate every sprite, silhouette, and gameplay role.
-- [~] **34 Unique ship abilities:** ship stats/guns differ; signature Astra identity for every ship is not complete.
+- [x] **33 More ships:** added two late-act, progression-locked ships using the existing Phase 9 sprites; the fleet catalog and achievement target now include 62 ships.
+- [~] **34 Unique ship abilities:** the 62-ship catalog exposes hull stats, roles, and weapon profiles; Amogha Lancer and Nandi Aegis have new, test-covered combat passives. Most ships still share their archetype's weapon/passive behavior rather than each having a bespoke active Astra.
 - [x] **35 Enemy types:** multiple enemy archetypes are present.
 - [x] **36 Elite enemies:** elite spawning and behavior exist.
-- [~] **37 Mini-bosses:** boss content exists; a clearly separate mini-boss encounter layer needs confirmation.
+- [x] **37 Mini-bosses:** three named mini-bosses recur at act waves 8/18/28, join mixed enemy formations, have boss sprites/nameplates, heavier health, distinct volleys, guaranteed supply drops, and Codex counters.
 - [x] **38 Multi-phase bosses:** boss phase machinery exists; continue per-boss content QA.
 - [x] **39 More waves:** act-based progression and authored formations exist.
-- [~] **40 Realm mechanics:** realm modifiers/background systems exist; verify all realms in live play.
-- [~] **41 Story events:** transmissions/lore are present but not a full mission narrative sequence.
-- [~] **42 Codex:** Codex view exists; catalog completeness and unlock links need validation.
+- [x] **40 Realm mechanics:** all seven modifier families now affect combat/HUD (movement, projectile drift, sensor loss/shorter sniper warning, fire damage, dash distance, extra flak, and hostile-bullet distortion); smoke checks cover each.
+- [x] **41 Story events:** twenty original authored transmissions span all ten acts and display at their campaign waves; the Codex archives each event with its speaker and act.
+- [x] **42 Codex:** all ten realms, 62 ships, six enemy profiles, eight bosses, three mini-bosses, twenty story events, and boon synergies are browsable with mouse-wheel/keyboard scrolling and tab navigation.
 
 ## Phase 5 — Multiplayer
 
@@ -76,15 +76,15 @@ Status: `[x]` source implementation present (see validation); `[~]` partial or n
 
 ## Phase 6 — Final polish
 
-- [~] **56 Sound effects:** assets/calls exist; every event/device needs playback QA.
-- [~] **57 Music:** tracks and switching exist; transitions/mix need hands-on QA.
-- [~] **58 VFX:** particles and boss/combat effects exist; coverage and clarity pass remains.
+- [~] **56 Sound effects:** assets exist; UI now uses its own volume channel, transition cues are wired, and live device/mix QA remains.
+- [~] **57 Music:** category volume no longer double-applies master gain; same-track wave starts preserve playback; live mix QA remains.
+- [~] **58 VFX:** combat particles, dash ghosts, boss phase rings, Astra effects, and damage feedback are wired; visual balance QA remains.
 - [x] **59 Screen shake:** implemented with an accessibility toggle.
 - [x] **60 Particles:** particle system is used for combat feedback.
-- [~] **61 UI transitions:** transition infrastructure exists; audit all routes for consistency.
+- [~] **61 UI transitions:** all view changes use the central fade/mandala transition except in-combat boon selection; subtle close/open audio cues added.
 - [ ] **62 Controller support:** gamepad UX is not complete.
-- [~] **63 Settings:** audio/accessibility settings persist; test every control and resolution.
-- [~] **64 Accessibility:** shake/scanline/color settings exist; broader presets/readability remain.
+- [~] **63 Settings:** master/SFX/music/UI/boss levels and accessibility toggles persist; automated save audit exists, live control/resolution QA remains.
+- [~] **64 Accessibility:** colorblind mode now changes projectile shape/palette and threat-radar contrast; shake and scanline toggles persist; broader presets/readability remain.
 - [ ] **65 FPS/performance optimization:** profile before setting optimization claims.
 - [x] **66 Save corruption protection:** malformed save is backed up; audit verifies this behavior.
 - [~] **67 Crash/error handling:** local guards exist; expand failure-injection tests.
@@ -95,7 +95,11 @@ Status: `[x]` source implementation present (see validation); `[~]` partial or n
 ## Current implementation slice
 
 - [x] Run payout formula, once-per-run guard, save-on-award, result-page reward line.
+- [x] Pilot XP payout and level tracking, version-7 save migration default, menu progress meter, and post-run XP display.
+- [x] Primary-fire audio, player damage/shield hit feedback, actual boss damage accounting, and overlapping boss telegraph priority.
 - [x] Currency safety for negative spending, integer overflow, invalid ship IDs, and supply caps.
+- [x] Ten-act Codex/story coverage, recurring three-pattern mini-boss encounters, and gameplay hooks for every configured realm modifier.
+- [~] Bespoke ship identity: two new ships have unique tested passives; the remaining fleet still needs individual active-ability design and balance.
 - [x] Persistent equipped ship and tactical stock; Hangar purchases survive restart and stock is consumed on deploy.
 - [x] Multiplayer entry in the main menu and persistent Standard / Shared Squad Lives / Hardcore selector.
 - [x] Co-op rule behavior and HUD label; schema bumped to version 6 with backward-compatible defaults.

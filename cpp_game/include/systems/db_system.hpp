@@ -12,11 +12,14 @@
 #include "systems/sound_system.hpp"
 #include <chrono>
 #include <algorithm>
+#include <limits>
 
 namespace Vimana {
 
 class DBSystem {
 public:
+    static constexpr int PILOT_XP_PER_LEVEL = 1000;
+
     static DBSystem& instance() {
         static DBSystem sys;
         return sys;
@@ -162,6 +165,7 @@ public:
 
             m_player_name = j.value("player_name", "Warrior");
             m_high_score = j.value("high_score", 0);
+            m_pilot_xp = std::max(0, j.value("pilot_xp", 0));
             m_max_wave = j.value("last_wave", 1);
             m_continue_wave = std::max(1, j.value("continue_wave", m_max_wave));
             int shards = j.value("prana_shards", 200);
@@ -269,6 +273,7 @@ public:
             j["version"] = SAVE_SCHEMA_VERSION;
             j["player_name"] = m_player_name;
             j["high_score"] = m_high_score;
+            j["pilot_xp"] = m_pilot_xp;
             j["last_wave"] = m_max_wave;
             j["continue_wave"] = m_continue_wave;
             j["tutorial_shown"] = m_tutorial_shown;
@@ -310,6 +315,21 @@ public:
 
     const std::string& player_name() const { return m_player_name; }
     void set_player_name(const std::string& name) { m_player_name = name; }
+    static int calculate_pilot_xp(int score, int wave, bool victory) {
+        const long long reward = 50LL
+            + (std::max(0, score) / 1000) * 20LL
+            + std::max(0, wave) * 10LL
+            + (victory ? 250LL : 0LL);
+        return static_cast<int>(std::min<long long>(reward, std::numeric_limits<int>::max()));
+    }
+    int pilot_xp() const { return m_pilot_xp; }
+    int pilot_level() const { return 1 + m_pilot_xp / PILOT_XP_PER_LEVEL; }
+    int pilot_xp_progress() const { return m_pilot_xp % PILOT_XP_PER_LEVEL; }
+    void add_pilot_xp(int amount) {
+        if (amount <= 0) return;
+        m_pilot_xp = static_cast<int>(std::min<long long>(
+            static_cast<long long>(m_pilot_xp) + amount, std::numeric_limits<int>::max()));
+    }
     int high_score() const { return m_high_score; }
     void update_high_score(int score) { if (score > m_high_score) m_high_score = score; }
     int max_wave() const { return m_max_wave; }
@@ -376,7 +396,7 @@ public:
     }
 
 private:
-    DBSystem() : m_db(nullptr), m_player_name("Warrior"), m_high_score(0), m_max_wave(1), m_continue_wave(1), m_tutorial_shown(false), m_equipped_ship("pushpaka"), m_coop_rule(CoopRule::REVIVE_MODE), m_armory_inventory() {}
+    DBSystem() : m_db(nullptr), m_player_name("Warrior"), m_high_score(0), m_pilot_xp(0), m_max_wave(1), m_continue_wave(1), m_tutorial_shown(false), m_equipped_ship("pushpaka"), m_coop_rule(CoopRule::REVIVE_MODE), m_armory_inventory() {}
     ~DBSystem() = default;
 
     void ensure_tables() {
@@ -399,6 +419,7 @@ private:
     sqlite3* m_db;
     std::string m_player_name;
     int m_high_score;
+    int m_pilot_xp;
     int m_max_wave;
     int m_continue_wave;
     bool m_tutorial_shown;

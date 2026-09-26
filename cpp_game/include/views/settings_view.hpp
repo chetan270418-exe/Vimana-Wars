@@ -222,12 +222,12 @@ public:
 
         } else if (m_active_tab == 2) {
             // ── ACCESSIBILITY TAB ──
-            DrawTextEx(body_font, "HIGH-CONTRAST / COLORBLIND MODE", { cx - 220, 160 }, 13, 1.0f, COLOR_PARCHMENT);
-            std::string cb_status = g_colorblind_mode ? "ACTIVE // HIGH-CONTRAST PALETTE" : "OFF // STANDARD VEDIC PALETTE";
+            DrawTextEx(body_font, "COLORBLIND COMBAT CUES", { cx - 220, 160 }, 13, 1.0f, COLOR_PARCHMENT);
+            std::string cb_status = g_colorblind_mode ? "ACTIVE // SHAPE + CONTRAST CUES" : "OFF // STANDARD VEDIC COLORS";
             DrawTextEx(body_font, cb_status.c_str(), { cx - 220, 180 }, 11, 1.0f, g_colorblind_mode ? COLOR_GREEN_BRIGHT : COLOR_MUTED);
             m_btn_colorblind.draw(title_font);
 
-            DrawTextEx(body_font, "SCREEN SHAKE INTENSITY", { cx - 220, 245 }, 13, 1.0f, COLOR_PARCHMENT);
+            DrawTextEx(body_font, "SCREEN SHAKE", { cx - 220, 245 }, 13, 1.0f, COLOR_PARCHMENT);
             std::string shake_status = g_screen_shake_enabled ? "ENABLED // FULL IMPACT FEEDBACK" : "DISABLED // STATIC CAMERA";
             DrawTextEx(body_font, shake_status.c_str(), { cx - 220, 265 }, 11, 1.0f, g_screen_shake_enabled ? COLOR_CYAN_BRIGHT : COLOR_MUTED);
             m_btn_shake.draw(title_font);

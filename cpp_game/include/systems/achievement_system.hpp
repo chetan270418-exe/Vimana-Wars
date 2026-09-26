@@ -37,7 +37,7 @@ inline const std::vector<AchievementDef> ALL_ACHIEVEMENTS = {
     { "COOP_DUAL_ASTRA",   "Thunder Tempest",        "Execute a synchronized dual-Astra cooperative fury.","CO-OP" },
     { "ALL_BOONS",         "Deva Blessed",           "Equip all available divine boons during a run.",   "BUILD" },
     { "UNLOCK_SHIP",       "Astral Shipwright",      "Commission a new Vimana with astral prana.",       "PROGRESSION" },
-    { "ALL_SHIPS",         "Supreme Armada",         "Command all 60 Vimanas in the celestial fleet.",   "PROGRESSION" },
+    { "ALL_SHIPS",         "Supreme Armada",         "Command all 62 Vimanas in the celestial fleet.",   "PROGRESSION" },
     { "DAILY_WIN",         "Daily Devotion",         "Complete a daily cosmic challenge sortie.",        "EVENT" },
     { "IRON_MODE",         "Iron Ascetic",           "Survive a campaign sortie on Chakravyuha tier.",   "MASTERY" },
     { "LEADERBOARD_TOP10", "Sangha Vanguard",        "Enter the top 10 rankings on the cloud leaderboard.","ONLINE" },

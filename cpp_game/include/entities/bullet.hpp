@@ -38,6 +38,20 @@ struct Bullet {
 
     void draw() const {
         if (!active) return;
+        const bool hostile = is_enemy || !is_player_owned;
+        const Color shot_color = accessible_projectile_color(color, hostile);
+        if (g_colorblind_mode) {
+            // Shape plus luminance contrast avoids relying on red/green alone.
+            DrawCircleLines(static_cast<int>(pos.x), static_cast<int>(pos.y), radius + 2.0f, WHITE);
+            if (hostile) {
+                DrawPoly(pos, 4, radius * 1.5f, 45.0f, shot_color);
+                DrawCircle(static_cast<int>(pos.x), static_cast<int>(pos.y), radius * 0.35f, WHITE);
+            } else {
+                DrawCircle(static_cast<int>(pos.x), static_cast<int>(pos.y), radius, shot_color);
+                DrawCircle(static_cast<int>(pos.x), static_cast<int>(pos.y), radius * 0.35f, WHITE);
+            }
+            return;
+        }
         if (type == BulletType::CHAKRAM) {
             // Draw rotating spinning blade chakram
             DrawCircleLines(static_cast<int>(pos.x), static_cast<int>(pos.y), radius, COLOR_GOLD_BRIGHT);
@@ -54,10 +68,10 @@ struct Bullet {
             DrawCircle(static_cast<int>(pos.x), static_cast<int>(pos.y), radius, Color{ 255, 230, 150, 255 });
         } else {
             // Basic & Spread laser slug
-            Color glow = color;
+            Color glow = shot_color;
             glow.a = 70;
             DrawCircle(static_cast<int>(pos.x), static_cast<int>(pos.y), radius * 1.8f, glow);
-            DrawCircle(static_cast<int>(pos.x), static_cast<int>(pos.y), radius, color);
+            DrawCircle(static_cast<int>(pos.x), static_cast<int>(pos.y), radius, shot_color);
             DrawCircle(static_cast<int>(pos.x), static_cast<int>(pos.y), radius * 0.4f, WHITE);
         }
     }

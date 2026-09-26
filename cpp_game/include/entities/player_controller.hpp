@@ -110,7 +110,7 @@ public:
         if (input.use_vajra) self.use_vajra_flare(out_bullets);
 
         input_dir = Vector2Normalize(input_dir);
-        float spd = self.is_dashing ? DASH_SPEED_BURST : self.current_speed;
+        float spd = self.is_dashing ? DASH_SPEED_BURST * self.dash_distance_multiplier : self.current_speed;
         self.vel.x = input_dir.x * spd;
         self.vel.y = input_dir.y * spd;
 

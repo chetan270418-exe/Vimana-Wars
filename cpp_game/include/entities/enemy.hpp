@@ -38,9 +38,16 @@ struct Enemy {
     float special_timer = 0.0f;
     bool is_charging = false;
     bool is_elite = false;
+    bool is_miniboss = false;
+    std::string miniboss_name;
     Color elite_tint = COLOR_GOLD_BRIGHT;
 
     const char* damage_source_name() const {
+        if (is_miniboss) {
+            if (miniboss_name == "RIFT MAULER") return "Rift Mauler";
+            if (miniboss_name == "SILENCE WARDEN") return "Silence Warden";
+            if (miniboss_name == "EMBER TYRANT") return "Ember Tyrant";
+        }
         switch (type) {
             case EnemyType::ASURA_CHASER: return "Asura Chaser";
             case EnemyType::ASURA_TANK: return "Asura Tank";
@@ -52,7 +59,8 @@ struct Enemy {
         }
     }
 
-    void init(EnemyType t, Vector2 spawn_pos, float speed_mult = 1.0f, float hp_mult = 1.0f, bool elite = false) {
+    void init(EnemyType t, Vector2 spawn_pos, float speed_mult = 1.0f, float hp_mult = 1.0f,
+              bool elite = false, bool miniboss = false) {
         active = true;
         type = t;
         pos = spawn_pos;
@@ -60,6 +68,8 @@ struct Enemy {
         is_charging = false;
         special_timer = 0.0f;
         is_elite = elite;
+        is_miniboss = miniboss;
+        miniboss_name.clear();
         if (is_elite) {
             hp_mult *= ELITE_HP_MULT;
             speed_mult *= ELITE_SPEED_MULT;
@@ -116,10 +126,18 @@ struct Enemy {
                 break;
         }
         hp = max_hp;
+        if (is_miniboss) {
+            radius = std::min(38.0f, radius * 1.35f);
+            max_hp = static_cast<int>(std::round(max_hp * 2.3f));
+            hp = max_hp;
+            score_value *= 4;
+        }
         shoot_timer = ((std::rand() % 100) / 100.0f) * shoot_interval;
     }
 
-    void update(float dt, Vector2 player_pos, std::vector<Bullet>& out_bullets, std::vector<Enemy>& all_enemies) {
+    void update(float dt, Vector2 player_pos, std::vector<Bullet>& out_bullets,
+                std::vector<Enemy>& all_enemies, int extra_flak_projectiles = 0,
+                float telegraph_warning_mult = 1.0f) {
         if (!active) return;
         if (hit_flash > 0) hit_flash -= dt;
 
@@ -142,18 +160,21 @@ struct Enemy {
                 shoot_timer -= dt;
                 if (shoot_timer <= 0) {
                     shoot_timer = shoot_interval;
-                    // Fire 3-spread shot
-                    for (int offset : { -20, 0, 20 }) {
+                    // Rift Maulers widen the tank's normal fan into a five-lane breach volley.
+                    const int projectile_count = is_miniboss ? 5 : 3;
+                    for (int i = 0; i < projectile_count; ++i) {
+                        const int offset = is_miniboss ? (i - 2) * 14 : (i - 1) * 20;
                         float rad = (angle + offset) * (3.14159f / 180.0f);
                         Bullet b;
                         b.active = true;
                         b.is_enemy = true;
                         b.damage_source = damage_source_name();
                         b.pos = pos;
-                        b.vel = { std::cos(rad) * ENEMY_BULLET_SPEED, std::sin(rad) * ENEMY_BULLET_SPEED };
-                        b.damage = 14;
-                        b.radius = 6.0f;
-                        b.color = COLOR_ORANGE_BRIGHT;
+                        const float speed_mult = is_miniboss ? 1.08f : 1.0f;
+                        b.vel = { std::cos(rad) * ENEMY_BULLET_SPEED * speed_mult, std::sin(rad) * ENEMY_BULLET_SPEED * speed_mult };
+                        b.damage = is_miniboss ? 20 : 14;
+                        b.radius = is_miniboss ? 7.0f : 6.0f;
+                        b.color = is_miniboss ? COLOR_RED_BRIGHT : COLOR_ORANGE_BRIGHT;
                         out_bullets.push_back(b);
                     }
                 }
@@ -184,6 +205,36 @@ struct Enemy {
                     b.damage = 12;
                     b.color = COLOR_RED_BRIGHT;
                     out_bullets.push_back(b);
+                    if (is_miniboss) {
+                        for (const int offset : { -18, 18 }) {
+                            const float spread_rad = (angle + offset) * (3.14159f / 180.0f);
+                            Bullet spread;
+                            spread.active = true;
+                            spread.is_enemy = true;
+                            spread.damage_source = damage_source_name();
+                            spread.pos = pos;
+                            spread.vel = { std::cos(spread_rad) * ENEMY_BULLET_SPEED,
+                                           std::sin(spread_rad) * ENEMY_BULLET_SPEED };
+                            spread.damage = 10;
+                            spread.radius = 5.0f;
+                            spread.color = COLOR_ORANGE_BRIGHT;
+                            out_bullets.push_back(spread);
+                        }
+                    }
+                    for (int i = 0; i < extra_flak_projectiles; ++i) {
+                        const float flak_rad = (angle + 18.0f + i * 12.0f) * (3.14159f / 180.0f);
+                        Bullet flak;
+                        flak.active = true;
+                        flak.is_enemy = true;
+                        flak.damage_source = damage_source_name();
+                        flak.pos = pos;
+                        flak.vel = { std::cos(flak_rad) * ENEMY_BULLET_SPEED * 0.9f,
+                                     std::sin(flak_rad) * ENEMY_BULLET_SPEED * 0.9f };
+                        flak.damage = 8;
+                        flak.radius = 4.0f;
+                        flak.color = COLOR_ORANGE_BRIGHT;
+                        out_bullets.push_back(flak);
+                    }
                 }
                 break;
 
@@ -215,7 +266,7 @@ struct Enemy {
                     pos.y -= dir.y * speed * dt;
                 }
                 shoot_timer -= dt;
-                if (shoot_timer <= 0.8f) {
+                if (shoot_timer <= 0.8f * std::clamp(telegraph_warning_mult, 0.3f, 1.0f)) {
                     is_charging = true;
                 }
                 if (shoot_timer <= 0) {
@@ -232,6 +283,23 @@ struct Enemy {
                     b.type = BulletType::ENEMY_SNIPER_BEAM;
                     b.color = COLOR_CYAN_BRIGHT;
                     out_bullets.push_back(b);
+                    if (is_miniboss) {
+                        for (const int offset : { -7, 7 }) {
+                            const float beam_rad = (angle + offset) * (3.14159f / 180.0f);
+                            Bullet side_beam;
+                            side_beam.active = true;
+                            side_beam.is_enemy = true;
+                            side_beam.damage_source = damage_source_name();
+                            side_beam.pos = pos;
+                            side_beam.vel = { std::cos(beam_rad) * ENEMY_BULLET_SPEED * 1.8f,
+                                              std::sin(beam_rad) * ENEMY_BULLET_SPEED * 1.8f };
+                            side_beam.damage = 18;
+                            side_beam.radius = 5.0f;
+                            side_beam.type = BulletType::ENEMY_SNIPER_BEAM;
+                            side_beam.color = COLOR_PURPLE_BRIGHT;
+                            out_bullets.push_back(side_beam);
+                        }
+                    }
                 }
                 break;
         }
@@ -244,8 +312,15 @@ struct Enemy {
     void draw(Texture2D tex) const {
         if (!active) return;
 
-        // Elite Golden Pulsing Aura
-        if (is_elite) {
+        // Mini-bosses use a double-ring and nameplate; regular elites retain the gold aura.
+        if (is_miniboss) {
+            const float pulse = 0.5f + 0.5f * std::sin(GetTime() * 6.0f);
+            DrawCircleLines(static_cast<int>(pos.x), static_cast<int>(pos.y), radius + 9.0f + 4.0f * pulse, COLOR_RED_BRIGHT);
+            DrawCircleLines(static_cast<int>(pos.x), static_cast<int>(pos.y), radius + 15.0f, ColorAlpha(COLOR_GOLD_BRIGHT, 0.55f));
+            DrawText("MINI-BOSS", static_cast<int>(pos.x - 29.0f), static_cast<int>(pos.y - radius - 43.0f), 9, COLOR_GOLD_BRIGHT);
+            const int name_width = MeasureText(miniboss_name.c_str(), 9);
+            DrawText(miniboss_name.c_str(), static_cast<int>(pos.x - name_width * 0.5f), static_cast<int>(pos.y - radius - 31.0f), 9, COLOR_PARCHMENT);
+        } else if (is_elite) {
             float pulse = 0.5f + 0.5f * std::sin(GetTime() * 8.0f);
             DrawCircleLines(static_cast<int>(pos.x), static_cast<int>(pos.y), radius + 6.0f + 3.0f * pulse, COLOR_GOLD_BRIGHT);
             DrawCircle(static_cast<int>(pos.x), static_cast<int>(pos.y), radius + 4.0f, ColorAlpha(COLOR_GOLD, 0.15f));
@@ -278,7 +353,7 @@ struct Enemy {
 
         // Role glyphs are presentation only: draw them during rendering, never
         // from init()/update(), where Raylib draw calls have no active frame.
-        const Vector2 glyph = { pos.x, pos.y - radius - (is_elite ? 28.0f : 10.0f) };
+        const Vector2 glyph = { pos.x, pos.y - radius - (is_miniboss ? 50.0f : is_elite ? 28.0f : 10.0f) };
         switch (type) {
             case EnemyType::ASURA_CHASER:
                 DrawTriangle({ glyph.x, glyph.y - 5 }, { glyph.x - 5, glyph.y + 4 }, { glyph.x + 5, glyph.y + 4 }, COLOR_ORANGE_BRIGHT);
@@ -306,12 +381,13 @@ struct Enemy {
         }
 
         // Mini HP Bar for Tanks & Healers
-        if (hp < max_hp) {
-            float bar_w = radius * 2.0f;
-            float bar_h = 3.0f;
+        if (hp < max_hp || is_miniboss) {
+            const float bar_w = radius * (is_miniboss ? 2.6f : 2.0f);
+            const float bar_h = is_miniboss ? 5.0f : 3.0f;
             float hp_ratio = static_cast<float>(hp) / max_hp;
-            DrawRectangle(static_cast<int>(pos.x - bar_w / 2), static_cast<int>(pos.y - radius - 8), static_cast<int>(bar_w), static_cast<int>(bar_h), { 30, 30, 30, 200 });
-            DrawRectangle(static_cast<int>(pos.x - bar_w / 2), static_cast<int>(pos.y - radius - 8), static_cast<int>(bar_w * hp_ratio), static_cast<int>(bar_h), COLOR_RED_BRIGHT);
+            const int bar_y = static_cast<int>(pos.y - radius - (is_miniboss ? 10.0f : 8.0f));
+            DrawRectangle(static_cast<int>(pos.x - bar_w / 2), bar_y, static_cast<int>(bar_w), static_cast<int>(bar_h), { 30, 30, 30, 200 });
+            DrawRectangle(static_cast<int>(pos.x - bar_w / 2), bar_y, static_cast<int>(bar_w * hp_ratio), static_cast<int>(bar_h), is_miniboss ? COLOR_GOLD_BRIGHT : COLOR_RED_BRIGHT);
         }
     }
 };

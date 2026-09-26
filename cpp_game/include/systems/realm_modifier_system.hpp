@@ -1,4 +1,6 @@
 #pragma once
+#include <algorithm>
+#include <cmath>
 #include "core/types.hpp"
 #include "core/constants.hpp"
 
@@ -31,6 +33,14 @@ public:
 
     static bool has_sensor_jamming(int wave) {
         return active_modifier(wave) == RealmModifierType::DANDAKA_JAMMING;
+    }
+
+    static float sniper_telegraph_multiplier(int wave) {
+        return has_sensor_jamming(wave) ? 0.55f : 1.0f;
+    }
+
+    static bool sensors_jammed(int wave, float elapsed_time) {
+        return has_sensor_jamming(wave) && std::fmod(std::max(0.0f, elapsed_time), 4.0f) < 0.55f;
     }
 
     static int extra_flak_projectiles(int wave) {

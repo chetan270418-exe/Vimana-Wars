@@ -4,6 +4,8 @@
 #include "raylib.h"
 #include "core/constants.hpp"
 #include "core/types.hpp"
+#include "systems/sound_system.hpp"
+#include "ui/vedic_theme.hpp"
 
 namespace Vimana {
 
@@ -21,11 +23,12 @@ public:
         m_timer = 0.0f;
         m_target = target_view;
         m_midpoint_reached = false;
+        SoundSystem::instance().play_door_close();
     }
 
     // Returns true on the exact frame the view should switch
     bool update(float dt, ViewType& out_next_view) {
-        if (!m_in_transition) return false;
+        if (!m_in_transition || dt <= 0.0f) return false;
 
         m_timer += dt;
         float half_dur = m_duration * 0.5f;
@@ -33,6 +36,7 @@ public:
         if (!m_midpoint_reached && m_timer >= half_dur) {
             m_midpoint_reached = true;
             out_next_view = m_target;
+            SoundSystem::instance().play_door_open();
             return true;
         }
 
@@ -53,21 +57,26 @@ public:
 
         if (m_timer < half_dur) {
             // Fading out to black
-            alpha = std::clamp(m_timer / half_dur, 0.0f, 1.0f);
+            const float t = std::clamp(m_timer / half_dur, 0.0f, 1.0f);
+            alpha = t * t * (3.0f - 2.0f * t);
         } else {
             // Fading in from black
-            alpha = std::clamp(1.0f - ((m_timer - half_dur) / half_dur), 0.0f, 1.0f);
+            const float t = std::clamp((m_timer - half_dur) / half_dur, 0.0f, 1.0f);
+            const float eased = t * t * (3.0f - 2.0f * t);
+            alpha = 1.0f - eased;
         }
 
         Color fade_col = { 8, 10, 15, static_cast<unsigned char>(alpha * 240) };
         DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, fade_col);
 
-        // Subtle expanding/contracting golden yantra ring at midpoint
-        if (alpha > 0.3f) {
-            float ring_r = 40.0f + (1.0f - alpha) * 100.0f;
-            Color ring_col = COLOR_GOLD_BRIGHT;
-            ring_col.a = static_cast<unsigned char>((alpha - 0.3f) * 120.0f);
-            DrawCircleLines(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, ring_r, ring_col);
+        // Mandala reticle marks the switch point; eased opacity avoids a hard pop.
+        if (alpha > 0.15f) {
+            const float visibility = std::clamp((alpha - 0.15f) / 0.85f, 0.0f, 1.0f);
+            const float ring_radius = 48.0f + (1.0f - alpha) * 76.0f;
+            UI::DrawMandalaReticle({ SCREEN_WIDTH * 0.5f, SCREEN_HEIGHT * 0.5f },
+                                   ring_radius, GetTime() * 0.8,
+                                   COLOR_CYAN_BRIGHT, COLOR_GOLD_BRIGHT,
+                                   visibility * 0.55f);
         }
     }
 

@@ -233,19 +233,16 @@ struct Boss {
         attack_timer -= dt;
         special_timer -= dt;
 
-        // Telegraph for special attack
-        if (special_timer <= 1.2f && special_timer > 0.0f) {
-            is_telegraphing = true;
+        // Preserve the special warning when its telegraph overlaps a basic attack.
+        const bool special_telegraph = special_timer <= 1.2f && special_timer > 0.0f;
+        const bool basic_telegraph = attack_timer <= 1.0f && attack_timer > 0.0f;
+        is_telegraphing = special_telegraph || basic_telegraph;
+        if (special_telegraph) {
             telegraph_timer = special_timer;
             if (special_timer > 0.6f) telegraph_target = player_pos;
             telegraph_warning = attack_name;
-        } else {
-            is_telegraphing = false;
-        }
-
-        // Telegraph for basic attack (readable patterns, not instant fire)
-        if (attack_timer <= 1.0f && attack_timer > 0.0f) {
-            is_telegraphing = true;
+        } else if (basic_telegraph) {
+            telegraph_timer = attack_timer;
             telegraph_target = player_pos;
             if (id == BossID::RAVANA) telegraph_warning = (phase == 3) ? "VOID RING EXPANSION" : "VOID SPIRAL";
             else if (id == BossID::KUMBHAKARNA) telegraph_warning = "SEISMIC STOMP";
@@ -253,7 +250,6 @@ struct Boss {
         }
 
         if (attack_timer <= 0) {
-            is_telegraphing = false;
             const auto first_new_bullet = out_bullets.size();
             execute_basic_attack(out_bullets, player_pos);
             for (auto i = first_new_bullet; i < out_bullets.size(); ++i) {
@@ -541,14 +537,17 @@ struct Boss {
         }
     }
 
-    void take_damage(int amount) {
-        if (!active || amount <= 0) return;
-        if (is_invincible || invincibility_timer > 0.0f) return;
+    int take_damage(int amount) {
+        if (!active || amount <= 0 || is_invincible || invincibility_timer > 0.0f) return 0;
+        const int previous_hp = hp;
         hp = std::max(0, hp - amount);
+        const int applied_damage = previous_hp - hp;
+        if (applied_damage <= 0) return 0;
         hit_flash = 0.15f;
         if (hp <= 0) {
             active = false;
         }
+        return applied_damage;
     }
 
     void draw(Texture2D tex) const {

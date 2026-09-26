@@ -27,7 +27,7 @@ public:
         if (!IsAudioDeviceReady()) return;
         Sound snd = AssetManager::instance().get_sound(sound_file);
         if (snd.stream.buffer != nullptr) {
-            SetSoundVolume(snd, m_sfx_volume * volume_mult * m_master_volume);
+            SetSoundVolume(snd, m_sfx_volume * volume_mult);
             PlaySound(snd);
         }
     }
@@ -36,7 +36,7 @@ public:
         if (!IsAudioDeviceReady()) return;
         Sound snd = AssetManager::instance().get_sound(sound_file);
         if (snd.stream.buffer != nullptr) {
-            SetSoundVolume(snd, m_ui_volume * volume_mult * m_master_volume);
+            SetSoundVolume(snd, m_ui_volume * volume_mult);
             PlaySound(snd);
         }
     }
@@ -45,7 +45,7 @@ public:
         if (!IsAudioDeviceReady()) return;
         Sound snd = AssetManager::instance().get_sound(sound_file);
         if (snd.stream.buffer != nullptr) {
-            SetSoundVolume(snd, m_boss_volume * volume_mult * m_master_volume);
+            SetSoundVolume(snd, m_boss_volume * volume_mult);
             PlaySound(snd);
         }
     }
@@ -53,7 +53,7 @@ public:
     void play_music(const std::string& music_file) {
         if (!IsAudioDeviceReady()) return;
         AssetManager::instance().load_music(music_file);
-        AssetManager::instance().set_music_volume(m_music_volume * m_master_volume);
+        AssetManager::instance().set_music_volume(m_music_volume);
     }
 
     void update_music() {
@@ -67,14 +67,14 @@ public:
         m_boss_phase = phase;
         // Adjust music volume / tension dynamically
         if (phase == 2) {
-            AssetManager::instance().set_music_volume(std::min(1.0f, m_music_volume * 1.15f) * m_master_volume);
+            AssetManager::instance().set_music_volume(std::min(1.0f, m_music_volume * 1.15f));
             play_boss("boss_roar.wav", 0.75f);
         } else if (phase == 3) {
-            AssetManager::instance().set_music_volume(std::min(1.0f, m_music_volume * 1.25f) * m_master_volume);
+            AssetManager::instance().set_music_volume(std::min(1.0f, m_music_volume * 1.25f));
             play_boss("warning_siren.wav", 0.8f);
             play_boss("boss_roar.wav", 0.9f);
         } else {
-            AssetManager::instance().set_music_volume(m_music_volume * m_master_volume);
+            AssetManager::instance().set_music_volume(m_music_volume);
         }
     }
 
@@ -138,7 +138,7 @@ public:
 
     void set_music_volume(float vol) {
         m_music_volume = std::clamp(vol, 0.0f, 1.0f);
-        AssetManager::instance().set_music_volume(m_music_volume * m_master_volume);
+        AssetManager::instance().set_music_volume(m_music_volume);
     }
 
     float master_volume() const { return m_master_volume; }

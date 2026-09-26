@@ -58,21 +58,21 @@ public:
             if (CurrencySystem::instance().buy_consumable(m_inventory, "kavach")) {
                 DBSystem::instance().set_armory_inventory(m_inventory);
                 DBSystem::instance().save_game();
-                SoundSystem::instance().play_sfx("powerup.wav");
+                SoundSystem::instance().play_ui_confirm();
             }
         }
         if (m_btn_buy_soma.update(mouse_pos)) {
             if (CurrencySystem::instance().buy_consumable(m_inventory, "soma")) {
                 DBSystem::instance().set_armory_inventory(m_inventory);
                 DBSystem::instance().save_game();
-                SoundSystem::instance().play_sfx("powerup.wav");
+                SoundSystem::instance().play_ui_confirm();
             }
         }
         if (m_btn_buy_vajra.update(mouse_pos)) {
             if (CurrencySystem::instance().buy_consumable(m_inventory, "vajra")) {
                 DBSystem::instance().set_armory_inventory(m_inventory);
                 DBSystem::instance().save_game();
-                SoundSystem::instance().play_sfx("powerup.wav");
+                SoundSystem::instance().play_ui_confirm();
             }
         }
 

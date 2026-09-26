@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <string>
 #include <vector>
 #include <cmath>
@@ -23,28 +24,44 @@ public:
         float transcendence_timer,
         Font title_font,
         Font body_font,
-        CoopRule coop_rule = CoopRule::REVIVE_MODE
+        CoopRule coop_rule = CoopRule::REVIVE_MODE,
+        Difficulty difficulty = Difficulty::KSHATRIYA,
+        bool sensors_jammed = false
     ) {
         if (squad.empty()) return;
         const Player& player = squad[0];
 
-        // ── Top Header: single line WAVE · SCORE · COMBO ────────────────
+        // ── Top header: ship, mission, score, combo, contacts, and mode ──
         DrawYantraPanel({ 15, 12, 870, 36 }, COLOR_GOLD, COLOR_SURFACE_LOW, 6.0f, true);
 
         int display_combo = team_combo > player.combo ? team_combo : player.combo;
-        std::string top_line = "WAVE " + std::to_string(wave) + "  ·  " + std::to_string(player.score);
-        DrawTextEx(title_font, top_line.c_str(), { 30, 22 }, 16, 1.0f, COLOR_GOLD_BRIGHT);
+        const std::string mission_line = "ACT " + std::to_string(CampaignActForWave(wave)) +
+            "  //  WAVE " + std::to_string(CampaignWaveWithinAct(wave)) + "/" +
+            std::to_string(WAVES_PER_ACT);
+        DrawTextEx(title_font, mission_line.c_str(), { 30, 22 }, 12, 1.0f, COLOR_GOLD_BRIGHT);
+
+        const std::string score_line = "SCORE " + std::to_string(player.score);
+        DrawTextEx(body_font, score_line.c_str(), { 194, 24 }, 9, 1.0f, COLOR_PARCHMENT);
         if (display_combo > 1) {
-            const Vector2 top_size = MeasureTextEx(title_font, top_line.c_str(), 16, 1.0f);
+            const Vector2 score_size = MeasureTextEx(body_font, score_line.c_str(), 9, 1.0f);
             const float pulse = 1.0f + 0.08f * std::sin(GetTime() * 8.0);
-            const float combo_size = 16.0f * pulse;
+            const float combo_size = 11.0f * pulse;
             const Color combo_color = display_combo >= 25 ? COLOR_RED_BRIGHT :
                                      display_combo >= 10 ? COLOR_GOLD_BRIGHT : COLOR_CYAN_BRIGHT;
             const std::string combo_text = "x" + std::to_string(display_combo);
             DrawTextEx(title_font, combo_text.c_str(),
-                       { 30.0f + top_size.x + 12.0f, 22.0f - (combo_size - 16.0f) * 0.5f },
+                       { 194.0f + score_size.x + 10.0f, 23.0f - (combo_size - 11.0f) * 0.5f },
                        combo_size, 1.0f, combo_color);
         }
+
+        int active_contacts = 0;
+        for (const auto& enemy : enemies) active_contacts += enemy.active ? 1 : 0;
+        if (boss && boss->active) ++active_contacts;
+        const std::string contacts = sensors_jammed
+            ? "SENSOR JAM // CONTACTS LOST"
+            : "CONTACTS " + std::to_string(active_contacts);
+        DrawTextEx(body_font, contacts.c_str(), { 425, 24 }, 9, 1.0f,
+                   sensors_jammed || active_contacts >= 10 ? COLOR_RED_BRIGHT : COLOR_CYAN_BRIGHT);
 
         // Ship name + gun type
         if (player.archetype) {
@@ -54,6 +71,21 @@ public:
             }
             DrawTextEx(body_font, ship_label.c_str(), { 30, 9 }, 9, 1.0f, player.archetype->accent_color);
         }
+
+        const char* difficulty_name = "NORMAL";
+        switch (difficulty) {
+            case Difficulty::NOVICE: difficulty_name = "EASY"; break;
+            case Difficulty::ASURA_SLAYER: difficulty_name = "HARD"; break;
+            case Difficulty::CHAKRAVYUHA: difficulty_name = "CHAKRAVYUHA"; break;
+            case Difficulty::KSHATRIYA: default: break;
+        }
+        const std::string mode_label = (squad.size() > 1
+            ? "CO-OP " + std::to_string(squad.size()) + "P"
+            : "SOLO") + "  //  " + difficulty_name;
+        const Vector2 mode_size = MeasureTextEx(body_font, mode_label.c_str(), 9, 1.0f);
+        DrawTextEx(body_font, mode_label.c_str(),
+                   { SCREEN_WIDTH - mode_size.x - 30.0f, 9 }, 9, 1.0f,
+                   squad.size() > 1 ? COLOR_CYAN_BRIGHT : COLOR_MUTED);
 
         std::string realm_str = std::string(realm.name);
         Vector2 realm_sz = MeasureTextEx(body_font, realm_str.c_str(), 12, 1.0f);
@@ -175,19 +207,28 @@ public:
             };
 
             for (const auto& enemy : enemies) {
+                if (sensors_jammed) break;
                 if (!enemy.active) continue;
                 const Vector2 dot = radar_pos(enemy.pos);
-                DrawCircleV(dot, enemy.is_elite ? 2.8f : 1.8f, enemy.is_elite ? COLOR_GOLD_BRIGHT : COLOR_RED_BRIGHT);
+                const Color enemy_color = g_colorblind_mode ? COLOR_CB_HOSTILE_SHOT :
+                    (enemy.is_elite ? COLOR_GOLD_BRIGHT : COLOR_RED_BRIGHT);
+                DrawCircleV(dot, enemy.is_elite ? 2.8f : 1.8f, enemy_color);
+                if (g_colorblind_mode) {
+                    DrawCircleLines(static_cast<int>(dot.x), static_cast<int>(dot.y), enemy.is_elite ? 4.0f : 3.0f, WHITE);
+                }
             }
-            if (boss && boss->active) {
+            if (!sensors_jammed && boss && boss->active) {
                 const Vector2 dot = radar_pos(boss->pos);
-                DrawCircleV(dot, 4.0f, COLOR_GOLD_BRIGHT);
-                DrawCircleLines(static_cast<int>(dot.x), static_cast<int>(dot.y), 6.0f, COLOR_ORANGE_BRIGHT);
+                DrawCircleV(dot, 4.0f, g_colorblind_mode ? COLOR_CB_HOSTILE_SHOT : COLOR_GOLD_BRIGHT);
+                DrawCircleLines(static_cast<int>(dot.x), static_cast<int>(dot.y), 6.0f,
+                                g_colorblind_mode ? WHITE : COLOR_ORANGE_BRIGHT);
             }
             for (size_t i = 0; i < squad.size(); ++i) {
                 const auto& mate = squad[i];
                 const Vector2 dot = radar_pos(mate.pos);
-                const Color marker = mate.is_downed ? COLOR_RED_BRIGHT : (i == 0 ? COLOR_GREEN_BRIGHT : COLOR_CYAN_BRIGHT);
+                const Color marker = g_colorblind_mode
+                    ? (mate.is_downed ? COLOR_GOLD_BRIGHT : COLOR_CB_PLAYER_SHOT)
+                    : (mate.is_downed ? COLOR_RED_BRIGHT : (i == 0 ? COLOR_GREEN_BRIGHT : COLOR_CYAN_BRIGHT));
                 if (mate.is_spectator) {
                     DrawCircleLines(static_cast<int>(dot.x), static_cast<int>(dot.y), 3.5f, COLOR_MUTED);
                 } else {
@@ -198,6 +239,7 @@ public:
 
         // ── Off-screen Threat Radar: edge triangles pointing at threat ───
         for (const auto& enemy : enemies) {
+            if (sensors_jammed) break;
             if (!enemy.active) continue;
             if (enemy.pos.x < 30 || enemy.pos.x > SCREEN_WIDTH - 30 || enemy.pos.y < 70 || enemy.pos.y > SCREEN_HEIGHT - 70) {
                 float cx = std::clamp(enemy.pos.x, 35.0f, SCREEN_WIDTH - 35.0f);
@@ -206,7 +248,10 @@ public:
                 Vector2 tip = { cx + std::cos(ang) * 10.0f, cy + std::sin(ang) * 10.0f };
                 Vector2 l = { cx + std::cos(ang + 2.5f) * 7.0f, cy + std::sin(ang + 2.5f) * 7.0f };
                 Vector2 r = { cx + std::cos(ang - 2.5f) * 7.0f, cy + std::sin(ang - 2.5f) * 7.0f };
-                DrawTriangle(tip, l, r, enemy.is_elite ? COLOR_GOLD_BRIGHT : COLOR_RED_BRIGHT);
+                const Color threat_color = g_colorblind_mode ? COLOR_CB_HOSTILE_SHOT :
+                    (enemy.is_elite ? COLOR_GOLD_BRIGHT : COLOR_RED_BRIGHT);
+                DrawTriangle(tip, l, r, threat_color);
+                if (g_colorblind_mode) DrawTriangleLines(tip, l, r, WHITE);
             }
         }
     }

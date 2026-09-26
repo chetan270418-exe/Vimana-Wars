@@ -77,7 +77,7 @@ public:
                 if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && unlocked) {
                     m_selected_node = static_cast<int>(i);
                     m_starting_wave = node.start_wave;
-                    SoundSystem::instance().play_sfx("ui_click.wav");
+                    SoundSystem::instance().play_ui_click();
                 }
             }
         }

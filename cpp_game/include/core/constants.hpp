@@ -118,13 +118,17 @@ inline const Color COLOR_GREEN_BRIGHT  = {  50, 240, 120, 255 };
 inline const Color COLOR_ORANGE_BRIGHT = { 255, 140,  40, 255 };
 inline const Color COLOR_PURPLE_BRIGHT = { 210,  90, 255, 255 };
 
-// Accessibility overrides
-inline Color COLOR_CB_ACCENT_1        = { 255, 255, 255, 255 };
-inline Color COLOR_CB_ACCENT_2        = { 255, 230,  50, 255 };
+// Accessibility combat colors are intentionally luminance- and hue-distinct.
+inline const Color COLOR_CB_PLAYER_SHOT  = {  55, 245, 255, 255 };
+inline const Color COLOR_CB_HOSTILE_SHOT = { 255,  75, 205, 255 };
 inline bool  g_colorblind_mode        = false;
 inline bool  g_screen_shake_enabled   = true;
 inline bool  g_scanlines_enabled      = false;
 inline bool  g_fullscreen_enabled     = false;
+
+inline Color accessible_projectile_color(Color standard, bool hostile) {
+    return g_colorblind_mode ? (hostile ? COLOR_CB_HOSTILE_SHOT : COLOR_CB_PLAYER_SHOT) : standard;
+}
 
 // ── Difficulty Profiles ───────────────────────────────────────────────────────
 inline const std::array<DifficultyProfile, 4> DIFFICULTY_PROFILES = {{

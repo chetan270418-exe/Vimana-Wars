@@ -1,4 +1,6 @@
 #pragma once
+#include <algorithm>
+#include <cmath>
 #include <vector>
 #include <iostream>
 #include "core/types.hpp"
@@ -25,9 +27,22 @@ public:
         std::vector<Bullet>& bullets,
         std::vector<Powerup>& powerups,
         ParticleSystem& particles,
-        int& out_prana_earned
+        int& out_prana_earned,
+        float player_damage_multiplier = 1.0f
     ) {
         if (squad.empty()) return;
+        const auto emit_player_hit_feedback = [&particles](Player& player, int hp_before) {
+            const int hp_lost = std::max(0, hp_before - player.hp);
+            const bool shielded = hp_lost == 0;
+            particles.emit_explosion(player.pos, shielded ? COLOR_CYAN_BRIGHT : COLOR_RED_BRIGHT,
+                                     shielded ? 8 : 14, shielded ? 95.0f : 155.0f);
+            particles.add_floating_text(player.pos,
+                shielded ? "DAMAGE BLOCKED" : "-" + std::to_string(hp_lost) + " HP",
+                shielded ? COLOR_CYAN_BRIGHT : COLOR_RED_BRIGHT);
+            if (g_screen_shake_enabled) {
+                particles.trigger_screen_shake(shielded ? 3.0f : 8.0f, shielded ? 0.12f : 0.25f);
+            }
+        };
         m_grid.clear();
 
         // 1. Insert active enemies into SpatialGrid
@@ -56,15 +71,21 @@ public:
             // Check Boss first if active
             if (current_boss && current_boss->active) {
                 if (Vector2Distance(b.pos, current_boss->pos) < (b.radius + current_boss->radius)) {
-                    current_boss->take_damage(b.damage);
+                    const int scaled_damage = static_cast<int>(std::round(b.damage * player_damage_multiplier));
+                    const int applied_damage = current_boss->take_damage(std::max(1, scaled_damage));
                     if (owner) {
                         owner->shots_hit++;
-                        owner->total_damage_dealt += b.damage;
+                        owner->total_damage_dealt += applied_damage;
                     }
-                    particles.emit_explosion(b.pos, COLOR_GOLD_BRIGHT, 6, 90.0f);
-                    particles.add_floating_text(b.pos, std::to_string(b.damage), COLOR_GOLD_BRIGHT);
-                    if (g_screen_shake_enabled) particles.trigger_screen_shake(2.0f, 0.06f);
-                    SoundSystem::instance().play_sfx("hit.wav", 0.4f);
+                    if (applied_damage > 0) {
+                        particles.emit_explosion(b.pos, COLOR_GOLD_BRIGHT, 6, 90.0f);
+                        particles.add_floating_text(b.pos, std::to_string(applied_damage), COLOR_GOLD_BRIGHT);
+                        if (g_screen_shake_enabled) particles.trigger_screen_shake(2.0f, 0.06f);
+                        SoundSystem::instance().play_sfx("hit.wav", 0.4f);
+                    } else {
+                        particles.emit_explosion(b.pos, COLOR_CYAN_BRIGHT, 4, 65.0f);
+                        particles.add_floating_text(b.pos, "SHIELDED", COLOR_CYAN_BRIGHT);
+                    }
 
                     if (b.pierce_remaining > 0) {
                         b.pierce_remaining--;
@@ -89,7 +110,7 @@ public:
 
                     // 1. Critical Hit Calculation
                     bool is_crit = (std::rand() % 100) < static_cast<int>(CRIT_CHANCE * 100.0f);
-                    int final_dmg = b.damage;
+                    int final_dmg = std::max(1, static_cast<int>(std::round(b.damage * player_damage_multiplier)));
                     if (is_crit) {
                         final_dmg = static_cast<int>(final_dmg * CRIT_MULTIPLIER);
                     }
@@ -135,22 +156,29 @@ public:
                         if (owner) {
                             owner->kills++;
                             owner->add_combo();
-                            int kill_score = (enemy.is_elite ? enemy.score_value * 2 : enemy.score_value) * owner->combo;
+                            int elite_multiplier = enemy.is_miniboss ? 1 : enemy.is_elite ? 2 : 1;
+                            int kill_score = enemy.score_value * elite_multiplier * owner->combo;
                             owner->score += kill_score;
                         }
-                        int prana_drop = enemy.is_elite ? 8 : 2;
+                        int prana_drop = enemy.is_miniboss ? 50 : enemy.is_elite ? 8 : 2;
                         out_prana_earned += prana_drop;
 
                         if (enemy.is_elite) {
-                            particles.add_floating_text(enemy.pos, "ELITE SLAIN +8 PRANA", COLOR_GOLD_BRIGHT);
+                            particles.add_floating_text(enemy.pos,
+                                enemy.is_miniboss ? "MINI-BOSS SLAIN +50 PRANA" : "ELITE SLAIN +8 PRANA",
+                                enemy.is_miniboss ? COLOR_RED_BRIGHT : COLOR_GOLD_BRIGHT);
                         }
 
-                        particles.emit_explosion(enemy.pos, enemy.is_elite ? COLOR_GOLD_BRIGHT : COLOR_ORANGE_BRIGHT, enemy.is_elite ? 35 : 22, 220.0f);
-                        if (g_screen_shake_enabled) particles.trigger_screen_shake(enemy.is_elite ? 9.0f : 5.0f, enemy.is_elite ? 0.24f : 0.12f);
+                        const int explosion_particles = enemy.is_miniboss ? 65 : enemy.is_elite ? 35 : 22;
+                        const float shake_strength = enemy.is_miniboss ? 13.0f : enemy.is_elite ? 9.0f : 5.0f;
+                        particles.emit_explosion(enemy.pos,
+                            enemy.is_miniboss ? COLOR_RED_BRIGHT : enemy.is_elite ? COLOR_GOLD_BRIGHT : COLOR_ORANGE_BRIGHT,
+                            explosion_particles, 260.0f);
+                        if (g_screen_shake_enabled) particles.trigger_screen_shake(shake_strength, enemy.is_miniboss ? 0.32f : enemy.is_elite ? 0.24f : 0.12f);
                         SoundSystem::instance().play_sfx("explosion.wav", 0.6f);
 
-                        // Drop Astral Ability Cube / Amrita (22% chance, 50% for elite)
-                        int drop_chance = enemy.is_elite ? 50 : 22;
+                        // Mini-bosses guarantee a supply drop; elites have a better chance.
+                        int drop_chance = enemy.is_miniboss ? 100 : enemy.is_elite ? 50 : 22;
                         if ((std::rand() % 100) < drop_chance) {
                             Powerup p;
                             p.active = true;
@@ -177,10 +205,9 @@ public:
             for (auto* p : squad) {
                 if (!p || p->is_downed) continue;
                 if (Vector2Distance(b.pos, p->pos) < (b.radius + p->radius)) {
+                    const int hp_before = p->hp;
                     if (p->take_damage(b.damage, b.damage_source)) {
-                        particles.emit_explosion(b.pos, COLOR_RED_BRIGHT, 10, 110.0f);
-                        if (g_screen_shake_enabled) particles.trigger_screen_shake(7.0f, 0.25f);
-                        SoundSystem::instance().play_sfx("hit.wav", 0.8f);
+                        emit_player_hit_feedback(*p, hp_before);
                     }
                     b.active = false;
                     break;
@@ -198,9 +225,10 @@ public:
                 if (!enemy.active) continue;
 
                 if (Vector2Distance(p->pos, enemy.pos) < (p->radius + enemy.radius)) {
+                    const int hp_before = p->hp;
                     bool damaged = p->take_damage(PLAYER_CONTACT_DAMAGE, enemy.damage_source_name());
                     enemy.hp -= 30; // Contact recoil damage
-                    if (damaged && g_screen_shake_enabled) particles.trigger_screen_shake(8.0f, 0.3f);
+                    if (damaged) emit_player_hit_feedback(*p, hp_before);
                     if (enemy.hp <= 0) {
                         enemy.active = false;
                         p->kills++;
@@ -261,12 +289,14 @@ public:
         std::vector<Bullet>& bullets,
         std::vector<Powerup>& powerups,
         ParticleSystem& particles,
-        int& out_prana_earned
+        int& out_prana_earned,
+        float player_damage_multiplier = 1.0f
     ) {
         std::vector<Player*> ptrs;
         ptrs.reserve(squad.size());
         for (auto& p : squad) ptrs.push_back(&p);
-        resolve_combat_ptrs(ptrs, enemies, current_boss, bullets, powerups, particles, out_prana_earned);
+        resolve_combat_ptrs(ptrs, enemies, current_boss, bullets, powerups, particles,
+                            out_prana_earned, player_damage_multiplier);
     }
 
     void resolve_combat(
@@ -276,10 +306,12 @@ public:
         std::vector<Bullet>& bullets,
         std::vector<Powerup>& powerups,
         ParticleSystem& particles,
-        int& out_prana_earned
+        int& out_prana_earned,
+        float player_damage_multiplier = 1.0f
     ) {
         std::vector<Player*> ptrs = { &player };
-        resolve_combat_ptrs(ptrs, enemies, current_boss, bullets, powerups, particles, out_prana_earned);
+        resolve_combat_ptrs(ptrs, enemies, current_boss, bullets, powerups, particles,
+                            out_prana_earned, player_damage_multiplier);
     }
 
 private:

@@ -193,6 +193,9 @@ int main() {
             } else if (next == ViewType::WAVE_CLEAR) {
                 bool act_cleared = (CampaignWaveWithinAct(game_view->current_wave()) == WAVES_PER_ACT);
                 bool campaign_complete = act_cleared && CampaignActForWave(game_view->current_wave()) >= static_cast<int>(CAMPAIGN_REALMS.size());
+                if (act_cleared && game_view->difficulty() == Difficulty::CHAKRAVYUHA) {
+                    AchievementSystem::instance().check_and_award("IRON_MODE");
+                }
                 if (campaign_complete) {
                     game_view->record_ship_mastery();
                     AccountSystem::instance().sync_profile();
@@ -227,12 +230,16 @@ int main() {
             } else if (next == ViewType::GAME_OVER || next == ViewType::VICTORY) {
                 bool is_vic = (next == ViewType::VICTORY);
                 const auto& p = game_view->player();
-                const int prana_reward = game_view->grant_run_completion_reward(is_vic);
+                int pilot_xp_reward = 0;
+                const int prana_reward = game_view->grant_run_completion_reward(is_vic, pilot_xp_reward);
                 game_over_view->set_results(is_vic, p.score, game_view->current_wave(), p.kills, p.total_damage_dealt,
                                             p.archetype ? p.archetype->name : "Pushpaka",
                                             game_view->run_duration(), game_view->difficulty_string(),
-                                            is_vic ? "" : game_view->death_cause(), prana_reward);
+                                            is_vic ? "" : game_view->death_cause(), prana_reward, pilot_xp_reward);
                 game_over_view->set_killed_by(is_vic ? "" : game_view->death_cause());
+                if (DBSystem::instance().fetch_match_history(10).size() >= 10) {
+                    AchievementSystem::instance().check_and_award("PLAY_10");
+                }
                 current_view = game_over_view.get();
             }
 

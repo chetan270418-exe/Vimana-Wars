@@ -1,6 +1,8 @@
 #include <array>
 #include <cassert>
 #include <chrono>
+#include <cmath>
+#include <cstdint>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -8,18 +10,65 @@
 #include <limits>
 #include <string>
 #include <unordered_set>
+#include <utility>
+#include <vector>
 
 #include "entities/boss.hpp"
 #include "entities/player_controller.hpp"
 #include "entities/ship_archetypes.hpp"
 #include "systems/db_system.hpp"
 #include "systems/network_manager.hpp"
+#include "systems/realm_modifier_system.hpp"
+#include "systems/transition_manager.hpp"
 #include "systems/wave_manager.hpp"
 #include "views/campaign_map_view.hpp"
 
 using namespace Vimana;
 
 int main() {
+    const Color standard_shot = { 210, 180, 60, 255 };
+    g_colorblind_mode = false;
+    assert(accessible_projectile_color(standard_shot, false).r == standard_shot.r);
+    g_colorblind_mode = true;
+    const Color accessible_player_shot = accessible_projectile_color(standard_shot, false);
+    const Color accessible_hostile_shot = accessible_projectile_color(standard_shot, true);
+    assert(accessible_player_shot.g != accessible_hostile_shot.g);
+    assert(accessible_player_shot.b > accessible_hostile_shot.b);
+    g_colorblind_mode = false;
+
+    auto& transitions = TransitionManager::instance();
+    transitions.start_transition(ViewType::MENU, 0.2f);
+    ViewType transition_target = ViewType::BOOT;
+    assert(!transitions.update(0.0f, transition_target));
+    assert(!transitions.update(0.09f, transition_target));
+    assert(transitions.update(0.02f, transition_target));
+    assert(transition_target == ViewType::MENU);
+    assert(!transitions.update(0.12f, transition_target));
+    assert(!transitions.is_transitioning());
+
+    assert(CAMPAIGN_REALMS.size() == 10);
+    assert(CAMPAIGN_STORY_EVENTS.size() == 20);
+    assert(GetCampaignStoryEvent(1) && GetCampaignStoryEvent(286));
+    assert(!GetCampaignStoryEvent(2));
+    assert(GetMiniBossIntelForActWave(8)->name == std::string("RIFT MAULER"));
+    assert(GetMiniBossIntelForActWave(18)->name == std::string("SILENCE WARDEN"));
+    assert(GetMiniBossIntelForActWave(28)->name == std::string("EMBER TYRANT"));
+    WaveManager transmission_check;
+    transmission_check.prepare_wave(286);
+    assert(transmission_check.get_story_transmission().find("No more portals remain") != std::string::npos);
+    transmission_check.prepare_wave(18);
+    assert(transmission_check.get_story_transmission().find("SILENCE WARDEN") != std::string::npos);
+    assert(RealmModifierSystem::player_speed_mult(1) == 1.15f);
+    assert(RealmModifierSystem::has_vortex_drift(31));
+    assert(RealmModifierSystem::has_sensor_jamming(61));
+    assert(RealmModifierSystem::sniper_telegraph_multiplier(61) == 0.55f);
+    assert(RealmModifierSystem::sensors_jammed(61, 0.2f));
+    assert(!RealmModifierSystem::sensors_jammed(61, 1.0f));
+    assert(RealmModifierSystem::fire_damage_mult(91) == 1.15f);
+    assert(RealmModifierSystem::dash_distance_mult(121) == 1.20f);
+    assert(RealmModifierSystem::extra_flak_projectiles(151) == 1);
+    assert(RealmModifierSystem::has_reality_distortion(181));
+
     assert(CurrencySystem::calculate_run_payout(0, 0, false) == 40);
     assert(CurrencySystem::calculate_run_payout(2345, 7, false) == 116);
     assert(CurrencySystem::calculate_run_payout(2345, 7, true) == 616);
@@ -160,6 +209,12 @@ int main() {
     assert(_putenv_s("USERPROFILE", audit_save_root.string().c_str()) == 0);
     auto& save_db = DBSystem::instance();
     save_db.set_player_name("audit-save-pilot");
+    assert(DBSystem::calculate_pilot_xp(2345, 7, false) == 160);
+    assert(DBSystem::calculate_pilot_xp(2345, 7, true) == 410);
+    save_db.add_pilot_xp(1250);
+    const int saved_pilot_xp = save_db.pilot_xp();
+    assert(save_db.pilot_level() == 1 + saved_pilot_xp / DBSystem::PILOT_XP_PER_LEVEL);
+    assert(save_db.pilot_xp_progress() == saved_pilot_xp % DBSystem::PILOT_XP_PER_LEVEL);
     save_db.update_high_score(765432);
     save_db.update_max_wave(36);
     save_db.set_continue_wave(18);
@@ -188,6 +243,7 @@ int main() {
     save_db.save_game();
 
     save_db.set_player_name("changed");
+    save_db.add_pilot_xp(350);
     save_db.set_continue_wave(1);
     save_db.set_tutorial_shown(false);
     assert(save_db.set_equipped_ship("pushpaka"));
@@ -209,6 +265,7 @@ int main() {
     g_fullscreen_enabled = false;
     save_db.load_save_game();
     assert(save_db.player_name() == "audit-save-pilot");
+    assert(save_db.pilot_xp() == saved_pilot_xp);
     assert(save_db.high_score() == 765432 && save_db.max_wave() == 36 && save_db.continue_wave() == 18);
     assert(save_db.tutorial_shown() && CurrencySystem::instance().prana_shards() == 1234);
     assert(save_db.equipped_ship() == "tripura");
@@ -256,7 +313,28 @@ int main() {
     assert(campaign.starting_wave() == 34);
 
     // Registry integrity: all advertised ships have unique IDs and usable stats.
-    assert(SHIP_FLEET.size() == 60);
+    assert(SHIP_FLEET.size() == 62);
+    assert(GetShipArchetype("amogha_lancer")->sprite_file == "phase9_commander_ship_49.png");
+    assert(GetShipArchetype("nandi_aegis")->sprite_file == "phase9_commander_ship_50.png");
+    assert(ShipSignatureName(*GetShipArchetype("amogha_lancer")) == "Needle Thread");
+    assert(ShipSignatureName(*GetShipArchetype("nandi_aegis")) == "Living Aegis");
+    Player amogha;
+    amogha.init(GetShipArchetype("amogha_lancer"));
+    const int amogha_base_damage = amogha.bullet_damage;
+    std::vector<Bullet> amogha_shots;
+    for (int shot = 0; shot < 10; ++shot) {
+        amogha.shoot_timer = 0.0f;
+        amogha.try_shoot(amogha_shots);
+    }
+    assert(amogha_shots.size() == 10);
+    for (const size_t needle_index : { 4u, 9u }) {
+        assert(amogha_shots[needle_index].damage == static_cast<int>(std::round(amogha_base_damage * 1.25f)));
+        assert(amogha_shots[needle_index].pierce_remaining == 8);
+    }
+    Player nandi;
+    nandi.init(GetShipArchetype("nandi_aegis"));
+    nandi.update(10.0f);
+    assert(nandi.has_kavach_shield && nandi.kavach_timer > 1.9f);
     std::unordered_set<std::string> ship_ids;
     for (const auto& ship : SHIP_FLEET) {
         assert(!ship.id.empty());
@@ -355,10 +433,33 @@ int main() {
         }
     }
 
+    Boss overlap_telegraph;
+    overlap_telegraph.init(BossID::RAVANA);
+    overlap_telegraph.pos.y = overlap_telegraph.target_y;
+    overlap_telegraph.attack_timer = 0.5f;
+    overlap_telegraph.special_timer = 0.8f;
+    const std::string special_warning = overlap_telegraph.attack_name;
+    std::vector<Bullet> overlapping_bullets;
+    overlap_telegraph.update(0.01f, { 400.0f, 460.0f }, overlapping_bullets);
+    assert(overlap_telegraph.is_telegraphing);
+    assert(overlap_telegraph.telegraph_warning == special_warning);
+
+    Boss damage_test;
+    damage_test.init(BossID::RAVANA);
+    const int boss_hp_before = damage_test.hp;
+    damage_test.is_invincible = true;
+    damage_test.invincibility_timer = 0.5f;
+    assert(damage_test.take_damage(100) == 0);
+    assert(damage_test.hp == boss_hp_before);
+    damage_test.is_invincible = false;
+    damage_test.invincibility_timer = 0.0f;
+    assert(damage_test.take_damage(100) == 100);
+    assert(damage_test.hp == boss_hp_before - 100);
+
     // Authored post-tutorial formations have deterministic multi-enemy queues;
     // Act I wave 10 remains the boss + escort encounter.
     constexpr std::array<int, 4> staged_waves = { 6, 7, 8, 9 };
-    constexpr std::array<int, 4> staged_counts = { 15, 15, 14, 18 };
+    constexpr std::array<int, 4> staged_counts = { 15, 15, 15, 18 };
     WaveManager waves;
     std::vector<Enemy> spawned_enemies;
     std::vector<Bullet> spawned_bullets;
@@ -376,6 +477,41 @@ int main() {
         }
         assert(static_cast<int>(spawned_enemies.size()) == staged_counts[i]);
         for (const auto& enemy : spawned_enemies) assert(enemy.active && enemy.hp > 0);
+        if (staged_waves[i] == 8) {
+            bool found_miniboss = false;
+            for (const auto& enemy : spawned_enemies)
+                found_miniboss = found_miniboss || (enemy.is_miniboss && enemy.miniboss_name == "RIFT MAULER");
+            assert(found_miniboss);
+        }
+    }
+
+    // Mini-boss roster encounters recur in later acts and use distinct volleys.
+    for (const int wave : { 18, 28, 278 }) {
+        WaveManager miniboss_wave;
+        miniboss_wave.start_campaign(wave, Difficulty::KSHATRIYA, 1);
+        std::vector<Enemy> miniboss_enemies;
+        std::vector<Bullet> miniboss_bullets;
+        const int goal = miniboss_wave.wave_enemy_goal();
+        for (int i = 0; i < goal; ++i)
+            miniboss_wave.update(10.0f, miniboss_enemies, miniboss_bullets, { SCREEN_WIDTH * 0.5f, SCREEN_HEIGHT * 0.75f });
+        bool found_miniboss = false;
+        for (const auto& enemy : miniboss_enemies) found_miniboss = found_miniboss || enemy.is_miniboss;
+        assert(found_miniboss);
+    }
+    for (const auto& spec : std::array<std::pair<EnemyType, const char*>, 3>{{
+             { EnemyType::ASURA_TANK, "RIFT MAULER" },
+             { EnemyType::ASURA_SNIPER, "SILENCE WARDEN" },
+             { EnemyType::ASURA_SHOOTER, "EMBER TYRANT" } }}) {
+        Enemy miniboss;
+        miniboss.init(spec.first, { SCREEN_WIDTH * 0.5f, 150.0f }, 1.0f, 1.0f, true, true);
+        miniboss.miniboss_name = spec.second;
+        miniboss.shoot_timer = 0.01f;
+        std::vector<Bullet> volley;
+        std::vector<Enemy> no_allies;
+        miniboss.update(0.02f, { SCREEN_WIDTH * 0.5f, 450.0f }, volley, no_allies);
+        const size_t expected_volley = spec.first == EnemyType::ASURA_TANK ? 5u : 3u;
+        assert(volley.size() == expected_volley);
+        assert(std::string(volley.front().damage_source) == miniboss.damage_source_name());
     }
     spawned_enemies.clear();
     waves.prepare_wave(10);
@@ -390,7 +526,7 @@ int main() {
     }
     assert(static_cast<int>(spawned_enemies.size()) == waves.wave_enemy_goal());
 
-    std::cout << "Audit smoke passed: SQLite/JSON persistence, corrupt-save backup, Continue restore, UDP validation, "
-                 "P1/P2 controls, 60 ship weapons, four difficulty scales, 8 boss patterns, waves 6–10.\n";
+    std::cout << "Audit smoke passed: campaign lore, all realm modifier hooks, signature ships, SQLite/JSON, networking, "
+                 "mini-boss encounters, 62 ship weapons, four difficulty scales, boss combat, waves 6–10.\n";
     return 0;
 }

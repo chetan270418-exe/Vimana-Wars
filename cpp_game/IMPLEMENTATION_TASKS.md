@@ -45,7 +45,7 @@ Status key: `[x]` implemented/present and verified by source/build; `[~]` partly
 
 ### QA actions
 
-- [~] **30 — Ship gameplay QA.** Automated smoke initializes and fires all 60 ship archetypes and validates their projectiles; real gameplay runs remain.
+- [~] **30 — Ship gameplay QA.** Automated smoke initializes and fires all 62 ship archetypes and validates their projectiles; real gameplay runs remain.
 - [~] **31 — Boss QA.** Automated simulation checks all eight basic attack telegraphs, firing patterns, damage attribution, and phase speed caps; rendered/gameplay QA remains.
 - [~] **32 — Difficulty QA.** Automated smoke spawns a full representative wave and verifies increasing wave/boss scaling across all four difficulties; play-balance judgment still needs hands-on runs.
 - [x] **33 — Persistence QA.** Isolated-profile test round-trips JSON progression, all five audio volumes, accessibility flags, and tutorial state; malformed JSON is preserved in a verified corrupt-save backup. SQLite migration and score/death-cause round trip are also tested.
@@ -70,5 +70,5 @@ Status key: `[x]` implemented/present and verified by source/build; `[~]` partly
 ## Verification run
 
 - `cmd /c build.bat` — passed after the implementation changes, including the reward, Hangar, co-op rule, and menu navigation slice.
-- `cmd /c test_audit.bat` — passed: SQLite migration and death-cause round trip; JSON save/settings/progression, equipped ship, co-op rule, and consumable stock round trips; corrupt backup; run-payout formula and currency edge cases; Continue wave restore; network validation; all 60 ship firing patterns; two-pilot controller/action flow; difficulty/boss scaling; and waves 6–10.
+- `cmd /c test_audit.bat` — passed: SQLite migration and death-cause round trip; JSON save/settings/progression, equipped ship, co-op rule, and consumable stock round trips; corrupt backup; run-payout formula and currency edge cases; Continue wave restore; network validation; all 62 ship firing patterns; Amogha/Nandi signature traits; two-pilot controller/action flow; all seven realm modifier hooks; recurring mini-boss spawns and distinct volleys; difficulty/boss scaling; and waves 6–10.
 - `git diff --check -- cpp_game` — no whitespace errors; Git only reports the repository's existing LF/CRLF normalization notices.

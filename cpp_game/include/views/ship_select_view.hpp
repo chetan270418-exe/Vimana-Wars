@@ -12,6 +12,7 @@
 #include "systems/asset_manager.hpp"
 #include "systems/currency_system.hpp"
 #include "systems/db_system.hpp"
+#include "systems/achievement_system.hpp"
 #include "entities/ship_archetypes.hpp"
 
 namespace Vimana {
@@ -52,6 +53,7 @@ public:
         m_btn_buy_kavach.set_label("KAVACH (" + std::to_string(COST_KAVACH_SHIELD) + ")");
         m_btn_buy_soma.set_label("SOMA (" + std::to_string(COST_SOMA_VIAL) + ")");
         m_btn_buy_vajra.set_label("VAJRA (" + std::to_string(COST_VAJRA_FLARE) + ")");
+        check_ship_achievements();
     }
 
     void update(float dt, Vector2 mouse_pos) override {
@@ -62,18 +64,21 @@ public:
         const auto& current_ship = m_show_all ? SHIP_FLEET[m_selected_idx] : SHIP_FLEET[m_selected_idx % 3];
         bool is_unlocked = CurrencySystem::instance().is_ship_unlocked(current_ship.id, max_wave);
 
-        if (m_btn_toggle_fleet.update(mouse_pos) || IsKeyPressed(KEY_TAB)) {
+        const bool toggle_clicked = m_btn_toggle_fleet.update(mouse_pos);
+        if (toggle_clicked || IsKeyPressed(KEY_TAB)) {
             m_show_all = !m_show_all;
             m_selected_idx = 0;
-            SoundSystem::instance().play_sfx("ui_click.wav");
+            if (!toggle_clicked) SoundSystem::instance().play_ui_click();
         }
-        if (m_btn_prev.update(mouse_pos) || IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_A)) {
+        const bool previous_clicked = m_btn_prev.update(mouse_pos);
+        if (previous_clicked || IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_A)) {
             m_selected_idx = (m_selected_idx - 1 + fleet_size) % fleet_size;
-            SoundSystem::instance().play_sfx("ui_click.wav");
+            if (!previous_clicked) SoundSystem::instance().play_ui_click();
         }
-        if (m_btn_next.update(mouse_pos) || IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D)) {
+        const bool next_clicked = m_btn_next.update(mouse_pos);
+        if (next_clicked || IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D)) {
             m_selected_idx = (m_selected_idx + 1) % fleet_size;
-            SoundSystem::instance().play_sfx("ui_click.wav");
+            if (!next_clicked) SoundSystem::instance().play_ui_click();
         }
 
         if (m_btn_back.update(mouse_pos) || IsKeyPressed(KEY_ESCAPE)) {
@@ -84,9 +89,7 @@ public:
             const bool upgraded = CurrencySystem::instance().upgrade_ship(current_ship.id, max_wave);
             if (upgraded) {
                 DBSystem::instance().save_game();
-                SoundSystem::instance().play_sfx("powerup.wav");
-            } else {
-                SoundSystem::instance().play_ui_click();
+                SoundSystem::instance().play_ui_confirm();
             }
         }
 
@@ -97,9 +100,9 @@ public:
                 if (m_btn_unlock.update(mouse_pos)) {
                     if (CurrencySystem::instance().try_unlock_ship_with_prana(current_ship.id, max_wave)) {
                         DBSystem::instance().save_game();
-                        SoundSystem::instance().play_sfx("powerup.wav");
-                    } else {
-                        SoundSystem::instance().play_ui_click();
+                        SoundSystem::instance().play_ui_confirm();
+                        AchievementSystem::instance().check_and_award("UNLOCK_SHIP");
+                        check_ship_achievements();
                     }
                 }
             }
@@ -295,6 +298,14 @@ public:
     const ConsumableInventory& consumables() const { return m_temp_inv; }
 
 private:
+    void check_ship_achievements() const {
+        const int max_wave = DBSystem::instance().max_wave();
+        const bool full_fleet = std::all_of(SHIP_FLEET.begin(), SHIP_FLEET.end(), [max_wave](const ShipArchetype& ship) {
+            return CurrencySystem::instance().is_ship_unlocked(ship.id, max_wave);
+        });
+        if (full_fleet) AchievementSystem::instance().check_and_award("ALL_SHIPS");
+    }
+
     size_t m_selected_idx;
     bool m_show_all = false;
     ViewType m_next_view;

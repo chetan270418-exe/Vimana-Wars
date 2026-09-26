@@ -1,5 +1,8 @@
 #pragma once
+#include <algorithm>
 #include <cmath>
+#include <string>
+#include <vector>
 #include "raylib.h"
 #include "core/constants.hpp"
 #include "core/types.hpp"
@@ -12,7 +15,7 @@
 namespace Vimana {
 
 // ── BOOT VIEW ─────────────────────────────────────────────────────────────────
-// 2-second animated logo splash with loading bar, then auto-advances to TITLE.
+// Full-screen launch splash with a skippable progress presentation, then TITLE.
 class BootView : public IView {
 public:
     BootView() : m_next_view(ViewType::BOOT) { init(); }
@@ -23,14 +26,16 @@ public:
         m_duration = 2.5f;
         m_bar_pct = 0.0f;
 
-        // Simulate load steps
+        // Staged boot presentation: the core systems are initialized before
+        // the first view is shown, so these are launch-sequence cues rather
+        // than claims about asynchronous asset loading.
         m_load_steps = {
-            "Initializing Astral Combat Engine...",
-            "Loading Vimana Fleet Schematics...",
-            "Synchronizing Vedic Boon Database...",
-            "Calibrating Weapon Systems...",
-            "Establishing Celestial Network Link...",
-            "Ready."
+            "FLIGHT SYSTEMS // INITIALIZING",
+            "PILOT PROFILE // SYNCHRONIZING",
+            "CAMPAIGN ROUTE // PREPARING",
+            "WEAPON SYSTEMS // CALIBRATING",
+            "FINAL LAUNCH CHECK",
+            "READY FOR LAUNCH"
         };
         m_load_step = 0;
         m_load_timer = 0.0f;
@@ -47,8 +52,9 @@ public:
             if (m_load_step < (int)m_load_steps.size() - 1) m_load_step++;
         }
 
-        // SPACE or any key skips boot
-        if (m_timer >= m_duration || IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER)) {
+        // The boot presentation can be skipped with keyboard or mouse.
+        if (m_timer >= m_duration || IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) ||
+            IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             m_next_view = ViewType::TITLE;
         }
     }
@@ -56,52 +62,75 @@ public:
     void draw() override {
         ClearBackground(COLOR_OBSIDIAN);
         Font font = AssetManager::instance().font();
+        const float pulse = 0.5f + 0.5f * std::sin(GetTime() * 2.0f);
 
-        // Sacred geometry background circle
-        float pulse = 0.5f + 0.5f * std::sin(GetTime() * 2.0f);
-        DrawCircleLines(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, 180.0f + 20.0f * pulse,
-                        ColorAlpha(COLOR_GOLD, 0.12f + 0.08f * pulse));
-        DrawCircleLines(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, 220.0f + 20.0f * pulse,
-                        ColorAlpha(COLOR_CYAN, 0.06f));
+        // Use the existing cinematic artwork as a true full-screen boot plate.
+        const Texture2D backdrop = AssetManager::instance().get_texture("hero_vimana_wars.png");
+        if (backdrop.id > 0) {
+            DrawTexturePro(backdrop,
+                { 0, 0, static_cast<float>(backdrop.width), static_cast<float>(backdrop.height) },
+                { 0, 0, static_cast<float>(SCREEN_WIDTH), static_cast<float>(SCREEN_HEIGHT) },
+                { 0, 0 }, 0.0f, WHITE);
+            DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, { 3, 8, 18, 95 });
+            DrawRectangleGradientH(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT,
+                                   { 3, 8, 18, 235 }, { 3, 8, 18, 24 });
+        } else {
+            // Keep a usable boot screen if the optional artwork is absent.
+            for (int i = 0; i < 70; ++i) {
+                const float x = static_cast<float>((i * 137) % SCREEN_WIDTH);
+                const float y = static_cast<float>((i * 83) % SCREEN_HEIGHT);
+                DrawCircle(static_cast<int>(x), static_cast<int>(y), (i % 3) + 1.0f,
+                           ColorAlpha(COLOR_CYAN_BRIGHT, 0.25f));
+            }
+        }
 
-        // Logo or text title
+        // Quiet rotating instrument mark keeps the right half of the artwork alive.
+        UI::DrawMandalaReticle({ SCREEN_WIDTH * 0.76f, SCREEN_HEIGHT * 0.43f },
+                               118.0f + 5.0f * pulse, GetTime() * 0.25,
+                               COLOR_CYAN_BRIGHT, COLOR_GOLD_BRIGHT, 0.18f);
+
+        // Compact logo and mission-ready hierarchy on the readable left side.
         Texture2D logo = AssetManager::instance().get_texture("vimana_wars_logo.png");
         if (logo.id > 0) {
-            float scale = 0.45f;
-            float lw = logo.width * scale;
-            float lh = logo.height * scale;
-            DrawTextureEx(logo, { (SCREEN_WIDTH - lw) / 2.0f, (SCREEN_HEIGHT / 2.0f) - lh - 30.0f }, 0.0f, scale, WHITE);
+            const float scale = 0.16f;
+            DrawTextureEx(logo, { 66.0f, 54.0f }, 0.0f, scale, WHITE);
         } else {
             const char* title = "VIMANA WARS";
-            Vector2 tsz = MeasureTextEx(font, title, 52, 2.0f);
-            DrawTextEx(font, title, { (SCREEN_WIDTH - tsz.x) / 2.0f, 185 }, 52, 2.0f, COLOR_GOLD_BRIGHT);
-            const char* sub = "CELESTIAL ASTRAL COMBAT";
-            Vector2 ssz = MeasureTextEx(font, sub, 16, 1.0f);
-            DrawTextEx(font, sub, { (SCREEN_WIDTH - ssz.x) / 2.0f, 248 }, 16, 1.0f, COLOR_CYAN_BRIGHT);
+            DrawTextEx(font, title, { 72.0f, 76.0f }, 36, 1.5f, COLOR_GOLD_BRIGHT);
         }
 
-        // Loading bar
-        Rectangle bar_bg = { SCREEN_WIDTH / 2.0f - 200, SCREEN_HEIGHT / 2.0f + 90, 400, 10 };
-        Rectangle bar_fg = { bar_bg.x, bar_bg.y, bar_bg.width * m_bar_pct, bar_bg.height };
+        DrawTextEx(font, "ASTRAL COMBAT SYSTEMS", { 74.0f, 276.0f }, 22, 1.2f, COLOR_PARCHMENT);
+        DrawTextEx(font, "PREPARING YOUR FLIGHT DECK", { 76.0f, 307.0f }, 12, 1.0f, COLOR_CYAN_BRIGHT);
+        DrawRectangle(76, 338, 250, 2, ColorAlpha(COLOR_GOLD_BRIGHT, 0.7f));
+
+        // Loading stage and percentage share one aligned, high-contrast panel.
+        const Rectangle panel = { 58.0f, 440.0f, 784.0f, 112.0f };
+        UI::DrawChamferedPanel(panel, COLOR_CYAN, { 7, 13, 25, 225 }, 5.0f);
+        const std::string stage = m_load_step < static_cast<int>(m_load_steps.size())
+            ? m_load_steps[m_load_step] : "READY FOR LAUNCH";
+        DrawTextEx(font, stage.c_str(), { 78.0f, 458.0f }, 12, 1.0f, COLOR_PARCHMENT);
+        const std::string percent = std::to_string(static_cast<int>(m_bar_pct * 100.0f)) + "%";
+        const Vector2 percent_size = MeasureTextEx(font, percent.c_str(), 12, 1.0f);
+        DrawTextEx(font, percent.c_str(), { 820.0f - percent_size.x, 458.0f }, 12, 1.0f, COLOR_GOLD_BRIGHT);
+
+        const Rectangle bar_bg = { 78.0f, 484.0f, 744.0f, 8.0f };
         DrawRectangleRec(bar_bg, COLOR_SURFACE_HIGH);
-        DrawRectangleGradientH(
-            static_cast<int>(bar_fg.x), static_cast<int>(bar_fg.y),
-            static_cast<int>(bar_fg.width), static_cast<int>(bar_fg.height),
-            COLOR_CYAN, COLOR_GOLD_BRIGHT
-        );
-        DrawRectangleLinesEx(bar_bg, 1.0f, COLOR_MUTED);
-
-        // Current load step text
-        if (m_load_step < (int)m_load_steps.size()) {
-            const char* step_text = m_load_steps[m_load_step].c_str();
-            Vector2 st_sz = MeasureTextEx(font, step_text, 11, 1.0f);
-            DrawTextEx(font, step_text,
-                { (SCREEN_WIDTH - st_sz.x) / 2.0f, bar_bg.y + 18 }, 11, 1.0f, COLOR_MUTED);
+        const int fill_width = static_cast<int>(bar_bg.width * m_bar_pct);
+        if (fill_width > 0) {
+            DrawRectangleGradientH(static_cast<int>(bar_bg.x), static_cast<int>(bar_bg.y),
+                                   fill_width, static_cast<int>(bar_bg.height),
+                                   COLOR_CYAN_BRIGHT, COLOR_GOLD_BRIGHT);
+            const float marker_x = bar_bg.x + fill_width;
+            DrawCircle(static_cast<int>(marker_x), static_cast<int>(bar_bg.y + bar_bg.height * 0.5f),
+                       4.0f + pulse * 1.5f, COLOR_PARCHMENT);
         }
+        DrawRectangleLinesEx(bar_bg, 1.0f, ColorAlpha(COLOR_MUTED, 0.75f));
 
-        // Version & engine tag
-        DrawText("v2.0 // RAYLIB 6.0 + C++20 + SQLITE3",
-            SCREEN_WIDTH / 2 - 105, SCREEN_HEIGHT - 30, 10, COLOR_SURFACE_HIGH);
+        DrawText("VIMANA WARS  //  DESKTOP EDITION", 76, 521, 9, COLOR_MUTED);
+        const char* skip = "SPACE / ENTER / CLICK  //  SKIP";
+        const int skip_width = MeasureText(skip, 9);
+        DrawText(skip, SCREEN_WIDTH - skip_width - 78, 521, 9,
+                 ColorAlpha(COLOR_PARCHMENT, 0.65f + 0.3f * pulse));
 
         UI::DrawScanlines();
     }

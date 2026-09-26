@@ -8,6 +8,7 @@
 #include <iostream>
 #include "core/types.hpp"
 #include "core/constants.hpp"
+#include "core/campaign_content.hpp"
 #include "entities/enemy.hpp"
 #include "entities/boss.hpp"
 
@@ -18,6 +19,7 @@ struct SpawnInstruction {
     float delay;
     Vector2 spawn_pos;
     bool elite = false;
+    const MiniBossIntel* mini_boss = nullptr;
 };
 
 enum class WavePattern { PATROL, INTERCEPTOR_SWARM, SIEGE_LINE, ELITE_HUNT, RIFT_AMBUSH, BOSS_DUEL };
@@ -176,6 +178,7 @@ public:
             std::stable_sort(staged_spawns.begin(), staged_spawns.end(),
                 [](const SpawnInstruction& lhs, const SpawnInstruction& rhs) { return lhs.delay < rhs.delay; });
             for (const auto& spawn : staged_spawns) m_spawn_queue.push(spawn);
+            append_miniboss_for_act_wave(act_wave, 5.2f);
             return;
         }
 
@@ -258,6 +261,7 @@ public:
                                           m_wave_pattern == WavePattern::ELITE_HUNT ? 1.20f : 1.05f;
             current_delay += formation_delay + (std::rand() % 4) * 0.10f;
         }
+        append_miniboss_for_act_wave(act_wave, current_delay + 0.4f);
     }
 
     void update(float dt, std::vector<Enemy>& enemies, std::vector<Bullet>& bullets, Vector2 player_pos) {
@@ -274,7 +278,12 @@ public:
                 float spd_mult = (1.0f + act_wave * 0.02f + std::min(0.8f, act_pressure * 0.06f)) * m_difficulty_profile.bullet_speed_mult;
                 float hp_mult = (1.0f + act_wave * 0.05f + act_pressure * 0.24f) * m_difficulty_profile.enemy_hp_mult;
 
-                enemy.init(next_spawn.type, next_spawn.spawn_pos, spd_mult, hp_mult, next_spawn.elite);
+                enemy.init(next_spawn.type, next_spawn.spawn_pos, spd_mult, hp_mult,
+                           next_spawn.elite, next_spawn.mini_boss != nullptr);
+                if (next_spawn.mini_boss) {
+                    enemy.miniboss_name = next_spawn.mini_boss->name;
+                    enemy.sprite_key = next_spawn.mini_boss->sprite_file;
+                }
                 enemies.push_back(enemy);
                 m_spawn_queue.pop();
             }
@@ -323,6 +332,12 @@ public:
     std::string get_story_transmission() const {
         const int act = CampaignActForWave(m_current_wave);
         const int act_wave = CampaignWaveWithinAct(m_current_wave);
+        if (const CampaignStoryEvent* event = GetCampaignStoryEvent(m_current_wave)) {
+            return std::string(event->speaker) + " // " + event->message;
+        }
+        if (const MiniBossIntel* mini_boss = GetMiniBossIntelForActWave(act_wave)) {
+            return std::string("MINI-BOSS ALERT // ") + mini_boss->name + " LEADS THE HOSTILE FORMATION.";
+        }
         if (act_wave == 1 && act > 1) {
             return "ACT " + std::to_string(act) + " // NEW ARMADA: HOSTILE ARMOR AND ATTACK SPEED INCREASED.";
         }
@@ -341,6 +356,15 @@ public:
     }
 
 private:
+    void append_miniboss_for_act_wave(int act_wave, float delay) {
+        const MiniBossIntel* intel = GetMiniBossIntelForActWave(act_wave);
+        if (!intel) return;
+        const EnemyType type = act_wave == 8 ? EnemyType::ASURA_TANK :
+                               act_wave == 18 ? EnemyType::ASURA_SNIPER : EnemyType::ASURA_SHOOTER;
+        m_spawn_queue.push({ type, delay, { SCREEN_WIDTH * 0.5f, -70.0f }, true, intel });
+        ++m_wave_enemy_goal;
+    }
+
     int m_current_wave;
     float m_wave_timer;
     float m_banner_timer = 0.0f;

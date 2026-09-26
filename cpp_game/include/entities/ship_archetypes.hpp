@@ -25,9 +25,11 @@ struct ShipArchetype {
     std::string boss_unlock_id = {};
     std::string boss_unlock_name = {};
     std::string gun_type = "STANDARD"; // STANDARD, BURST, PIERCE, BURN
+    std::string ability_name = {};
+    std::string ability_description = {};
 };
 
-inline const std::array<ShipArchetype, 60> SHIP_FLEET = {{
+inline const std::array<ShipArchetype, 62> SHIP_FLEET = {{
     // ── TIER 1: STARTER FLEET (Wave 0 — always unlocked) ─────────────────────
     { "pushpaka",    "Pushpaka",      "Celestial Cruiser",             "Balanced",        100, 300.0f, 0.15f, 25, 2, 1.6f,  0, 0,    "pushpaka.png",                    COLOR_GOLD },
     { "tripura",     "Tripura",       "Iron Dreadnought",              "Heavy Assault",   160, 240.0f, 0.20f, 38, 1, 2.2f,  0, 0,    "tripura.png",                     COLOR_ORANGE_BRIGHT },
@@ -92,7 +94,11 @@ inline const std::array<ShipArchetype, 60> SHIP_FLEET = {{
     { "vishnu_prime","Vishnu Prime",  "Preserver's Ultimate Form",     "Cosmic Preservation",220, 330.0f, 0.10f, 60, 2, 1.2f, 30, 1600,"phase9_commander_ship_39.png",  { 40, 120, 255, 255 } },
     { "shiva_ultimate","Shiva Ultimate","Destroyer's Transcendent Form","Tandava Annihilation",240, 340.0f, 0.09f, 65, 3, 1.0f, 30, 1600,"phase9_commander_ship_40.png", { 220, 50, 50, 255 } },
 
-    // ── TIER 7: BOSS-SALVAGED SIGNATURE FLEET ────────────────────────────────
+    // ── TIER 7: LATE-ACT COMMISSIONED FLEET (Wave 35+) ──────────────────────
+    { "amogha_lancer", "Amogha Lancer", "Long-range astral interceptor", "Precision Piercing", 155, 355.0f, 0.11f, 48, 3, 1.05f, 35, 1750, "phase9_commander_ship_49.png", COLOR_CYAN_BRIGHT, {}, {}, "PIERCE", "Needle Thread", "Every fifth primary shot gains bonus damage and pierces up to eight targets." },
+    { "nandi_aegis", "Nandi Aegis", "Armored command escort", "Heavy Burst", 300, 235.0f, 0.18f, 52, 1, 2.1f, 50, 1950, "phase9_commander_ship_50.png", COLOR_GOLD_BRIGHT, {}, {}, "BURST", "Living Aegis", "Automatically raises a Kavach shield for two seconds every ten seconds." },
+
+    // ── TIER 8: BOSS-SALVAGED SIGNATURE FLEET ────────────────────────────────
     { "kumbha_titan", "Kumbha Titan", "Siege hull forged from the Slumbering Colossus", "Boss Breaker / Heavy", 390, 205.0f, 0.19f, 61, 1, 2.4f, 999999, 0, "phase9_commander_ship_41.png", { 255, 145, 70, 255 }, "KUMBHAKARNA", "TITAN KUMBHAKARNA" },
     { "ravana_dasha", "Dasha Vimana", "Tenfold imperial weapons platform", "Boss Breaker / Barrage", 250, 315.0f, 0.12f, 51, 2, 1.4f, 999999, 0, "phase9_commander_ship_42.png", { 255, 65, 80, 255 }, "RAVANA", "EMPEROR RAVANA" },
     { "mahisha_rush", "Mahisha Ram", "Armored charge interceptor", "Boss Breaker / Assault", 310, 285.0f, 0.15f, 58, 2, 1.7f, 999999, 0, "phase9_commander_ship_43.png", { 255, 115, 60, 255 }, "MAHISHASURA", "WARLORD MAHISHASURA" },
@@ -108,6 +114,32 @@ inline const ShipArchetype* GetShipArchetype(const std::string& id) {
         if (ship.id == id) return &ship;
     }
     return &SHIP_FLEET[0];
+}
+
+inline std::string ShipSignatureName(const ShipArchetype& ship) {
+    if (!ship.ability_name.empty()) return ship.ability_name;
+    if (ship.id == "pushpaka") return "Kavach Ward";
+    if (ship.id == "kamadhenu") return "Sustenance Field";
+    if (ship.id == "narasimha") return "Righteous Fury";
+    if (ship.id == "tripura") return "Dreadnought Salvo";
+    if (ship.id == "garuda" || ship.id == "garuda_prime" || ship.id == "garuda_apex") return "Predator's Pass";
+    if (ship.gun_type == "BURST") return "Storm Salvo";
+    if (ship.gun_type == "PIERCE") return "Astral Lance";
+    if (ship.gun_type == "BURN") return "Agni Fan";
+    return ship.role + " Doctrine";
+}
+
+inline std::string ShipSignatureDescription(const ShipArchetype& ship) {
+    if (!ship.ability_description.empty()) return ship.ability_description;
+    if (ship.id == "pushpaka") return "Periodically generates a short-lived automatic Kavach shield.";
+    if (ship.id == "kamadhenu") return "Repairs hull integrity gradually during combat.";
+    if (ship.id == "narasimha") return "Weapon damage rises as hull integrity falls.";
+    if (ship.id == "tripura") return "Fires a three-projectile heavy spread.";
+    if (ship.id == "garuda" || ship.id == "garuda_prime" || ship.id == "garuda_apex") return "Piercing shots pass through additional hostile craft.";
+    if (ship.gun_type == "BURST") return "Fires a tight four-shot burst.";
+    if (ship.gun_type == "PIERCE") return "Fires a fast, long-range penetrating shot.";
+    if (ship.gun_type == "BURN") return "Fires a twin-shot flame spread.";
+    return "A role-tuned hull, speed, and weapon profile.";
 }
 
 } // namespace Vimana

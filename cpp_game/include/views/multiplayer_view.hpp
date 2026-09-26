@@ -150,12 +150,13 @@ public:
             }
         } else {
             // Squad Room View Actions
-            if (m_btn_coop_rule.update(mouse_pos) || IsKeyPressed(KEY_R)) {
+            const bool coop_rule_clicked = m_btn_coop_rule.update(mouse_pos);
+            if (coop_rule_clicked || IsKeyPressed(KEY_R)) {
                 const int next_rule = (static_cast<int>(DBSystem::instance().coop_rule()) + 1) % 3;
                 DBSystem::instance().set_coop_rule(static_cast<CoopRule>(next_rule));
                 DBSystem::instance().save_game();
                 refresh_coop_rule_button();
-                SoundSystem::instance().play_ui_click();
+                if (!coop_rule_clicked) SoundSystem::instance().play_ui_click();
             }
 
             if (m_btn_ready.update(mouse_pos) || IsKeyPressed(KEY_SPACE)) {

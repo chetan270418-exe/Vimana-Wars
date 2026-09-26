@@ -52,13 +52,13 @@ public:
         m_hover_anim += (target - m_hover_anim) * 0.25f;
 
         if (m_hovered && !prev_hover) {
-            SoundSystem::instance().play_sfx("ui_click.wav", 0.35f);
+            SoundSystem::instance().play_ui_hover();
         }
 
         m_pressed = m_hovered && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
         if (m_pressed) {
             m_press_anim = 1.0f;
-            SoundSystem::instance().play_sfx("ui_click.wav", 0.75f);
+            SoundSystem::instance().play_ui_click();
         }
         // Decay press anim back to 0
         m_press_anim *= 0.80f;

@@ -7,7 +7,7 @@
 
 namespace Vimana {
 
-inline constexpr int SAVE_SCHEMA_VERSION = 6;
+inline constexpr int SAVE_SCHEMA_VERSION = 7;
 
 // ── Math Helpers ─────────────────────────────────────────────────────────────
 inline Vector2 Vector2Zero() { return { 0.0f, 0.0f }; }

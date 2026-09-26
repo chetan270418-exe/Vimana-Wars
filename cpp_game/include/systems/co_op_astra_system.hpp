@@ -97,8 +97,11 @@ private:
         }
 
         if (boss && boss->active) {
-            boss->take_damage(600);
-            particles.emit_explosion(boss->pos, COLOR_GOLD_BRIGHT, 25, 200.0f);
+            if (boss->take_damage(600) > 0) {
+                particles.emit_explosion(boss->pos, COLOR_GOLD_BRIGHT, 25, 200.0f);
+            } else {
+                particles.add_floating_text(boss->pos, "BOSS SHIELDED", COLOR_CYAN_BRIGHT);
+            }
         }
 
         for (int i = 0; i < 32; ++i) {

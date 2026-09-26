@@ -28,11 +28,13 @@ struct Player {
     float shoot_timer = 0.0f;
     int bullet_damage = 25;
     int shot_counter = 0; // For Surya 7th shot pierce
+    int signature_shot_counter = 0; // Per-ship cadence, separate from boon cadence
 
     // Vayu Dash
     int dash_charges = 2;
     int max_dash_charges = 2;
     float dash_cooldown = 1.6f;
+    float dash_distance_multiplier = 1.0f;
     float dash_timer = 0.0f;
     float dash_duration_timer = 0.0f;
     bool is_dashing = false;
@@ -102,6 +104,7 @@ struct Player {
         max_dash_charges = archetype->dash_charges;
         dash_charges = max_dash_charges;
         dash_cooldown = std::max(0.55f, archetype->dash_cooldown * (1.0f - 0.02f * upgrade));
+        dash_distance_multiplier = 1.0f;
 
         pos = { SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT * 0.78f };
         vel = { 0, 0 };
@@ -117,6 +120,7 @@ struct Player {
         buff_speed_timer = 0.0f;
         buff_overdrive_timer = 0.0f;
         shot_counter = 0;
+        signature_shot_counter = 0;
         score = 0;
         last_damage_source.clear();
         combo = 1;
@@ -193,14 +197,16 @@ struct Player {
             regen_bank = 0.0f;
         }
 
-        // Pushpaka Mk-I trait: free Kavach absorb every 12s
-        if (archetype && archetype->id == "pushpaka" && !is_downed) {
+        // Signature defensive passives: Pushpaka's longer ward and Nandi's compact aegis.
+        if (archetype && (archetype->id == "pushpaka" || archetype->id == "nandi_aegis") && !is_downed) {
+            const bool nandi_aegis = archetype->id == "nandi_aegis";
+            const float shield_cycle = nandi_aegis ? 10.0f : 12.0f;
             if (!has_kavach_shield) {
                 kavach_auto_timer += dt;
-                if (kavach_auto_timer >= 12.0f) {
+                if (kavach_auto_timer >= shield_cycle) {
                     kavach_auto_timer = 0.0f;
                     has_kavach_shield = true;
-                    kavach_timer = 3.0f;
+                    kavach_timer = nandi_aegis ? 2.0f : 3.0f;
                 }
             } else {
                 kavach_auto_timer = 0.0f;
@@ -312,7 +318,7 @@ struct Player {
         }
 
         input_dir = Vector2Normalize(input_dir);
-        float spd = is_dashing ? DASH_SPEED_BURST : current_speed;
+        float spd = is_dashing ? DASH_SPEED_BURST * dash_distance_multiplier : current_speed;
         vel.x = input_dir.x * spd;
         vel.y = input_dir.y * spd;
     }
@@ -323,12 +329,16 @@ struct Player {
         shoot_timer = cd;
         just_shot = true;
         shot_counter = (shot_counter % 7) + 1;
+        const bool is_amogha = archetype && archetype->id == "amogha_lancer";
+        if (is_amogha) signature_shot_counter = (signature_shot_counter % 5) + 1;
 
         float rad = angle * (3.14159f / 180.0f);
         Vector2 nose = { pos.x + std::cos(rad) * radius, pos.y + std::sin(rad) * radius };
 
         // Damage calculation
         int dmg = bullet_damage;
+        const bool amogha_needle = is_amogha && signature_shot_counter == 5;
+        if (amogha_needle) dmg = static_cast<int>(std::round(dmg * 1.25f));
         // Narasimha Archetype trait: low HP scaling
         if (archetype && archetype->id == "narasimha") {
             float missing_hp = 1.0f - (static_cast<float>(hp) / max_hp);
@@ -383,7 +393,7 @@ struct Player {
             b.vel = { std::cos(rad) * PLAYER_BULLET_SPEED * 1.15f, std::sin(rad) * PLAYER_BULLET_SPEED * 1.15f };
             b.damage = dmg; b.radius = 7.0f;
             b.color = COLOR_GREEN_BRIGHT;
-            b.pierce_remaining = (is_pierce ? 4 : 3) + garuda_pierce_bonus;
+            b.pierce_remaining = (amogha_needle ? 8 : (is_pierce ? 4 : 3)) + garuda_pierce_bonus;
             b.owner_player_id = player_id; b.is_player_owned = true;
             out_bullets.push_back(b);
         } else if (archetype && archetype->gun_type == "BURN") {
@@ -433,6 +443,7 @@ struct Player {
                 out_bullets.push_back(b);
             }
         }
+        SoundSystem::instance().play_sfx("shoot.wav", 0.3f);
     }
 
     void try_dash(Vector2 dir) {

@@ -1,238 +1,308 @@
 #pragma once
-#include <vector>
-#include <string>
+#include <algorithm>
+#include <array>
 #include <cmath>
+#include <string>
+#include <vector>
 #include "raylib.h"
 #include "core/constants.hpp"
 #include "core/types.hpp"
 #include "views/view_interface.hpp"
-#include "ui/button.hpp"
-#include "ui/design_tokens.hpp"   // must come before vedic_theme (defines ElevationStyle)
+#include "ui/design_tokens.hpp"
 #include "ui/vedic_theme.hpp"
 #include "systems/asset_manager.hpp"
-#include "systems/currency_system.hpp"
 #include "systems/db_system.hpp"
 #include "systems/account_system.hpp"
+#include "systems/sound_system.hpp"
 #include "entities/ship_archetypes.hpp"
 
 namespace Vimana {
 
 class MenuView : public IView {
 public:
-    MenuView() : m_next_view(ViewType::MENU) {
-        init();
-    }
+    MenuView() : m_next_view(ViewType::MENU) { init(); }
 
     void init() override {
         m_next_view = ViewType::MENU;
-        m_buttons.clear();
-        m_btn_continue = UI::Button({ 50, 148, 320, 36 }, "CONTINUE", COLOR_GOLD_BRIGHT, "", Vimana::UI::ButtonKind::PRIMARY);
+        m_nav = {
+            { { 56, 181, 340, 31 }, "SINGLE PLAYER",      ViewType::CAMPAIGN_MAP,      UI::PAL_PRIMARY_BRIGHT,   "1" },
+            { { 56, 216, 340, 31 }, "MULTIPLAYER",        ViewType::MULTIPLAYER_LOBBY, UI::PAL_SECONDARY_BRIGHT, "2" },
+            { { 56, 251, 340, 31 }, "SELECT YOUR SHIP",   ViewType::SHIP_SELECT,       UI::PAL_SECONDARY_BRIGHT, "3" },
+            { { 56, 286, 340, 31 }, "ACHIEVEMENTS",       ViewType::ACHIEVEMENTS,      UI::PAL_PRIMARY_BRIGHT,   "4" },
+            { { 56, 321, 340, 31 }, "LEADERBOARDS",       ViewType::LEADERBOARD,       UI::PAL_SECONDARY_BRIGHT, "5" },
+            { { 56, 356, 340, 31 }, "CODEX / LORE",       ViewType::CODEX,              UI::PAL_SECONDARY_BRIGHT, "6" },
+            { { 56, 391, 340, 31 }, "DUEL / TRAINING",    ViewType::DUEL,               UI::PAL_SECONDARY_BRIGHT, "7" },
+            { { 56, 426, 340, 31 }, "SETTINGS",           ViewType::SETTINGS,           UI::PAL_TEXT_VARIANT,     "8" },
+            { { 56, 461, 340, 31 }, "QUIT",               ViewType::QUIT,               UI::PAL_DESTRUCTIVE_BRIGHT,"9" }
+        };
+        m_hover_anim.assign(m_nav.size(), 0.0f);
+        m_selected = 0;
+        m_hovered = -1;
+        m_badge_hovered = false;
+        m_continue_hovered = false;
+        m_has_mouse_position = false;
 
-        float start_y = 190.0f;
-        float btn_w = 320.0f;
-        float btn_h = 30.0f;
-        float spacing = 32.0f;
-        float center_x = 50.0f; // Left column
-
-        m_buttons.emplace_back(Rectangle{ center_x, start_y,                     btn_w, btn_h }, "1.  ENTER CAMPAIGN",            COLOR_GOLD_BRIGHT,   "[1]", Vimana::UI::ButtonKind::PRIMARY);
-        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 1,       btn_w, btn_h }, "2.  MULTIPLAYER SQUAD",         COLOR_CYAN_BRIGHT,   "[2]", Vimana::UI::ButtonKind::SECONDARY);
-        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 2,       btn_w, btn_h }, "3.  VIMANA HANGAR",             COLOR_CYAN_BRIGHT,   "[3]", Vimana::UI::ButtonKind::SECONDARY);
-        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 3,       btn_w, btn_h }, "4.  PILOT PROFILE",             COLOR_GREEN_BRIGHT,  "[4]", Vimana::UI::ButtonKind::SECONDARY);
-        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 4,       btn_w, btn_h }, "5.  DUEL MODE",                 COLOR_ORANGE_BRIGHT, "[5]", Vimana::UI::ButtonKind::SECONDARY);
-        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 5,       btn_w, btn_h }, "6.  SETTINGS",                  COLOR_MUTED,         "[6]", Vimana::UI::ButtonKind::GHOST);
-
-        // Bottom-right secondary actions
-        m_buttons.emplace_back(Rectangle{ SCREEN_WIDTH - 145, SCREEN_HEIGHT - 56, 110, 28 }, "QUIT GAME",   COLOR_RED_BRIGHT,"[ESC]", Vimana::UI::ButtonKind::DESTRUCTIVE);
-
-        // Ambient starfield
         m_stars.clear();
-        for (int i = 0; i < 90; ++i) {
-            m_stars.push_back({
-                static_cast<float>(std::rand() % SCREEN_WIDTH),
-                static_cast<float>(std::rand() % SCREEN_HEIGHT),
-                0.5f + (std::rand() % 15) / 10.0f
-            });
+        for (int i = 0; i < 48; ++i) {
+            m_stars.push_back({ static_cast<float>(GetRandomValue(0, SCREEN_WIDTH)),
+                                static_cast<float>(GetRandomValue(0, SCREEN_HEIGHT)),
+                                0.35f + static_cast<float>(GetRandomValue(0, 12)) / 10.0f });
         }
     }
 
     void update(float dt, Vector2 mouse_pos) override {
-        // Starfield drift
+        const bool mouse_moved = !m_has_mouse_position ||
+            std::fabs(mouse_pos.x - m_last_mouse_pos.x) > 1.0f ||
+            std::fabs(mouse_pos.y - m_last_mouse_pos.y) > 1.0f;
+        m_last_mouse_pos = mouse_pos;
+        m_has_mouse_position = true;
+
         for (auto& star : m_stars) {
-            star.y += star.z * 20.0f * dt;
+            star.y += star.speed * 9.0f * dt;
             if (star.y > SCREEN_HEIGHT) {
-                star.y = 0;
-                star.x = static_cast<float>(std::rand() % SCREEN_WIDTH);
+                star.y = 0.0f;
+                star.x = static_cast<float>(GetRandomValue(0, SCREEN_WIDTH));
+            }
+        }
+        m_ship_bob += dt * 1.8f;
+
+        const int saved_wave = DBSystem::instance().continue_wave();
+        const bool has_continue = saved_wave > 1 || DBSystem::instance().max_wave() > 1;
+        const Rectangle continue_rect = { 56, 132, 340, 36 };
+        m_continue_hovered = has_continue && CheckCollisionPointRec(mouse_pos, continue_rect);
+        if (m_continue_hovered && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            SoundSystem::instance().play_ui_click();
+            m_next_view = ViewType::CAMPAIGN_MAP;
+            return;
+        }
+        if (has_continue && IsKeyPressed(KEY_C)) {
+            m_next_view = ViewType::CAMPAIGN_MAP;
+            return;
+        }
+
+        // Numeric shortcuts preserve fast access; arrows/Enter provide a gamepad-like keyboard flow.
+        static constexpr std::array<int, 9> nav_keys = {
+            KEY_ONE, KEY_TWO, KEY_THREE, KEY_FOUR, KEY_FIVE,
+            KEY_SIX, KEY_SEVEN, KEY_EIGHT, KEY_NINE
+        };
+        for (size_t i = 0; i < nav_keys.size(); ++i) {
+            if (IsKeyPressed(nav_keys[i])) {
+                m_selected = static_cast<int>(i);
+                SoundSystem::instance().play_ui_click();
+                m_next_view = m_nav[i].target;
+                return;
             }
         }
 
-        // Animated Flagship Thruster
-        m_ship_bob += dt * 2.5f;
-
-        // CONTINUE hero action if save exists
-        int saved_wave = DBSystem::instance().continue_wave();
-        if (saved_wave > 1) {
-            std::string cont_label = "CONTINUE WAVE " + std::to_string(saved_wave);
-            m_btn_continue.set_label(cont_label);
-            if (m_btn_continue.update(mouse_pos)) m_next_view = ViewType::CAMPAIGN_MAP;
+        const bool keyboard_navigation = IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S) ||
+                                        IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W);
+        if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) {
+            m_selected = (m_selected + 1) % static_cast<int>(m_nav.size());
+            SoundSystem::instance().play_ui_hover();
+        } else if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) {
+            m_selected = (m_selected + static_cast<int>(m_nav.size()) - 1) % static_cast<int>(m_nav.size());
+            SoundSystem::instance().play_ui_hover();
+        }
+        if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
+            SoundSystem::instance().play_ui_confirm();
+            m_next_view = m_nav[static_cast<size_t>(m_selected)].target;
+            return;
         }
 
-        // Button clicks or keyboard shortcuts [1-6]
-        if (m_buttons[0].update(mouse_pos) || IsKeyPressed(KEY_ONE)) m_next_view = ViewType::CAMPAIGN_MAP;
-        else if (m_buttons[1].update(mouse_pos) || IsKeyPressed(KEY_TWO)) m_next_view = ViewType::MULTIPLAYER_LOBBY;
-        else if (m_buttons[2].update(mouse_pos) || IsKeyPressed(KEY_THREE)) m_next_view = ViewType::SHIP_SELECT;
-        else if (m_buttons[3].update(mouse_pos) || IsKeyPressed(KEY_FOUR)) m_next_view = ViewType::PROFILE;
-        else if (m_buttons[4].update(mouse_pos) || IsKeyPressed(KEY_FIVE)) m_next_view = ViewType::DUEL;
-        else if (m_buttons[5].update(mouse_pos) || IsKeyPressed(KEY_SIX)) m_next_view = ViewType::SETTINGS;
-
-        if (IsKeyPressed(KEY_P)) m_next_view = ViewType::PROFILE;
-
-        // Bottom-right: QUIT
-        if (m_buttons[6].update(mouse_pos)) {
-            m_next_view = ViewType::QUIT;
+        const int previous_hovered = m_hovered;
+        if (keyboard_navigation) m_hovered = -1;
+        else if (mouse_moved || IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            m_hovered = -1;
+            for (size_t i = 0; i < m_nav.size(); ++i) {
+                if (CheckCollisionPointRec(mouse_pos, m_nav[i].bounds)) {
+                    m_hovered = static_cast<int>(i);
+                    if (mouse_moved && previous_hovered != m_hovered) SoundSystem::instance().play_ui_hover();
+                    m_selected = m_hovered;
+                    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                        SoundSystem::instance().play_ui_click();
+                        m_next_view = m_nav[i].target;
+                        return;
+                    }
+                    break;
+                }
+            }
         }
 
-        // Click on top-right Pilot Badge opens Player Card
-        Rectangle pilot_badge = { SCREEN_WIDTH - 360, 25, 310, 48 };
-        if (CheckCollisionPointRec(mouse_pos, pilot_badge) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        for (size_t i = 0; i < m_hover_anim.size(); ++i) {
+            const float target = (static_cast<int>(i) == m_hovered || static_cast<int>(i) == m_selected) ? 1.0f : 0.0f;
+            m_hover_anim[i] += (target - m_hover_anim[i]) * std::min(1.0f, dt * 11.0f);
+        }
+
+        const Rectangle badge = pilot_badge_bounds();
+        m_badge_hovered = CheckCollisionPointRec(mouse_pos, badge);
+        if (m_badge_hovered && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            SoundSystem::instance().play_ui_click();
+            m_next_view = ViewType::PROFILE;
+        } else if (IsKeyPressed(KEY_P)) {
             m_next_view = ViewType::PROFILE;
         }
+
+        if (IsKeyPressed(KEY_ESCAPE)) m_next_view = ViewType::QUIT;
     }
 
     void draw() override {
-        using namespace Vimana::UI;
+        using namespace UI;
         ClearBackground(PAL_BG_VOID);
 
-        // Draw parallax stars
+        const Texture2D backdrop = AssetManager::instance().get_texture("hero_vimana_wars.png");
+        if (backdrop.id > 0) {
+            const Rectangle src = { 0, 0, static_cast<float>(backdrop.width), static_cast<float>(backdrop.height) };
+            const Rectangle dst = { 0, 0, static_cast<float>(SCREEN_WIDTH), static_cast<float>(SCREEN_HEIGHT) };
+            DrawTexturePro(backdrop, src, dst, { 0, 0 }, 0.0f, { 178, 190, 218, 255 });
+        }
+        DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, { 5, 8, 19, 86 });
+        DrawRectangleGradientH(0, 0, 555, SCREEN_HEIGHT, { 5, 8, 18, 242 }, { 5, 8, 18, 0 });
+        DrawRectangleGradientV(0, SCREEN_HEIGHT - 120, SCREEN_WIDTH, 120, { 5, 8, 18, 0 }, { 5, 8, 18, 180 });
+
         for (const auto& star : m_stars) {
-            DrawCircle(static_cast<int>(star.x), static_cast<int>(star.y), star.z, { 200, 220, 255, 160 });
+            DrawCircleV({ star.x, star.y }, star.radius, { 210, 235, 255, 95 });
         }
 
-        Font title_f = AssetManager::instance().title_font();
-        Font body_f = AssetManager::instance().body_font();
+        const Font title_font = AssetManager::instance().title_font();
+        const Font body_font = AssetManager::instance().body_font();
+        const Font mono_font = AssetManager::instance().mono_font();
 
-        // Vedic Corner Etchings on Screen Frame — now with diamond rivets
-        Rectangle frame = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT };
-        UI::DrawCornerBrackets(frame, 28.0f, PAL_TERTIARY);
+        DrawTextEx(title_font, "VIMANA WARS", { 54, 30 }, 31, 1.5f, PAL_PRIMARY_BRIGHT);
+        DrawTextEx(mono_font, "THE RECLAMATION OF DHARMA  //  PILOT COMMAND", { 58, 72 }, 10, 1.0f, PAL_SECONDARY_BRIGHT);
+        DrawLine(56, 103, 384, 103, ColorAlpha(PAL_PRIMARY, 0.59f));
 
-        // ── TOP BAR: LOGO & PILOT CALLOUT ────────────────────────────────────────
-        Texture2D logo = AssetManager::instance().get_texture("vimana_wars_logo.png");
-        if (logo.id > 0) {
-            float scale = 0.22f;
-            DrawTextureEx(logo, { 50, 25 }, 0.0f, scale, WHITE);
-        } else {
-            UI::DrawVedicHeading(title_f, "VIMANA WARS", { 50, 30 }, 36, PAL_PRIMARY_BRIGHT);
+        DrawPilotBadge(title_font, body_font);
+
+        const int max_wave = std::max(1, DBSystem::instance().max_wave());
+        const std::string act_line = "CAMPAIGN  //  ACT " + std::to_string(CampaignActForWave(max_wave)) +
+                                     "   WAVE " + std::to_string(CampaignWaveWithinAct(max_wave)) +
+                                     " / " + std::to_string(WAVES_PER_ACT);
+        DrawTextEx(mono_font, act_line.c_str(), { 58, 112 }, 10, 1.0f, PAL_TEXT_MUTED);
+
+        const int saved_wave = DBSystem::instance().continue_wave();
+        if (saved_wave > 1 || DBSystem::instance().max_wave() > 1) {
+            const Rectangle continue_rect = { 56, 132, 340, 36 };
+            const Color accent = m_continue_hovered ? PAL_PRIMARY_BRIGHT : PAL_PRIMARY;
+            DrawRectangleRec(continue_rect, ColorAlpha(PAL_PRIMARY, m_continue_hovered ? 0.20f : 0.09f));
+            DrawRectangleLinesEx(continue_rect, 1.0f, ColorAlpha(accent, 0.73f));
+            const std::string continue_label = saved_wave > 1
+                ? "CONTINUE SORTIE  //  WAVE " + std::to_string(saved_wave)
+                : "CONTINUE CAMPAIGN";
+            DrawTextEx(body_font, continue_label.c_str(),
+                       { continue_rect.x + 12, continue_rect.y + 10 }, 13, 1.0f, accent);
+            DrawTextEx(mono_font, "C", { continue_rect.x + continue_rect.width - 23, continue_rect.y + 11 }, 10, 1.0f, PAL_TEXT_MUTED);
         }
 
-        // Pilot Callout Strip (Top Right) — design system ElevationPanel + brackets
-        Rectangle pilot_badge = { SCREEN_WIDTH - 360, 25, 310, 48 };
-        bool badge_hover = CheckCollisionPointRec(GetMousePosition(), pilot_badge);
-        auto pilot_elev = UI::ElevationGlass();
-        UI::DrawElevationPanel(pilot_badge, pilot_elev, badge_hover);
-        Color border_col = badge_hover ? PAL_PRIMARY : PAL_TERTIARY;
-        UI::DrawCornerBrackets(pilot_badge, 8.0f, border_col);
-        DrawText("PILOT ID RECORD // CLICK FOR DOSSIER", static_cast<int>(pilot_badge.x + 12), static_cast<int>(pilot_badge.y + 7), 12, PAL_TEXT_MUTED);
-        std::string callsign_line = AccountSystem::instance().game_id() + std::string(" // ") + DBSystem::instance().player_name();
-        DrawTextEx(title_f, callsign_line.c_str(), { pilot_badge.x + 12, pilot_badge.y + 21 }, 16, 1.0f, PAL_PRIMARY_BRIGHT);
-        std::string cloud_info = AccountSystem::instance().is_logged_in() ? "[CLOUD SYNCED // ONLINE]" : "[LOCAL GUEST // OFFLINE]";
-        Color cloud_col = AccountSystem::instance().is_logged_in() ? PAL_HEALTH_HIGH : PAL_SECONDARY_BRIGHT;
-        DrawText(cloud_info.c_str(), static_cast<int>(pilot_badge.x + 12), static_cast<int>(pilot_badge.y + 39), 12, cloud_col);
-
-        // Subtitle line — telemetry-mono style
-        DrawText("CELESTIAL ASTRAL COMBAT // ACT I · 30 WAVES", 52, 160, 12, PAL_SECONDARY_BRIGHT);
-        DrawLine(50, 180, SCREEN_WIDTH - 50, 180, PAL_OUTLINE_VARIANT);
-
-        // ── LEFT COLUMN: NAVIGATION BUTTONS ─────────────────────────────────────
-        if (DBSystem::instance().max_wave() > 1) m_btn_continue.draw(title_f);
-        for (const auto& btn : m_buttons) {
-            btn.draw(title_f);
+        for (size_t i = 0; i < m_nav.size(); ++i) {
+            const auto& item = m_nav[i];
+            const float anim = m_hover_anim[i];
+            const bool selected = static_cast<int>(i) == m_selected;
+            const Color accent = item.accent;
+            if (anim > 0.01f) {
+                DrawRectangleRec({ item.bounds.x, item.bounds.y + 2, item.bounds.width, item.bounds.height - 4 },
+                                 ColorAlpha(accent, 0.07f + 0.10f * anim));
+            }
+            DrawRectangleRec({ item.bounds.x, item.bounds.y + 5, selected ? 3.0f : 1.0f, item.bounds.height - 10 },
+                             ColorAlpha(accent, selected ? 0.96f : 0.31f));
+            const Color text_color = selected ? PAL_PRIMARY_CORE : Color{ 207, 219, 235, 235 };
+            DrawTextEx(title_font, item.label.c_str(), { item.bounds.x + 18 + anim * 4.0f, item.bounds.y + 5 },
+                       17 + anim * 1.0f, 1.0f, text_color);
+            DrawTextEx(mono_font, item.shortcut.c_str(), { item.bounds.x + item.bounds.width - 22, item.bounds.y + 9 },
+                       10, 1.0f, selected ? accent : Color{ 154, 168, 191, 210 });
+            if (selected) {
+                DrawLine(static_cast<int>(item.bounds.x + 18), static_cast<int>(item.bounds.y + item.bounds.height - 1),
+                         static_cast<int>(item.bounds.x + 110), static_cast<int>(item.bounds.y + item.bounds.height - 1),
+                         ColorAlpha(accent, 0.59f));
+            }
         }
 
-        // ── RIGHT COLUMN: TELEMETRY DASHBOARD STATUS TILES ──────────────────────
-        Rectangle dash_box = { 395, 195, 460, 325 };
-        auto dash_elev = UI::ElevationGlass();
-        UI::DrawElevationPanel(dash_box, dash_elev, true);
-        UI::DrawCornerBrackets(dash_box, 14.0f, PAL_SECONDARY);
+        DrawFlagship(title_font);
+        DrawPilotProgress(body_font, mono_font);
 
-        DrawTextEx(title_f, "COMMAND TELEMETRY // SECTOR STATUS", { dash_box.x + 20, dash_box.y + 14 }, 15, 1.0f, PAL_PRIMARY_BRIGHT);
-        DrawLine(static_cast<int>(dash_box.x + 20), static_cast<int>(dash_box.y + 38), static_cast<int>(dash_box.x + dash_box.width - 20), static_cast<int>(dash_box.y + 38), PAL_OUTLINE_VARIANT);
-
-        // Floating Flagship Preview in Telemetry Header (Right side of box)
-        const ShipArchetype* equipped_ship = GetShipArchetype(DBSystem::instance().equipped_ship());
-        const std::string flagship_sprite = equipped_ship ? equipped_ship->sprite_file : "pushpaka.png";
-        Texture2D ship_tex = AssetManager::instance().get_texture(flagship_sprite);
-        if (ship_tex.id > 0) {
-            float float_y = dash_box.y + 75.0f + std::sin(m_ship_bob) * 5.0f;
-            float ship_cx = dash_box.x + dash_box.width - 75.0f;
-
-            // Mandala reticle behind flagship (replaces simple concentric rings)
-            UI::DrawMandalaReticle({ ship_cx, float_y }, 42.0f, GetTime(), PAL_PRIMARY, PAL_SECONDARY, 0.65f);
-
-            // Ship sprite
-            Rectangle src = { 0, 0, static_cast<float>(ship_tex.width), static_cast<float>(ship_tex.height) };
-            Rectangle dest = { ship_cx, float_y, 64, 64 };
-            DrawTexturePro(ship_tex, src, dest, { 32, 32 }, 0.0f, WHITE);
-
-            const std::string ship_label = equipped_ship ? equipped_ship->name : "PUSHPAKA";
-            DrawTextEx(title_f, ship_label.c_str(), { ship_cx - 55.0f, float_y + 43.0f }, 10, 1.0f, PAL_PRIMARY_BRIGHT);
-
-            // Thruster glow
-            DrawCircle(static_cast<int>(ship_cx), static_cast<int>(float_y + 28), 5.0f, PAL_SECONDARY_BRIGHT);
-        }
-
-        // Tile 1: Campaign Progression & High Score
-        int max_wave = DBSystem::instance().max_wave();
-        if (max_wave < 1) max_wave = 1;
-        Rectangle tile1 = { dash_box.x + 20, dash_box.y + 48, dash_box.width - 165, 52 };
-        UI::DrawElevationPanel(tile1, UI::ElevationWell());
-        UI::DrawCornerBrackets(tile1, 6.0f, PAL_PRIMARY);
-        DrawText("CAMPAIGN MILESTONE", static_cast<int>(tile1.x + 12), static_cast<int>(tile1.y + 8), 11, PAL_TEXT_MUTED);
-        std::string wave_prog = "ACT " + std::to_string(CampaignActForWave(max_wave)) + " / 10  ·  WAVE " +
-                                std::to_string(CampaignWaveWithinAct(max_wave)) + " / " + std::to_string(WAVES_PER_ACT);
-        DrawTextEx(title_f, wave_prog.c_str(), { tile1.x + 12, tile1.y + 22 }, 16, 1.0f, PAL_PRIMARY_BRIGHT);
-
-        // Tile 2: Fleet Readiness
-        int unlocked_count = 0;
-        for (const auto& ship : SHIP_FLEET) {
-            if (CurrencySystem::instance().is_ship_unlocked(ship.id, max_wave)) unlocked_count++;
-        }
-        Rectangle tile2 = { dash_box.x + 20, dash_box.y + 110, dash_box.width - 40, 52 };
-        UI::DrawElevationPanel(tile2, UI::ElevationWell());
-        UI::DrawCornerBrackets(tile2, 6.0f, PAL_SECONDARY);
-        DrawText("VIMANA FLEET COMMISSIONED", static_cast<int>(tile2.x + 15), static_cast<int>(tile2.y + 8), 11, PAL_TEXT_MUTED);
-        std::string fleet_str = std::to_string(unlocked_count) + " / " + std::to_string(SHIP_FLEET.size()) + " VIMANAS COMBAT READY";
-        DrawTextEx(body_f, fleet_str.c_str(), { tile2.x + 15, tile2.y + 24 }, 13, 1.0f, PAL_SECONDARY_BRIGHT);
-
-        // Tile 3: Prana Shards Treasury & High Score — use segmented gauge instead of plain number
-        int prana = CurrencySystem::instance().prana_shards();
-        Rectangle tile3 = { dash_box.x + 20, dash_box.y + 172, dash_box.width - 40, 52 };
-        UI::DrawElevationPanel(tile3, UI::ElevationWell());
-        UI::DrawCornerBrackets(tile3, 6.0f, PAL_HEALTH_HIGH);
-        DrawText("PRANA SHARDS & RECORD", static_cast<int>(tile3.x + 15), static_cast<int>(tile3.y + 8), 11, PAL_TEXT_MUTED);
-        std::string prana_str = std::to_string(prana) + " PRANA SHARDS";
-        DrawTextEx(body_f, prana_str.c_str(), { tile3.x + 15, tile3.y + 24 }, 13, 1.0f, PAL_HEALTH_HIGH);
-        std::string hs_str = "HIGH: " + std::to_string(DBSystem::instance().high_score());
-        DrawText(hs_str.c_str(), static_cast<int>(tile3.x + 250), static_cast<int>(tile3.y + 26), 12, PAL_PRIMARY_BRIGHT);
-
-        // Quick tip & keybind hint — telemetry style
-        DrawText("[1-9, 0] NAVIGATE  ·  [F11] FULLSCREEN  ·  60 FPS NATIVE", static_cast<int>(dash_box.x + 20), static_cast<int>(dash_box.y + 285), 12, PAL_TEXT_MUTED);
-
-        // Footer hint
-        const char* footer = "VIMANA WARS  //  WINDOWS BUILD  ·  C++20 + RAYLIB  ·  60 FPS";
-        Vector2 f_sz = MeasureTextEx(title_f, footer, 13, 1.0f);
-        DrawTextEx(title_f, footer, { (SCREEN_WIDTH - f_sz.x) / 2.0f, SCREEN_HEIGHT - 86 }, 13, 1.0f, PAL_TEXT_MUTED);
-
-        if (g_scanlines_enabled) UI::DrawScanlines();
+        const char* footer = "W / S OR ↑ / ↓ NAVIGATE     ENTER SELECT     ESC EXIT";
+        const Vector2 footer_size = MeasureTextEx(mono_font, footer, 9, 1.0f);
+        DrawTextEx(mono_font, footer, { (SCREEN_WIDTH - footer_size.x) / 2.0f, SCREEN_HEIGHT - 22.0f }, 9, 1.0f,
+                   ColorAlpha(PAL_TEXT_MUTED, 0.86f));
+        if (g_scanlines_enabled) DrawScanlines();
     }
 
     ViewType next_view() const override { return m_next_view; }
     void reset_next_view() override { m_next_view = ViewType::MENU; }
 
 private:
-    struct Star { float x, y, z; };
+    struct NavItem {
+        Rectangle bounds;
+        std::string label;
+        ViewType target;
+        Color accent;
+        std::string shortcut;
+    };
+    struct Star { float x, y, radius, speed; };
+
+    static Rectangle pilot_badge_bounds() { return { SCREEN_WIDTH - 286.0f, 24.0f, 246.0f, 57.0f }; }
+
+    void DrawPilotBadge(Font title_font, Font body_font) const {
+        const Rectangle badge = pilot_badge_bounds();
+        DrawRectangleRec(badge, ColorAlpha(UI::PAL_BG_VOID, 0.80f));
+        DrawRectangleLinesEx(badge, 1.0f, ColorAlpha(m_badge_hovered ? UI::PAL_PRIMARY_BRIGHT : UI::PAL_SECONDARY, 0.67f));
+        UI::DrawCornerBrackets(badge, 7.0f, m_badge_hovered ? UI::PAL_PRIMARY : UI::PAL_SECONDARY);
+        DrawTextEx(body_font, "PILOT DOSSIER  //  P", { badge.x + 11, badge.y + 7 }, 9, 1.0f, UI::PAL_TEXT_MUTED);
+        std::string callsign = DBSystem::instance().player_name();
+        if (callsign.size() > 18) callsign.resize(18);
+        DrawTextEx(title_font, callsign.c_str(), { badge.x + 11, badge.y + 22 }, 15, 1.0f, UI::PAL_PRIMARY_CORE);
+        const std::string id = AccountSystem::instance().game_id();
+        DrawTextEx(body_font, (id + (AccountSystem::instance().is_logged_in() ? "  // CLOUD" : "  // LOCAL")).c_str(),
+                   { badge.x + 11, badge.y + 41 }, 9, 1.0f,
+                   AccountSystem::instance().is_logged_in() ? UI::PAL_HEALTH_HIGH : UI::PAL_SECONDARY_BRIGHT);
+    }
+
+    void DrawFlagship(Font title_font) const {
+        const ShipArchetype* ship = GetShipArchetype(DBSystem::instance().equipped_ship());
+        if (!ship) ship = GetShipArchetype("pushpaka");
+        if (!ship) return;
+
+        const float x = 690.0f;
+        const float y = 408.0f + std::sin(m_ship_bob) * 6.0f;
+        UI::DrawMandalaReticle({ x, y }, 105.0f, GetTime() * 0.28, ship->accent_color,
+                               UI::PAL_PRIMARY, 0.32f);
+        const Texture2D texture = AssetManager::instance().get_texture(ship->sprite_file);
+        if (texture.id > 0) {
+            const Rectangle src = { 0, 0, static_cast<float>(texture.width), static_cast<float>(texture.height) };
+            const Rectangle dst = { x, y, 168, 168 };
+            DrawTexturePro(texture, src, dst, { 84, 84 }, std::sin(m_ship_bob * 0.7f) * 2.0f, WHITE);
+        }
+        DrawCircleV({ x, y + 65 }, 4.0f + std::sin(m_ship_bob * 2.0f) * 1.2f, UI::PAL_SECONDARY_BRIGHT);
+        const std::string ship_label = ship->name + "  //  EQUIPPED";
+        const Vector2 label_size = MeasureTextEx(title_font, ship_label.c_str(), 13, 1.0f);
+        DrawTextEx(title_font, ship_label.c_str(), { x - label_size.x / 2.0f, y + 89 }, 13, 1.0f, UI::PAL_PRIMARY_BRIGHT);
+        DrawText("READY FOR DEPLOYMENT", static_cast<int>(x - 64), static_cast<int>(y + 108), 9, UI::PAL_TEXT_MUTED);
+    }
+
+    void DrawPilotProgress(Font body_font, Font mono_font) const {
+        const float x = 56.0f;
+        const float y = 510.0f;
+        const int level = DBSystem::instance().pilot_level();
+        const int xp = DBSystem::instance().pilot_xp_progress();
+        DrawTextEx(body_font, ("WELCOME, " + DBSystem::instance().player_name()).c_str(), { x, y }, 16, 1.0f, UI::PAL_PRIMARY_BRIGHT);
+        DrawTextEx(mono_font, ("PILOT LEVEL " + std::to_string(level)).c_str(), { x, y + 24 }, 10, 1.0f, UI::PAL_SECONDARY_BRIGHT);
+        const std::string xp_line = std::to_string(xp) + " / " + std::to_string(DBSystem::PILOT_XP_PER_LEVEL) + " XP";
+        DrawTextEx(mono_font, xp_line.c_str(), { x + 191, y + 24 }, 9, 1.0f, UI::PAL_TEXT_MUTED);
+        const Rectangle bar = { x, y + 42, 252, 5 };
+        DrawRectangleRec(bar, ColorAlpha(UI::PAL_TEXT_MUTED, 0.25f));
+        const float ratio = std::clamp(static_cast<float>(xp) / DBSystem::PILOT_XP_PER_LEVEL, 0.0f, 1.0f);
+        DrawRectangleRec({ bar.x, bar.y, bar.width * ratio, bar.height }, UI::PAL_SECONDARY_BRIGHT);
+    }
+
+    std::vector<NavItem> m_nav;
+    std::vector<float> m_hover_anim;
     std::vector<Star> m_stars;
-    std::vector<UI::Button> m_buttons;
-    UI::Button m_btn_continue = UI::Button({50,148,320,36}, "CONTINUE", COLOR_GOLD_BRIGHT);
     ViewType m_next_view;
+    int m_selected = 0;
+    int m_hovered = -1;
+    bool m_badge_hovered = false;
+    bool m_continue_hovered = false;
+    bool m_has_mouse_position = false;
+    Vector2 m_last_mouse_pos = { 0.0f, 0.0f };
     float m_ship_bob = 0.0f;
 };
 

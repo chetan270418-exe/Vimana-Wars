@@ -7,6 +7,7 @@
 #include "views/view_interface.hpp"
 #include "systems/db_system.hpp"
 #include "systems/account_system.hpp"
+#include "systems/achievement_system.hpp"
 #include "systems/asset_manager.hpp"
 #include "ui/button.hpp"
 #include "ui/vedic_theme.hpp"
@@ -49,6 +50,16 @@ public:
                 if (success) {
                     m_scores = entries;
                     m_status_text = "Cloud records updated // " + std::to_string(entries.size()) + " pilots listed";
+                    if (AccountSystem::instance().is_logged_in()) {
+                        const std::string pilot_name = DBSystem::instance().player_name();
+                        const size_t rank_limit = std::min<size_t>(10, entries.size());
+                        for (size_t rank = 0; rank < rank_limit; ++rank) {
+                            if (entries[rank].player_name == pilot_name) {
+                                AchievementSystem::instance().check_and_award("LEADERBOARD_TOP10");
+                                break;
+                            }
+                        }
+                    }
                 } else {
                     m_status_text = "Cloud connection failed. Falling back to local cache.";
                     m_scores = DBSystem::instance().fetch_top_scores(12);

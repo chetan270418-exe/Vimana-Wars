@@ -82,6 +82,7 @@ public:
         if (m_music.stream.buffer != nullptr) {
             UnloadMusicStream(m_music);
         }
+        m_music_file.clear();
         if (m_main_font.texture.id != GetFontDefault().texture.id) {
             UnloadFont(m_main_font);
         }
@@ -155,6 +156,7 @@ public:
     }
 
     void load_music(const std::string& filename) {
+        if (m_music.stream.buffer != nullptr && m_music_file == filename) return;
         std::string full_path = m_base_path + "/sounds/" + filename;
         if (!std::filesystem::exists(full_path)) {
             full_path = m_base_path + "/" + filename;
@@ -165,7 +167,10 @@ public:
             }
             m_music = LoadMusicStream(full_path.c_str());
             m_music.looping = true;
-            PlayMusicStream(m_music);
+            if (m_music.stream.buffer != nullptr) {
+                m_music_file = filename;
+                PlayMusicStream(m_music);
+            }
         }
     }
 
@@ -196,6 +201,7 @@ private:
     Font m_body_font = { 0 };
     Font m_mono_font = { 0 };
     Music m_music = { 0 };
+    std::string m_music_file;
     std::unordered_map<std::string, Texture2D> m_textures;
     std::unordered_map<std::string, Sound> m_sounds;
 };
