@@ -223,6 +223,11 @@ constexpr int PRANA_REWARD_BOSS_DEFEAT  = 250;
 constexpr int PRANA_REWARD_DUEL_WIN     = 150;
 constexpr int PRANA_REWARD_CO_OP_WIN    = 200;
 constexpr int PRANA_REWARD_REVIVE       = 30;  // bonus for reviving teammate
+constexpr int PRANA_RUN_BASE_REWARD      = 40;
+constexpr int PRANA_PER_1000_SCORE       = 10;
+constexpr int PRANA_PER_WAVE_SURVIVED    = 8;
+constexpr int PRANA_RUN_VICTORY_BONUS    = 500;
+constexpr int COOP_SQUAD_START_LIVES     = 6;
 
 constexpr int COST_KAVACH_SHIELD        = 120;
 constexpr int COST_SOMA_VIAL            = 100;

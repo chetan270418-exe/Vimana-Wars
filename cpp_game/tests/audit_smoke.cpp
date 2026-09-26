@@ -20,6 +20,24 @@
 using namespace Vimana;
 
 int main() {
+    assert(CurrencySystem::calculate_run_payout(0, 0, false) == 40);
+    assert(CurrencySystem::calculate_run_payout(2345, 7, false) == 116);
+    assert(CurrencySystem::calculate_run_payout(2345, 7, true) == 616);
+    assert(CurrencySystem::calculate_run_payout(-20, -3, false) == 40);
+    const int initial_prana = CurrencySystem::instance().prana_shards();
+    assert(!CurrencySystem::instance().spend_prana_shards(-1));
+    assert(CurrencySystem::instance().prana_shards() == initial_prana);
+    assert(!CurrencySystem::instance().try_unlock_ship_with_prana("not-a-real-ship", 1000));
+    ConsumableInventory capped_inventory;
+    capped_inventory.kavach_charges = 3;
+    capped_inventory.soma_vials = 5;
+    capped_inventory.vajra_flares = 5;
+    CurrencySystem::instance().set_prana_shards(10000);
+    assert(!CurrencySystem::instance().buy_consumable(capped_inventory, "kavach"));
+    assert(!CurrencySystem::instance().buy_consumable(capped_inventory, "soma"));
+    assert(!CurrencySystem::instance().buy_consumable(capped_inventory, "vajra"));
+    assert(CurrencySystem::instance().prana_shards() == 10000);
+
     InputPacket input;
     input.move_x = 4.0f;
     input.move_y = -2.0f;
@@ -146,6 +164,13 @@ int main() {
     save_db.update_max_wave(36);
     save_db.set_continue_wave(18);
     save_db.set_tutorial_shown(true);
+    assert(save_db.set_equipped_ship("tripura"));
+    save_db.set_coop_rule(CoopRule::SQUAD_LIVES);
+    ConsumableInventory saved_armory;
+    saved_armory.kavach_charges = 2;
+    saved_armory.soma_vials = 3;
+    saved_armory.vajra_flares = 4;
+    save_db.set_armory_inventory(saved_armory);
     CurrencySystem::instance().set_prana_shards(1234);
     CurrencySystem::instance().set_unlocked_ships({ "pushpaka", "tripura", "audit-ship" });
     CurrencySystem::instance().set_ship_upgrade_levels({ { "garuda", 3 } });
@@ -165,6 +190,9 @@ int main() {
     save_db.set_player_name("changed");
     save_db.set_continue_wave(1);
     save_db.set_tutorial_shown(false);
+    assert(save_db.set_equipped_ship("pushpaka"));
+    save_db.set_coop_rule(CoopRule::HARDCORE);
+    save_db.set_armory_inventory(ConsumableInventory{});
     CurrencySystem::instance().set_prana_shards(1);
     CurrencySystem::instance().set_unlocked_ships({ "pushpaka" });
     CurrencySystem::instance().set_ship_upgrade_levels({});
@@ -183,6 +211,11 @@ int main() {
     assert(save_db.player_name() == "audit-save-pilot");
     assert(save_db.high_score() == 765432 && save_db.max_wave() == 36 && save_db.continue_wave() == 18);
     assert(save_db.tutorial_shown() && CurrencySystem::instance().prana_shards() == 1234);
+    assert(save_db.equipped_ship() == "tripura");
+    assert(save_db.coop_rule() == CoopRule::SQUAD_LIVES);
+    assert(save_db.armory_inventory().kavach_charges == 2);
+    assert(save_db.armory_inventory().soma_vials == 3);
+    assert(save_db.armory_inventory().vajra_flares == 4);
     assert(CurrencySystem::instance().unlocked_ships().size() == 3);
     assert(CurrencySystem::instance().ship_upgrade_level("garuda") == 3);
     assert(CurrencySystem::instance().ship_sorties("garuda") == 17);

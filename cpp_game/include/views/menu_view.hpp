@@ -35,10 +35,11 @@ public:
         float center_x = 50.0f; // Left column
 
         m_buttons.emplace_back(Rectangle{ center_x, start_y,                     btn_w, btn_h }, "1.  ENTER CAMPAIGN",            COLOR_GOLD_BRIGHT,   "[1]", Vimana::UI::ButtonKind::PRIMARY);
-        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 1,       btn_w, btn_h }, "2.  VIMANA HANGAR",             COLOR_CYAN_BRIGHT,   "[2]", Vimana::UI::ButtonKind::SECONDARY);
-        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 2,       btn_w, btn_h }, "3.  PILOT PROFILE",             COLOR_GREEN_BRIGHT,  "[3]", Vimana::UI::ButtonKind::SECONDARY);
-        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 3,       btn_w, btn_h }, "4.  DUEL MODE",                 COLOR_ORANGE_BRIGHT, "[4]", Vimana::UI::ButtonKind::SECONDARY);
-        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 4,       btn_w, btn_h }, "5.  SETTINGS",                  COLOR_MUTED,         "[5]", Vimana::UI::ButtonKind::GHOST);
+        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 1,       btn_w, btn_h }, "2.  MULTIPLAYER SQUAD",         COLOR_CYAN_BRIGHT,   "[2]", Vimana::UI::ButtonKind::SECONDARY);
+        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 2,       btn_w, btn_h }, "3.  VIMANA HANGAR",             COLOR_CYAN_BRIGHT,   "[3]", Vimana::UI::ButtonKind::SECONDARY);
+        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 3,       btn_w, btn_h }, "4.  PILOT PROFILE",             COLOR_GREEN_BRIGHT,  "[4]", Vimana::UI::ButtonKind::SECONDARY);
+        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 4,       btn_w, btn_h }, "5.  DUEL MODE",                 COLOR_ORANGE_BRIGHT, "[5]", Vimana::UI::ButtonKind::SECONDARY);
+        m_buttons.emplace_back(Rectangle{ center_x, start_y + spacing * 5,       btn_w, btn_h }, "6.  SETTINGS",                  COLOR_MUTED,         "[6]", Vimana::UI::ButtonKind::GHOST);
 
         // Bottom-right secondary actions
         m_buttons.emplace_back(Rectangle{ SCREEN_WIDTH - 145, SCREEN_HEIGHT - 56, 110, 28 }, "QUIT GAME",   COLOR_RED_BRIGHT,"[ESC]", Vimana::UI::ButtonKind::DESTRUCTIVE);
@@ -75,17 +76,18 @@ public:
             if (m_btn_continue.update(mouse_pos)) m_next_view = ViewType::CAMPAIGN_MAP;
         }
 
-        // Button clicks or keyboard shortcuts [1-5]
+        // Button clicks or keyboard shortcuts [1-6]
         if (m_buttons[0].update(mouse_pos) || IsKeyPressed(KEY_ONE)) m_next_view = ViewType::CAMPAIGN_MAP;
-        else if (m_buttons[1].update(mouse_pos) || IsKeyPressed(KEY_TWO)) m_next_view = ViewType::SHIP_SELECT;
-        else if (m_buttons[2].update(mouse_pos) || IsKeyPressed(KEY_THREE)) m_next_view = ViewType::PROFILE;
-        else if (m_buttons[3].update(mouse_pos) || IsKeyPressed(KEY_FOUR)) m_next_view = ViewType::DUEL;
-        else if (m_buttons[4].update(mouse_pos) || IsKeyPressed(KEY_FIVE)) m_next_view = ViewType::SETTINGS;
+        else if (m_buttons[1].update(mouse_pos) || IsKeyPressed(KEY_TWO)) m_next_view = ViewType::MULTIPLAYER_LOBBY;
+        else if (m_buttons[2].update(mouse_pos) || IsKeyPressed(KEY_THREE)) m_next_view = ViewType::SHIP_SELECT;
+        else if (m_buttons[3].update(mouse_pos) || IsKeyPressed(KEY_FOUR)) m_next_view = ViewType::PROFILE;
+        else if (m_buttons[4].update(mouse_pos) || IsKeyPressed(KEY_FIVE)) m_next_view = ViewType::DUEL;
+        else if (m_buttons[5].update(mouse_pos) || IsKeyPressed(KEY_SIX)) m_next_view = ViewType::SETTINGS;
 
         if (IsKeyPressed(KEY_P)) m_next_view = ViewType::PROFILE;
 
         // Bottom-right: QUIT
-        if (m_buttons[5].update(mouse_pos)) {
+        if (m_buttons[6].update(mouse_pos)) {
             m_next_view = ViewType::QUIT;
         }
 
@@ -155,7 +157,9 @@ public:
         DrawLine(static_cast<int>(dash_box.x + 20), static_cast<int>(dash_box.y + 38), static_cast<int>(dash_box.x + dash_box.width - 20), static_cast<int>(dash_box.y + 38), PAL_OUTLINE_VARIANT);
 
         // Floating Flagship Preview in Telemetry Header (Right side of box)
-        Texture2D ship_tex = AssetManager::instance().get_texture("pushpaka.png");
+        const ShipArchetype* equipped_ship = GetShipArchetype(DBSystem::instance().equipped_ship());
+        const std::string flagship_sprite = equipped_ship ? equipped_ship->sprite_file : "pushpaka.png";
+        Texture2D ship_tex = AssetManager::instance().get_texture(flagship_sprite);
         if (ship_tex.id > 0) {
             float float_y = dash_box.y + 75.0f + std::sin(m_ship_bob) * 5.0f;
             float ship_cx = dash_box.x + dash_box.width - 75.0f;
@@ -167,6 +171,9 @@ public:
             Rectangle src = { 0, 0, static_cast<float>(ship_tex.width), static_cast<float>(ship_tex.height) };
             Rectangle dest = { ship_cx, float_y, 64, 64 };
             DrawTexturePro(ship_tex, src, dest, { 32, 32 }, 0.0f, WHITE);
+
+            const std::string ship_label = equipped_ship ? equipped_ship->name : "PUSHPAKA";
+            DrawTextEx(title_f, ship_label.c_str(), { ship_cx - 55.0f, float_y + 43.0f }, 10, 1.0f, PAL_PRIMARY_BRIGHT);
 
             // Thruster glow
             DrawCircle(static_cast<int>(ship_cx), static_cast<int>(float_y + 28), 5.0f, PAL_SECONDARY_BRIGHT);

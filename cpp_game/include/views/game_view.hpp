@@ -70,6 +70,9 @@ public:
         m_controllers.push_back(std::make_unique<HumanController>(0));
 
         m_is_coop_mode = false;
+        m_coop_rule = CoopRule::REVIVE_MODE;
+        m_squad_lives_remaining = COOP_SQUAD_START_LIVES;
+        m_run_reward_claimed = false;
         m_difficulty = Difficulty::KSHATRIYA;
         m_run_duration = 0.0f;
         m_wave_mgr.start_campaign(1, Difficulty::KSHATRIYA, 1);
@@ -103,13 +106,17 @@ public:
         const ConsumableInventory& pre_inv,
         int starting_wave = 1,
         Difficulty diff = Difficulty::KSHATRIYA,
-        int squad_size = 1
+        int squad_size = 1,
+        CoopRule coop_rule = CoopRule::REVIVE_MODE
     ) {
         m_difficulty = diff;
         m_run_duration = 0.0f;
         m_run_recorded = false;
+        m_run_reward_claimed = false;
         m_death_cause.clear();
         m_is_coop_mode = (squad_size > 1 || NetworkManager::instance().role() != NetworkRole::OFFLINE);
+        m_coop_rule = m_is_coop_mode ? coop_rule : CoopRule::REVIVE_MODE;
+        m_squad_lives_remaining = COOP_SQUAD_START_LIVES;
         int num_players = m_is_coop_mode ? std::max(squad_size, (int)NetworkManager::instance().players().size()) : 1;
         if (num_players < 1) num_players = 1;
 
@@ -120,6 +127,7 @@ public:
         // Slot 0: Primary local player
         m_squad[0].init(ship);
         m_squad[0].inventory = pre_inv;
+        DBSystem::instance().consume_armory_inventory();
         m_squad[0].player_id = 0;
         m_squad[0].callsign = DBSystem::instance().player_name();
         m_controllers.push_back(std::make_unique<HumanController>(0));
@@ -212,6 +220,15 @@ void apply_boon_and_resume(BoonType boon) {
     bool is_coop_mode() const { return m_is_coop_mode; }
     int total_team_score() const { return m_total_team_score; }
     std::string death_cause() const { return m_death_cause.empty() ? "Unknown hostile" : m_death_cause; }
+
+    int grant_run_completion_reward(bool victory) {
+        if (m_run_reward_claimed) return 0;
+        m_run_reward_claimed = true;
+        const int reward = CurrencySystem::calculate_run_payout(player().score, current_wave(), victory);
+        CurrencySystem::instance().add_prana_shards(reward);
+        DBSystem::instance().save_game();
+        return reward;
+    }
 
     void record_ship_mastery() {
         if (m_run_recorded || m_squad.empty() || !m_squad[0].archetype) return;
@@ -342,8 +359,10 @@ if (p.is_downed) {
                 p.downed_timer += dt;
                 if (p.downed_timer >= 15.0f) {
                     p.downed_timer = 0.0f;
-                    p.lives--;
-                    if (p.lives > 0) {
+                    const bool has_life = m_coop_rule == CoopRule::SQUAD_LIVES
+                        ? (m_squad_lives_remaining > 0 && --m_squad_lives_remaining >= 0)
+                        : (--p.lives > 0);
+                    if (has_life) {
                         // Respawn at 25% HP with 2s invincibility
                         p.is_downed = false;
                         p.hp = static_cast<int>(p.max_hp * 0.25f);
@@ -352,8 +371,10 @@ if (p.is_downed) {
                         p.last_stand_timer = 0.0f;
                         p.pos = { SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT * 0.78f };
                         SoundSystem::instance().play_sfx("powerup.wav", 0.8f);
-                        m_particles.add_floating_text(p.pos,
-                            "LIFE LOST — " + std::to_string(p.lives) + " REMAINING", COLOR_RED_BRIGHT);
+                        const std::string remaining = m_coop_rule == CoopRule::SQUAD_LIVES
+                            ? std::to_string(m_squad_lives_remaining) + " SQUAD LIVES REMAIN"
+                            : "LIFE LOST — " + std::to_string(p.lives) + " REMAINING";
+                        m_particles.add_floating_text(p.pos, remaining, COLOR_RED_BRIGHT);
                     } else {
                         // No lives left → become spectator
                         p.is_spectator = true;
@@ -445,6 +466,10 @@ if (p.is_downed) {
 
         for (size_t i = 0; i < m_squad.size(); ++i) {
             auto& p = m_squad[i];
+            if (p.is_spectator) {
+                p.vel = { 0.0f, 0.0f };
+                continue;
+            }
             p.current_speed = p.base_speed * realm_spd_mult;
             if (m_team_transcendence_timer > 0) p.current_speed *= 1.10f; // Team Transcendence buff
 
@@ -476,6 +501,15 @@ if (p.is_downed) {
         for (auto& p : m_squad) {
             if (!p.is_spectator && !p.is_downed && p.hp <= 0) {
                 m_death_cause = p.last_damage_source.empty() ? "Unknown hostile" : p.last_damage_source;
+                if (m_coop_rule == CoopRule::HARDCORE) {
+                    p.is_spectator = true;
+                    p.is_downed = false;
+                    p.hp = 0;
+                    p.vel = { 0.0f, 0.0f };
+                    m_particles.add_floating_text(p.pos, "HARDCORE // PILOT ELIMINATED", COLOR_RED_BRIGHT);
+                    SoundSystem::instance().play_downed_alert();
+                    continue;
+                }
                 p.is_downed = true;
                 p.downed_timer = 0.0f;
                 p.self_revive_timer = 0.0f;
@@ -723,7 +757,17 @@ if (p.is_downed) {
 
         // Cockpit HUD (Squadron status, boss bar, combo meter, instruments, radar)
         Boss* boss_ptr = m_wave_mgr.is_boss_wave() ? &m_wave_mgr.get_boss() : nullptr;
-        UI::HUD::draw(m_squad, m_wave_mgr.current_wave(), realm, boss_ptr, m_enemies, m_team_combo, m_team_transcendence_timer, title_f, body_f);
+        UI::HUD::draw(m_squad, m_wave_mgr.current_wave(), realm, boss_ptr, m_enemies, m_team_combo,
+                      m_team_transcendence_timer, title_f, body_f, m_coop_rule);
+        if (m_is_coop_mode && m_coop_rule != CoopRule::REVIVE_MODE) {
+            const std::string rule_text = m_coop_rule == CoopRule::SQUAD_LIVES
+                ? "SQUAD LIVES // " + std::to_string(m_squad_lives_remaining)
+                : "HARDCORE // NO REVIVES";
+            const Rectangle rule_badge = { 15.0f, 56.0f, 155.0f, 30.0f };
+            UI::DrawChamferedPanel(rule_badge, COLOR_CYAN_BRIGHT, COLOR_SURFACE_LOW, 3.0f);
+            DrawTextEx(body_f, rule_text.c_str(), { rule_badge.x + 7.0f, rule_badge.y + 9.0f }, 9.0f, 1.0f,
+                       m_coop_rule == CoopRule::HARDCORE ? COLOR_RED_BRIGHT : COLOR_CYAN_BRIGHT);
+        }
 
         // ESC hint lives in pause menu only, not during fight.
 
@@ -874,6 +918,9 @@ private:
     bool m_is_paused;
     bool m_confirm_abort;
     bool m_is_coop_mode;
+    CoopRule m_coop_rule = CoopRule::REVIVE_MODE;
+    int m_squad_lives_remaining = COOP_SQUAD_START_LIVES;
+    bool m_run_reward_claimed = false;
     Difficulty m_difficulty = Difficulty::KSHATRIYA;
     float m_run_duration = 0.0f;
     bool m_run_recorded = false;

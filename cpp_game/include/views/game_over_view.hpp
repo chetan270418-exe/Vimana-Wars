@@ -36,7 +36,7 @@ GameOverView(bool is_victory = false)
 
 void set_results(bool victory, int score, int wave, int kills, int damage, const std::string& ship_name,
                       float duration_seconds = 0.0f, const std::string& difficulty = "normal",
-                      const std::string& death_cause = "") {
+                      const std::string& death_cause = "", int prana_reward = 0) {
         m_is_victory = victory;
         m_score = score;
         m_wave = wave;
@@ -46,6 +46,7 @@ void set_results(bool victory, int score, int wave, int kills, int damage, const
         m_duration = duration_seconds;
         m_difficulty = difficulty;
         m_killed_by = victory ? "" : death_cause;
+        m_prana_reward = std::max(0, prana_reward);
 
         int previous_high = DBSystem::instance().high_score();
         m_is_new_high_score = (score > previous_high && score > 0);
@@ -179,6 +180,10 @@ void set_results(bool victory, int score, int wave, int kills, int damage, const
         DrawTextEx(body_font, "VESSEL CLASS :", { lx, cy }, 13, 1.0f, COLOR_PARCHMENT);
         DrawTextEx(title_font, m_ship.c_str(), { rx, cy - 2 }, 15, 1.0f, COLOR_GOLD);
 
+        cy += 28.0f;
+        DrawTextEx(body_font, "PRANA EARNED :", { lx, cy }, 13, 1.0f, COLOR_PARCHMENT);
+        DrawTextEx(title_font, ("+" + std::to_string(m_prana_reward)).c_str(), { rx, cy - 2 }, 15, 1.0f, COLOR_GOLD_BRIGHT);
+
         // Mission Duration
         int mins = static_cast<int>(m_duration) / 60;
         int secs = static_cast<int>(m_duration) % 60;
@@ -229,6 +234,7 @@ private:
     int m_wave = 1;
     int m_kills = 0;
     int m_damage = 0;
+    int m_prana_reward = 0;
     std::string m_ship = "Pushpaka";
     PerformanceRank m_rank = PerformanceRank::B_RANK;
     std::string m_rank_reason = "";

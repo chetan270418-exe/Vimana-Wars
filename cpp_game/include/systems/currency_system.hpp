@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <functional>
 #include <unordered_map>
+#include <limits>
 #include "core/types.hpp"
 #include "core/constants.hpp"
 #include "entities/ship_archetypes.hpp"
@@ -19,13 +20,25 @@ public:
     }
 
     int prana_shards() const { return m_prana_shards; }
-    void add_prana_shards(int amount) { m_prana_shards += amount; }
+    void add_prana_shards(int amount) {
+        if (amount <= 0) return;
+        const long long total = static_cast<long long>(m_prana_shards) + amount;
+        m_prana_shards = static_cast<int>(std::min<long long>(total, std::numeric_limits<int>::max()));
+    }
     bool spend_prana_shards(int amount) {
-        if (m_prana_shards >= amount) {
+        if (amount > 0 && m_prana_shards >= amount) {
             m_prana_shards -= amount;
             return true;
         }
         return false;
+    }
+
+    static int calculate_run_payout(int score, int wave, bool victory) {
+        const long long reward = PRANA_RUN_BASE_REWARD
+            + (std::max(0, score) / 1000) * PRANA_PER_1000_SCORE
+            + static_cast<long long>(std::max(0, wave)) * PRANA_PER_WAVE_SURVIVED
+            + (victory ? PRANA_RUN_VICTORY_BONUS : 0);
+        return static_cast<int>(std::min<long long>(reward, std::numeric_limits<int>::max()));
     }
 
     bool is_ship_unlocked(const std::string& ship_id, int campaign_max_wave) const {
@@ -51,8 +64,8 @@ public:
     bool try_unlock_ship_with_prana(const std::string& ship_id, int campaign_max_wave = 1) {
         if (is_ship_unlocked(ship_id, campaign_max_wave)) return false; // Already unlocked
         const ShipArchetype* arch = GetShipArchetype(ship_id);
-        if (arch && !arch->boss_unlock_id.empty()) return false;
-        int cost = arch ? arch->prana_cost : COST_EARLY_SHIP_UNLOCK;
+        if (!arch || !arch->boss_unlock_id.empty() || arch->prana_cost <= 0) return false;
+        const int cost = arch->prana_cost;
         if (spend_prana_shards(cost)) {
             m_unlocked_ships.push_back(ship_id);
             if (m_on_ship_unlocked) m_on_ship_unlocked(ship_id);
@@ -62,13 +75,13 @@ public:
     }
 
     bool buy_consumable(ConsumableInventory& inv, const std::string& item) {
-        if (item == "kavach" && spend_prana_shards(COST_KAVACH_SHIELD)) {
+        if (item == "kavach" && inv.kavach_charges < 3 && spend_prana_shards(COST_KAVACH_SHIELD)) {
             inv.kavach_charges++;
             return true;
-        } else if (item == "soma" && spend_prana_shards(COST_SOMA_VIAL)) {
+        } else if (item == "soma" && inv.soma_vials < 5 && spend_prana_shards(COST_SOMA_VIAL)) {
             inv.soma_vials++;
             return true;
-        } else if (item == "vajra" && spend_prana_shards(COST_VAJRA_FLARE)) {
+        } else if (item == "vajra" && inv.vajra_flares < 5 && spend_prana_shards(COST_VAJRA_FLARE)) {
             inv.vajra_flares++;
             return true;
         }
@@ -94,7 +107,7 @@ public:
         }
         return {};
     }
-    void set_prana_shards(int shards) { m_prana_shards = shards; }
+    void set_prana_shards(int shards) { m_prana_shards = std::max(0, shards); }
 
     int ship_upgrade_level(const std::string& ship_id) const {
         auto it = m_ship_upgrade_levels.find(ship_id);

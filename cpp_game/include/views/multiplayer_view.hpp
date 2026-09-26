@@ -9,6 +9,7 @@
 #include "systems/account_system.hpp"
 #include "systems/db_system.hpp"
 #include "systems/asset_manager.hpp"
+#include "systems/sound_system.hpp"
 #include "ui/button.hpp"
 #include "ui/vedic_theme.hpp"
 
@@ -33,6 +34,7 @@ public:
           m_btn_ready({ 580, 390, 260, 42 }, "READY PILOT [SPACE]", COLOR_GREEN_BRIGHT),
           m_btn_start({ 580, 440, 260, 42 }, "DEPLOY SQUADRON", COLOR_GOLD_BRIGHT),
           m_btn_add_ai({ 580, 340, 260, 36 }, "+ ADD AI SQUADMATE", COLOR_PURPLE_BRIGHT),
+          m_btn_coop_rule({ 580, 250, 260, 34 }, "RULE: STANDARD REVIVES", COLOR_CYAN_BRIGHT),
           m_btn_back({ 40, 520, 110, 36 }, "BACK", COLOR_MUTED)
     {
         init();
@@ -44,6 +46,7 @@ public:
         m_is_ready = false;
         m_ip_focused = false;
         m_cloud_status = "Querying live Sangha lobbies...";
+        refresh_coop_rule_button();
 
         m_lobbies.clear();
 
@@ -147,6 +150,14 @@ public:
             }
         } else {
             // Squad Room View Actions
+            if (m_btn_coop_rule.update(mouse_pos) || IsKeyPressed(KEY_R)) {
+                const int next_rule = (static_cast<int>(DBSystem::instance().coop_rule()) + 1) % 3;
+                DBSystem::instance().set_coop_rule(static_cast<CoopRule>(next_rule));
+                DBSystem::instance().save_game();
+                refresh_coop_rule_button();
+                SoundSystem::instance().play_ui_click();
+            }
+
             if (m_btn_ready.update(mouse_pos) || IsKeyPressed(KEY_SPACE)) {
                 m_is_ready = !m_is_ready;
                 m_btn_ready.set_label(m_is_ready ? "STATUS: [READY]" : "READY PILOT [SPACE]");
@@ -313,6 +324,14 @@ public:
 
             DrawLine(580, 235, 850, 235, COLOR_SURFACE_HIGH);
 
+            m_btn_coop_rule.draw(title_font);
+            const CoopRule active_rule = DBSystem::instance().coop_rule();
+            const char* rule_help = active_rule == CoopRule::SQUAD_LIVES
+                ? "6 shared lives; bleed-out spends one."
+                : active_rule == CoopRule::HARDCORE
+                    ? "One hull break eliminates the pilot."
+                    : "Downed pilots can be revived; 3 lives each.";
+            DrawTextEx(body_font, rule_help, { 580, 291 }, 10, 1.0f, COLOR_PARCHMENT);
             m_btn_add_ai.draw(title_font);
             m_btn_ready.draw(title_font);
             m_btn_start.draw(title_font);
@@ -333,6 +352,14 @@ private:
         std::string status;
     };
 
+    void refresh_coop_rule_button() {
+        switch (DBSystem::instance().coop_rule()) {
+            case CoopRule::SQUAD_LIVES: m_btn_coop_rule.set_label("RULE: SHARED SQUAD LIVES"); break;
+            case CoopRule::HARDCORE: m_btn_coop_rule.set_label("RULE: HARDCORE"); break;
+            default: m_btn_coop_rule.set_label("RULE: STANDARD REVIVES"); break;
+        }
+    }
+
     ViewType m_next_view;
     bool m_in_room;
     bool m_is_ready;
@@ -351,6 +378,7 @@ private:
     UI::Button m_btn_ready;
     UI::Button m_btn_start;
     UI::Button m_btn_add_ai;
+    UI::Button m_btn_coop_rule;
     UI::Button m_btn_back;
 };
 

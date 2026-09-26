@@ -158,7 +158,9 @@ int main() {
                 loadout_view->init();
                 current_view = loadout_view.get();
             } else if (next == ViewType::SHIP_SELECT) {
-                ship_select_view->set_return_view(ViewType::LOADOUT);
+                const bool from_campaign_flow = current_view_type == ViewType::CAMPAIGN_MAP ||
+                    current_view_type == ViewType::DIFFICULTY_SELECT || current_view_type == ViewType::LOADOUT;
+                ship_select_view->set_return_view(from_campaign_flow ? ViewType::LOADOUT : ViewType::MENU);
                 ship_select_view->init();
                 current_view = ship_select_view.get();
             } else if (next == ViewType::CODEX) {
@@ -184,7 +186,8 @@ int main() {
                     game_view->apply_boon_and_resume(boon_view->chosen_boon());
                 } else if (current_view_type == ViewType::MULTIPLAYER_LOBBY) {
                     int num_squad = NetworkManager::instance().players().empty() ? 2 : static_cast<int>(NetworkManager::instance().players().size());
-                    game_view->start_with_ship(&ship_select_view->selected_ship(), ship_select_view->consumables(), 1, difficulty_view->selected_difficulty(), num_squad);
+                    game_view->start_with_ship(&ship_select_view->selected_ship(), ship_select_view->consumables(), 1,
+                                               difficulty_view->selected_difficulty(), num_squad, DBSystem::instance().coop_rule());
                 }
                 current_view = game_view.get();
             } else if (next == ViewType::WAVE_CLEAR) {
@@ -224,10 +227,11 @@ int main() {
             } else if (next == ViewType::GAME_OVER || next == ViewType::VICTORY) {
                 bool is_vic = (next == ViewType::VICTORY);
                 const auto& p = game_view->player();
+                const int prana_reward = game_view->grant_run_completion_reward(is_vic);
                 game_over_view->set_results(is_vic, p.score, game_view->current_wave(), p.kills, p.total_damage_dealt,
                                             p.archetype ? p.archetype->name : "Pushpaka",
                                             game_view->run_duration(), game_view->difficulty_string(),
-                                            is_vic ? "" : game_view->death_cause());
+                                            is_vic ? "" : game_view->death_cause(), prana_reward);
                 game_over_view->set_killed_by(is_vic ? "" : game_view->death_cause());
                 current_view = game_over_view.get();
             }

@@ -194,6 +194,26 @@ public:
                 CurrencySystem::instance().set_ship_last_death_causes(causes);
             }
 
+            m_equipped_ship = "pushpaka";
+            if (j.contains("equipped_ship") && j["equipped_ship"].is_string()) {
+                set_equipped_ship(j["equipped_ship"].get<std::string>());
+            }
+            const int saved_coop_rule = j.value("coop_rule", static_cast<int>(CoopRule::REVIVE_MODE));
+            if (saved_coop_rule >= static_cast<int>(CoopRule::REVIVE_MODE) &&
+                saved_coop_rule <= static_cast<int>(CoopRule::HARDCORE)) {
+                m_coop_rule = static_cast<CoopRule>(saved_coop_rule);
+            } else {
+                m_coop_rule = CoopRule::REVIVE_MODE;
+            }
+            if (j.contains("armory_inventory") && j["armory_inventory"].is_object()) {
+                ConsumableInventory inventory = m_armory_inventory;
+                const auto& saved_inventory = j["armory_inventory"];
+                inventory.kavach_charges = saved_inventory.value("kavach", inventory.kavach_charges);
+                inventory.soma_vials = saved_inventory.value("soma", inventory.soma_vials);
+                inventory.vajra_flares = saved_inventory.value("vajra", inventory.vajra_flares);
+                set_armory_inventory(inventory);
+            }
+
             // Audio channels
             if (j.contains("master_volume")) SoundSystem::instance().set_master_volume(j["master_volume"].get<float>());
             if (j.contains("sfx_volume")) SoundSystem::instance().set_sfx_volume(j["sfx_volume"].get<float>());
@@ -257,6 +277,13 @@ public:
             j["ship_upgrades"] = CurrencySystem::instance().ship_upgrade_levels();
             j["ship_sorties"] = CurrencySystem::instance().ship_sortie_counts();
             j["ship_last_death_cause"] = CurrencySystem::instance().ship_last_death_causes();
+            j["equipped_ship"] = m_equipped_ship;
+            j["coop_rule"] = static_cast<int>(m_coop_rule);
+            j["armory_inventory"] = {
+                { "kavach", m_armory_inventory.kavach_charges },
+                { "soma", m_armory_inventory.soma_vials },
+                { "vajra", m_armory_inventory.vajra_flares }
+            };
 
             // Audio channel volumes
             j["master_volume"] = SoundSystem::instance().master_volume();
@@ -291,6 +318,29 @@ public:
     void set_continue_wave(int wave) { m_continue_wave = std::max(1, wave); }
     bool tutorial_shown() const { return m_tutorial_shown; }
     void set_tutorial_shown(bool shown) { m_tutorial_shown = shown; }
+    const std::string& equipped_ship() const { return m_equipped_ship; }
+    bool set_equipped_ship(const std::string& ship_id) {
+        const ShipArchetype* ship = GetShipArchetype(ship_id);
+        if (!ship || !CurrencySystem::instance().is_ship_unlocked(ship_id, m_max_wave)) return false;
+        m_equipped_ship = ship_id;
+        return true;
+    }
+    CoopRule coop_rule() const { return m_coop_rule; }
+    void set_coop_rule(CoopRule rule) {
+        if (rule >= CoopRule::REVIVE_MODE && rule <= CoopRule::HARDCORE) m_coop_rule = rule;
+    }
+    const ConsumableInventory& armory_inventory() const { return m_armory_inventory; }
+    void set_armory_inventory(const ConsumableInventory& inventory) {
+        m_armory_inventory.kavach_charges = std::clamp(inventory.kavach_charges, 0, 3);
+        m_armory_inventory.soma_vials = std::clamp(inventory.soma_vials, 0, 5);
+        m_armory_inventory.vajra_flares = std::clamp(inventory.vajra_flares, 0, 5);
+    }
+    void consume_armory_inventory() {
+        m_armory_inventory.kavach_charges = 0;
+        m_armory_inventory.soma_vials = 0;
+        m_armory_inventory.vajra_flares = 0;
+        save_game();
+    }
 
     std::vector<MatchRecord> fetch_match_history(int limit = 10) {
         std::vector<MatchRecord> records;
@@ -326,7 +376,7 @@ public:
     }
 
 private:
-    DBSystem() : m_db(nullptr), m_player_name("Warrior"), m_high_score(0), m_max_wave(1), m_continue_wave(1), m_tutorial_shown(false) {}
+    DBSystem() : m_db(nullptr), m_player_name("Warrior"), m_high_score(0), m_max_wave(1), m_continue_wave(1), m_tutorial_shown(false), m_equipped_ship("pushpaka"), m_coop_rule(CoopRule::REVIVE_MODE), m_armory_inventory() {}
     ~DBSystem() = default;
 
     void ensure_tables() {
@@ -352,6 +402,9 @@ private:
     int m_max_wave;
     int m_continue_wave;
     bool m_tutorial_shown;
+    std::string m_equipped_ship;
+    CoopRule m_coop_rule;
+    ConsumableInventory m_armory_inventory;
 };
 
 } // namespace Vimana

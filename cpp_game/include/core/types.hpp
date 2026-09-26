@@ -7,7 +7,7 @@
 
 namespace Vimana {
 
-inline constexpr int SAVE_SCHEMA_VERSION = 5;
+inline constexpr int SAVE_SCHEMA_VERSION = 6;
 
 // ── Math Helpers ─────────────────────────────────────────────────────────────
 inline Vector2 Vector2Zero() { return { 0.0f, 0.0f }; }
@@ -152,6 +152,14 @@ enum class GameMode {
     CO_OP_PVE,    // 2–4 player cooperative
     BOSS_RUSH,    // Boss-only gauntlet
     DAILY_CHALLENGE
+};
+
+// Co-op failure rules. These are persisted as small integer values; keep the
+// explicit values stable so older/newer saves remain readable.
+enum class CoopRule : uint8_t {
+    REVIVE_MODE = 0, // Existing individual lives + down/revive loop
+    SQUAD_LIVES = 1, // Shared pool spent when a downed pilot bleeds out
+    HARDCORE = 2     // No downed state or revives
 };
 
 // ── Difficulty (4-tier) ───────────────────────────────────────────────────────

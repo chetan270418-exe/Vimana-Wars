@@ -1,5 +1,7 @@
 # Vimana Wars C++ Audit Task File
 
+Companion design, page specifications, and the 70-item product roadmap are in [`docs/README.md`](docs/README.md). This file remains the separate source/build audit checklist.
+
 Scope: C++ game and its C++-specific README only (`cpp_game/`). The attached audit's roadmap actually numbers **35 actions**, not 34. Duplicate findings are linked to their main action rather than implemented twice.
 
 Status key: `[x]` implemented/present and verified by source/build; `[~]` partly checked; `[ ]` still needs work or hands-on validation.
@@ -67,6 +69,6 @@ Status key: `[x]` implemented/present and verified by source/build; `[~]` partly
 
 ## Verification run
 
-- `cmd /c build.bat` — passed after the implementation changes, including enemy draw/update separation.
-- `cmd /c test_audit.bat` — passed: SQLite migration and death-cause round trip, JSON save/settings/progression load and corrupt backup, Continue wave restore, network validation helpers, all 60 ship firing patterns, two-pilot controller/action flow, four-difficulty wave/boss scaling, eight bosses' basic telegraphs/attacks and phase caps, and actual spawns for waves 6–10.
+- `cmd /c build.bat` — passed after the implementation changes, including the reward, Hangar, co-op rule, and menu navigation slice.
+- `cmd /c test_audit.bat` — passed: SQLite migration and death-cause round trip; JSON save/settings/progression, equipped ship, co-op rule, and consumable stock round trips; corrupt backup; run-payout formula and currency edge cases; Continue wave restore; network validation; all 60 ship firing patterns; two-pilot controller/action flow; difficulty/boss scaling; and waves 6–10.
 - `git diff --check -- cpp_game` — no whitespace errors; Git only reports the repository's existing LF/CRLF normalization notices.

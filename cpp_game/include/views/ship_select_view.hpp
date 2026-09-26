@@ -1,5 +1,6 @@
 #pragma once
 #include <algorithm>
+#include <iterator>
 #include <vector>
 #include <string>
 #include "raylib.h"
@@ -25,10 +26,20 @@ public:
         m_next_view = ViewType::SHIP_SELECT;
         m_selected_idx = 0;
         m_show_all = false;
+        m_temp_inv = DBSystem::instance().armory_inventory();
+        const auto equipped = std::find_if(SHIP_FLEET.begin(), SHIP_FLEET.end(), [](const ShipArchetype& ship) {
+            return ship.id == DBSystem::instance().equipped_ship();
+        });
+        if (equipped != SHIP_FLEET.end() &&
+            CurrencySystem::instance().is_ship_unlocked(equipped->id, DBSystem::instance().max_wave())) {
+            m_selected_idx = static_cast<size_t>(std::distance(SHIP_FLEET.begin(), equipped));
+            m_show_all = m_selected_idx >= 3;
+        }
 
         m_btn_prev = UI::Button({ 80, 240, 48, 48 }, "<", COLOR_GOLD, "[A]", UI::ButtonKind::SECONDARY);
         m_btn_next = UI::Button({ 370, 240, 48, 48 }, ">", COLOR_GOLD, "[D]", UI::ButtonKind::SECONDARY);
-        m_btn_launch = UI::Button({ 520, 500, 320, 44 }, "LAUNCH MISSION", COLOR_GOLD_BRIGHT, "[ENTER]", UI::ButtonKind::PRIMARY);
+        const std::string launch_label = m_return_view == ViewType::MENU ? "EQUIP VESSEL" : "SELECT VESSEL";
+        m_btn_launch = UI::Button({ 520, 500, 320, 44 }, launch_label, COLOR_GOLD_BRIGHT, "[ENTER]", UI::ButtonKind::PRIMARY);
         m_btn_back = UI::Button({ 35, 520, 110, 36 }, "BACK", COLOR_MUTED, "[ESC]", UI::ButtonKind::GHOST);
         m_btn_unlock = UI::Button({ 520, 440, 320, 40 }, "UNLOCK WITH PRANA", COLOR_CYAN_BRIGHT, "", UI::ButtonKind::SECONDARY);
         m_btn_upgrade = UI::Button({ 520, 276, 320, 34 }, "UPGRADE SHIP FRAME", COLOR_GOLD_BRIGHT, "", UI::ButtonKind::PRIMARY);
@@ -84,24 +95,40 @@ public:
                 std::string unlock_txt = "UNLOCK FOR " + std::to_string(current_ship.prana_cost) + " PRANA";
                 m_btn_unlock.set_label(unlock_txt);
                 if (m_btn_unlock.update(mouse_pos)) {
-                    CurrencySystem::instance().try_unlock_ship_with_prana(current_ship.id, max_wave);
+                    if (CurrencySystem::instance().try_unlock_ship_with_prana(current_ship.id, max_wave)) {
+                        DBSystem::instance().save_game();
+                        SoundSystem::instance().play_sfx("powerup.wav");
+                    } else {
+                        SoundSystem::instance().play_ui_click();
+                    }
                 }
             }
         } else {
             if (is_unlocked && (m_btn_launch.update(mouse_pos) || IsKeyPressed(KEY_ENTER))) {
-                m_next_view = (m_return_view == ViewType::LOADOUT) ? ViewType::LOADOUT : ViewType::GAMEPLAY;
+                DBSystem::instance().set_equipped_ship(current_ship.id);
+                DBSystem::instance().save_game();
+                m_next_view = m_return_view;
             }
         }
 
         // Armory purchases
         if (m_btn_buy_kavach.update(mouse_pos)) {
-            CurrencySystem::instance().buy_consumable(m_temp_inv, "kavach");
+            if (CurrencySystem::instance().buy_consumable(m_temp_inv, "kavach")) {
+                DBSystem::instance().set_armory_inventory(m_temp_inv);
+                DBSystem::instance().save_game();
+            }
         }
         if (m_btn_buy_soma.update(mouse_pos)) {
-            CurrencySystem::instance().buy_consumable(m_temp_inv, "soma");
+            if (CurrencySystem::instance().buy_consumable(m_temp_inv, "soma")) {
+                DBSystem::instance().set_armory_inventory(m_temp_inv);
+                DBSystem::instance().save_game();
+            }
         }
         if (m_btn_buy_vajra.update(mouse_pos)) {
-            CurrencySystem::instance().buy_consumable(m_temp_inv, "vajra");
+            if (CurrencySystem::instance().buy_consumable(m_temp_inv, "vajra")) {
+                DBSystem::instance().set_armory_inventory(m_temp_inv);
+                DBSystem::instance().save_game();
+            }
         }
     }
 

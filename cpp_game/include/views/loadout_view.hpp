@@ -10,6 +10,7 @@
 #include "systems/asset_manager.hpp"
 #include "systems/sound_system.hpp"
 #include "systems/currency_system.hpp"
+#include "systems/db_system.hpp"
 #include "ui/button.hpp"
 #include "ui/vedic_theme.hpp"
 
@@ -54,24 +55,24 @@ public:
 
         // Buy Consumables - single source of truth: COST_* in core/constants.hpp
         if (m_btn_buy_kavach.update(mouse_pos)) {
-            if (CurrencySystem::instance().prana_shards() >= COST_KAVACH_SHIELD && m_inventory.kavach_charges < 3) {
-                CurrencySystem::instance().spend_prana_shards(COST_KAVACH_SHIELD);
-                m_inventory.kavach_charges++;
-                SoundSystem::instance().play_sfx("ui_click.wav");
+            if (CurrencySystem::instance().buy_consumable(m_inventory, "kavach")) {
+                DBSystem::instance().set_armory_inventory(m_inventory);
+                DBSystem::instance().save_game();
+                SoundSystem::instance().play_sfx("powerup.wav");
             }
         }
         if (m_btn_buy_soma.update(mouse_pos)) {
-            if (CurrencySystem::instance().prana_shards() >= COST_SOMA_VIAL && m_inventory.soma_vials < 5) {
-                CurrencySystem::instance().spend_prana_shards(COST_SOMA_VIAL);
-                m_inventory.soma_vials++;
-                SoundSystem::instance().play_sfx("ui_click.wav");
+            if (CurrencySystem::instance().buy_consumable(m_inventory, "soma")) {
+                DBSystem::instance().set_armory_inventory(m_inventory);
+                DBSystem::instance().save_game();
+                SoundSystem::instance().play_sfx("powerup.wav");
             }
         }
         if (m_btn_buy_vajra.update(mouse_pos)) {
-            if (CurrencySystem::instance().prana_shards() >= COST_VAJRA_FLARE && m_inventory.vajra_flares < 5) {
-                CurrencySystem::instance().spend_prana_shards(COST_VAJRA_FLARE);
-                m_inventory.vajra_flares++;
-                SoundSystem::instance().play_sfx("ui_click.wav");
+            if (CurrencySystem::instance().buy_consumable(m_inventory, "vajra")) {
+                DBSystem::instance().set_armory_inventory(m_inventory);
+                DBSystem::instance().save_game();
+                SoundSystem::instance().play_sfx("powerup.wav");
             }
         }
 

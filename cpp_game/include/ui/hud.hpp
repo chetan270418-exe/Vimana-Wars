@@ -22,7 +22,8 @@ public:
         int team_combo,
         float transcendence_timer,
         Font title_font,
-        Font body_font
+        Font body_font,
+        CoopRule coop_rule = CoopRule::REVIVE_MODE
     ) {
         if (squad.empty()) return;
         const Player& player = squad[0];
@@ -68,7 +69,10 @@ public:
                 Color border_col = mate.is_downed ? COLOR_RED_BRIGHT : COLOR_CYAN_BRIGHT;
                 DrawChamferedPanel(mate_bar, border_col, COLOR_SURFACE_MID, 3.0f);
 
-                std::string mate_name = mate.callsign + " [L:" + std::to_string(mate.lives) + "]";
+                const std::string life_status = coop_rule == CoopRule::SQUAD_LIVES ? " [SQUAD]" :
+                                                coop_rule == CoopRule::HARDCORE ? " [HC]" :
+                                                " [L:" + std::to_string(mate.lives) + "]";
+                std::string mate_name = mate.callsign + life_status;
                 DrawText(mate_name.c_str(), static_cast<int>(sx + 8), static_cast<int>(sy + 6), 9, COLOR_PARCHMENT);
                 if (mate.is_spectator) {
                     DrawText("[SPECTATING]", static_cast<int>(sx + 120), static_cast<int>(sy + 6), 9, COLOR_MUTED);
