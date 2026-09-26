@@ -27,6 +27,9 @@ struct Player {
     float shoot_cooldown = 0.15f;
     float shoot_timer = 0.0f;
     float firing_recoil = 0.0f;
+    float hit_confirm_timer = 0.0f;
+    Vector2 hit_confirm_pos = { 0.0f, 0.0f };
+    bool hit_confirm_critical = false;
     int bullet_damage = 25;
     int shot_counter = 0; // For Surya 7th shot pierce
     int signature_shot_counter = 0; // Per-ship cadence, separate from boon cadence
@@ -113,6 +116,8 @@ struct Player {
         dash_duration_timer = 0.0f;
         dash_timer = 0.0f;
         firing_recoil = 0.0f;
+        hit_confirm_timer = 0.0f;
+        hit_confirm_critical = false;
         invincibility_timer = 0.0f;
         has_kavach_shield = false;
         kavach_timer = 0.0f;
@@ -164,6 +169,7 @@ struct Player {
         // Timers
         if (shoot_timer > 0) shoot_timer -= dt;
         firing_recoil = std::max(0.0f, firing_recoil - dt * 28.0f);
+        hit_confirm_timer = std::max(0.0f, hit_confirm_timer - dt);
         if (invincibility_timer > 0) invincibility_timer -= dt;
         if (chakram_timer > 0) chakram_timer -= dt;
 
@@ -557,6 +563,12 @@ struct Player {
         if (combo > max_combo) max_combo = combo;
     }
 
+    void confirm_hit(Vector2 target, bool critical = false) {
+        hit_confirm_pos = target;
+        hit_confirm_timer = 0.16f;
+        hit_confirm_critical = critical;
+    }
+
     void draw(Texture2D tex) const {
         // Spectator Reticle
         if (is_spectator) {
@@ -601,6 +613,21 @@ struct Player {
             // Procedural geometric ship
             DrawCircle(static_cast<int>(sprite_pos.x), static_cast<int>(sprite_pos.y), radius, archetype ? archetype->accent_color : COLOR_GOLD);
             DrawCircleLines(static_cast<int>(sprite_pos.x), static_cast<int>(sprite_pos.y), radius, COLOR_PARCHMENT);
+        }
+
+        if (hit_confirm_timer > 0.0f) {
+            const float expansion = 4.0f * (1.0f - hit_confirm_timer / 0.16f);
+            const float gap = 4.0f + expansion;
+            const float arm = 4.0f;
+            const Color marker = ColorAlpha(hit_confirm_critical ? COLOR_GOLD_BRIGHT : COLOR_CYAN_BRIGHT,
+                                             std::clamp(hit_confirm_timer / 0.16f, 0.0f, 1.0f));
+            for (int sx : { -1, 1 }) {
+                for (int sy : { -1, 1 }) {
+                    DrawLineEx({ hit_confirm_pos.x + sx * gap, hit_confirm_pos.y + sy * gap },
+                               { hit_confirm_pos.x + sx * (gap + arm), hit_confirm_pos.y + sy * (gap + arm) },
+                               2.0f, marker);
+                }
+            }
         }
 
         // Co-op Downed Beacon

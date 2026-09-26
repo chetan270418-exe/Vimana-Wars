@@ -22,6 +22,7 @@
 #include "systems/realm_modifier_system.hpp"
 #include "systems/transition_manager.hpp"
 #include "systems/wave_manager.hpp"
+#include "ui/debug_overlay.hpp"
 #include "views/campaign_map_view.hpp"
 #include "views/mission_briefing_view.hpp"
 
@@ -30,6 +31,16 @@ using namespace Vimana;
 int main() {
     const Color standard_shot = { 210, 180, 60, 255 };
     g_colorblind_mode = false;
+
+    auto& profiler = DebugOverlay::instance();
+    assert(profiler.frame_sample_count() == 0);
+    for (int sample = 1; sample <= DebugOverlay::PROFILE_SAMPLE_COUNT + 1; ++sample) {
+        profiler.record_frame(static_cast<float>(sample), 2.0f, 3.0f);
+    }
+    assert(profiler.frame_sample_count() == DebugOverlay::PROFILE_SAMPLE_COUNT);
+    assert(profiler.latest_frame_sample().frame_ms == DebugOverlay::PROFILE_SAMPLE_COUNT + 1);
+    assert(profiler.latest_frame_sample().update_ms == 2.0f);
+    assert(profiler.latest_frame_sample().render_ms == 3.0f);
     assert(accessible_projectile_color(standard_shot, false).r == standard_shot.r);
     g_colorblind_mode = true;
     const Color accessible_player_shot = accessible_projectile_color(standard_shot, false);
@@ -382,6 +393,12 @@ int main() {
     varaha.init(GetShipArchetype("varaha"));
     varaha.try_dash({ 1.0f, 0.0f });
     assert(varaha.has_kavach_shield && varaha.kavach_timer > 0.6f);
+    Player hit_feedback;
+    hit_feedback.init(GetShipArchetype("garuda"));
+    hit_feedback.confirm_hit({ 300.0f, 240.0f }, true);
+    assert(hit_feedback.hit_confirm_timer > 0.0f && hit_feedback.hit_confirm_critical);
+    hit_feedback.update(0.08f);
+    assert(hit_feedback.hit_confirm_timer > 0.0f && hit_feedback.hit_confirm_timer < 0.16f);
     std::unordered_set<std::string> ship_ids;
     for (const auto& ship : SHIP_FLEET) {
         assert(!ship.id.empty());
@@ -459,6 +476,21 @@ int main() {
             assert(boss.max_hp > 0);
             assert(boss.speed <= speed_ceiling);
         }
+
+        Boss phase_test;
+        phase_test.init(id);
+        phase_test.pos.y = phase_test.target_y;
+        phase_test.attack_timer = 100.0f;
+        phase_test.special_timer = 100.0f;
+        std::vector<Bullet> phase_bullets;
+        const int phase_two_hp = static_cast<int>(phase_test.max_hp * 0.65f);
+        assert(phase_test.take_damage(phase_test.hp - phase_two_hp) > 0);
+        phase_test.update(0.01f, { 400.0f, 460.0f }, phase_bullets);
+        assert(phase_test.phase == 2);
+        const int phase_three_hp = static_cast<int>(phase_test.max_hp * 0.30f);
+        assert(phase_test.take_damage(phase_test.hp - phase_three_hp) > 0);
+        phase_test.update(0.01f, { 400.0f, 460.0f }, phase_bullets);
+        assert(phase_test.phase == 3);
 
         Boss combat_boss;
         combat_boss.init(id);

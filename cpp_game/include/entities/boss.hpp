@@ -570,7 +570,7 @@ struct Boss {
 
         // Telegraph laser line to target
         if (is_telegraphing) {
-            float pulse = 0.5f + 0.5f * std::sin(GetTime() * 16.0f);
+            float pulse = g_reduce_flashes ? 0.5f : 0.5f + 0.5f * std::sin(GetTime() * 16.0f);
             Color beam_col = ColorAlpha(theme_color, 0.4f + 0.4f * pulse);
             DrawLineEx(pos, telegraph_target, 2.5f, beam_col);
             DrawCircleLines(static_cast<int>(telegraph_target.x), static_cast<int>(telegraph_target.y), 16.0f * (1.0f + 0.3f * pulse), theme_color);

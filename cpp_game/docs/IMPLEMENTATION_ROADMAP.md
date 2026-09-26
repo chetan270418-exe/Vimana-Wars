@@ -8,14 +8,14 @@ Status: `[x]` source implementation present (see validation); `[~]` partial or n
 
 - [~] **01 Fix gameplay bugs:** use the 35-action [C++ audit task file](../IMPLEMENTATION_TASKS.md); several runtime/device cases still need live QA.
 - [x] **02 Mouse aiming:** combat has mouse-based aim and fire input.
-- [~] **03 Shooting feel:** primary weapons trigger the existing muzzle flash/SFX and a short directional ship recoil; weapon balance and feel still need a hands-on pass.
+- [~] **03 Shooting feel:** firing has muzzle flash/SFX, directional recoil, an aim tracer, and a short hit-confirm marker (gold on critical hits); weapon balance still needs hands-on playtesting.
 - [x] **04 Enemy targeting:** AI threat/targeting systems are present.
 - [x] **05 Wave progression:** act/wave campaign data and multi-enemy formations exist.
-- [~] **06 Damage feedback:** HP-loss/shield popups, colored impact bursts/ripples, screen shake, and single hit SFX are wired for projectile/contact damage; live readability pass remains.
+- [~] **06 Damage feedback:** player damage and landed shots have distinct popups/ripples, enemy hit flashes, critical color, and optional shake; live readability/accessibility pass remains.
 - [x] **07 Player death/revive:** downed state, revives, and individual lives exist; new rule variants added in this slice.
-- [~] **08 Boss mechanics:** all eight bosses retain unique attack/phase patterns; telegraph HUD names the incoming boss attack generically, and phase-transition VFX/SFX remain wired. Boss pattern QA remains.
+- [~] **08 Boss mechanics:** all eight bosses retain unique attack/phase patterns; both entity and HUD telegraphs respect reduced-flash mode, and audit tests phase thresholds/attack tells. Full encounter playtesting remains.
 - [x] **09 Pause system:** pause and abort-confirmation overlay exist.
-- [~] **10 Performance profiling:** F7 now graphs the latest 120 uncapped frame times with current/average/peak milliseconds; target-hardware baseline and release-build profiling remain.
+- [~] **10 Performance profiling:** F7 graphs 120 frame times and reports current/average/P95/peak plus rolling update and draw/present timings; target-hardware baseline and release-build profiling remain.
 
 ## Phase 2 — Progression
 

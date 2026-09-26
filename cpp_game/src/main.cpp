@@ -1,5 +1,6 @@
 #include <memory>
 #include <algorithm>
+#include <chrono>
 #include <exception>
 #include "raylib.h"
 #include "core/constants.hpp"
@@ -101,8 +102,9 @@ int main() {
             DBSystem::instance().save_game();
         }
 
+        const auto update_started = std::chrono::steady_clock::now();
         SoundSystem::instance().update_music();
-        DebugOverlay::instance().update(frame_dt);
+        DebugOverlay::instance().update();
         AccountSystem::instance().update();
         AchievementSystem::instance().update(dt);
 
@@ -284,8 +286,11 @@ int main() {
         if (TransitionManager::instance().update(dt, target_to_switch)) {
             switch_to_view(target_to_switch);
         }
+        const float update_ms = std::chrono::duration<float, std::milli>(
+            std::chrono::steady_clock::now() - update_started).count();
 
         // Render to 900x600 virtual canvas
+        const auto render_started = std::chrono::steady_clock::now();
         BeginTextureMode(target);
         if (current_view) {
             current_view->draw();
@@ -302,6 +307,9 @@ int main() {
         Rectangle dest_rec = { offset_x, offset_y, SCREEN_WIDTH * scale, SCREEN_HEIGHT * scale };
         DrawTexturePro(target.texture, src_rec, dest_rec, { 0, 0 }, 0.0f, WHITE);
         EndDrawing();
+        const float render_ms = std::chrono::duration<float, std::milli>(
+            std::chrono::steady_clock::now() - render_started).count();
+        DebugOverlay::instance().record_frame(frame_dt * 1000.0f, update_ms, render_ms);
     }
 
     // 6. Cleanup Engine Systems

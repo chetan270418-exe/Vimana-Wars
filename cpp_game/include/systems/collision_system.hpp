@@ -80,6 +80,7 @@ public:
                         owner->total_damage_dealt += applied_damage;
                     }
                     if (applied_damage > 0) {
+                        if (owner) owner->confirm_hit(current_boss->pos);
                         particles.emit_explosion(b.pos, COLOR_GOLD_BRIGHT, 6, 90.0f);
                         particles.add_floating_text(b.pos, std::to_string(applied_damage), COLOR_GOLD_BRIGHT);
                         if (g_screen_shake_enabled) particles.trigger_screen_shake(2.0f, 0.06f);
@@ -133,7 +134,10 @@ public:
 
                     enemy.hp -= final_dmg;
                     enemy.hit_flash = 0.15f;
-                    if (owner) owner->total_damage_dealt += final_dmg;
+                    if (owner) {
+                        owner->total_damage_dealt += final_dmg;
+                        owner->confirm_hit(enemy.pos, is_crit);
+                    }
 
                     particles.emit_explosion(b.pos, is_crit ? COLOR_GOLD_BRIGHT : b.color, is_crit ? 10 : 5, is_crit ? 130.0f : 80.0f);
                     particles.add_floating_text(enemy.pos, std::to_string(final_dmg), is_crit ? COLOR_GOLD_BRIGHT : b.color);
@@ -146,6 +150,7 @@ public:
                             if (other_e.active && &other_e != &enemy && Vector2Distance(enemy.pos, other_e.pos) < 160.0f) {
                                 other_e.hp -= 20;
                                 other_e.hit_flash = 0.2f;
+                                owner->confirm_hit(other_e.pos);
                                 particles.emit_explosion(other_e.pos, COLOR_CYAN_BRIGHT, 8, 120.0f);
                                 break;
                             }
