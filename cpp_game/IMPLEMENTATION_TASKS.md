@@ -60,7 +60,7 @@ Status key: `[x]` implemented/present and verified by source/build; `[~]` partly
 - AI teammate revives consume one Soma from the AI rescuer. P2 uses numpad abilities to avoid sharing P1's keys.
 - Local SQLite score rows already included difficulty and run metrics. Death cause was added with an additive schema migration; old rows retain an empty cause.
 - Audio scan: every literal filename used by C++ `play_sfx()`/`play_music()` calls was found under the shared `assets/sounds/` directory. This verifies file presence, not playback quality/device behavior.
-- The repeated boss rotation, no gamepad support, and menu Quit prominence are content/design or feature gaps, not compiler errors; they remain candidates for later scoped work.
+- Boss rotation still repeats. Gamepad combat input is partially wired in the current working tree, but UI navigation, confirm/back/pause/Astra actions, physical rumble, and hardware QA remain incomplete. Quit-button prominence is a design question, not a missing function.
 - Enemy role glyphs used to draw from `Enemy::init()` during wave updates; they now render only inside `Enemy::draw()`, keeping the update path free of rendering calls.
 - Online multiplayer is not claimed complete. Host snapshots, damage authority, prediction, and server deployment need an end-to-end protocol and runtime tests.
 - `send_input()` and `broadcast_snapshot()` have no gameplay call sites, and no caller feeds host input into `NetworkController`; the UDP lobby/snapshot code is therefore not playable online combat replication yet.

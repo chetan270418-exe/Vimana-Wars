@@ -48,7 +48,7 @@ Status: `[x]` source implementation present (see validation); `[~]` partial or n
 ## Phase 4 — Content
 
 - [x] **33 More ships:** added two late-act, progression-locked ships using the existing Phase 9 sprites; the fleet catalog and achievement target now include 62 ships.
-- [~] **34 Unique ship abilities:** Amogha, Nandi, Soma, Dhanvantari, Surya, Varaha, and Kubera hulls now have distinct, test-covered combat passives; the rest of the 62-ship fleet still needs bespoke ability design and balance.
+- [~] **34 Unique ship abilities:** two test-covered batches now add signatures for Marut, Kinnara, Airavata, Yamaduta, Matsya, Vishnu Disc, Chakravyuha, Vayu Cyclone, Vata, Varuna Void, Hanuman Fist, Saraswati Arc, Brahma Ark, Ananta, Lakshmi Grace, and Agni Mk-II; 62-ship balance and the remaining hull designs are still open.
 - [x] **35 Enemy types:** multiple enemy archetypes are present.
 - [x] **36 Elite enemies:** elite spawning and behavior exist.
 - [x] **37 Mini-bosses:** three named mini-bosses recur at act waves 8/18/28, join mixed enemy formations, have boss sprites/nameplates, heavier health, distinct volleys, guaranteed supply drops, and Codex counters.
@@ -97,11 +97,13 @@ Status: `[x]` source implementation present (see validation); `[~]` partial or n
 - [x] Run payout formula, once-per-run guard, save-on-award, result-page reward line.
 - [x] Pilot XP payout and level tracking, version-8 save migration default, menu progress meter, and post-run XP display.
 - [x] Primary-fire audio, player damage/shield hit feedback, actual boss damage accounting, and overlapping boss telegraph priority.
-- [x] Currency safety for negative spending, integer overflow, invalid ship IDs, and supply caps.
+- [x] Currency safety for negative spending, integer overflow, invalid ship IDs, and supply caps; player reinitialization restores boon-modified Chakram cooldowns.
 - [x] Ten-act Codex/story coverage, recurring three-pattern mini-boss encounters, and gameplay hooks for every configured realm modifier.
 - [~] Bespoke ship identity: seven passive designs are covered by tests across eight hulls; the remaining fleet still needs individual ability design and balance.
 - [x] Incremental boot preload, realm ambience streams, reduced-flash accessibility, and actionable missing-resource/fatal-error logging.
 - [x] Persistent equipped ship and tactical stock; Hangar purchases survive restart and stock is consumed on deploy.
+- [x] Ship-ability batch 1: extended dash, dash evasion, hull mitigation, cadence damage/volleys, hull regeneration, and two distinct Chakram patterns; audit smoke covers the mechanics.
+- [x] Ship-ability batch 2: dash quickdraw, cadence piercing, dash damage, faster shots, an extra Astra, longer/double-step combo, Prana bonus, and a dedicated flame spread; the seven passive effects use a `ShipAbility` descriptor instead of new per-ship gameplay branches, and audit smoke covers them.
 - [x] Multiplayer entry in the main menu and persistent Standard / Shared Squad Lives / Hardcore selector.
 - [x] Co-op rule behavior and HUD label; schema bumped to version 6 with backward-compatible defaults.
 - [x] Build and audit smoke tests pass, including payout/currency boundaries and save round-trip for the new fields.
@@ -112,5 +114,5 @@ Status: `[x]` source implementation present (see validation); `[~]` partial or n
 1. Build and run the C++ audit; fix regressions in this slice.
 2. Perform one solo run and one local co-op run for reward, inventory, rule, and restart behavior.
 3. Finish the mission brief/deployment page and expand the post-run breakdown using metrics already recorded.
-4. Complete per-ship ability definitions and boss/miniboss encounter tables.
+4. Migrate older per-ID passives to the new descriptor where it simplifies the code, implement the remaining signature batch, and play-balance the completed passives before broadening boss kits.
 5. Design authoritative multiplayer protocol/server separately; do not advertise lobby-directory support as full online combat.

@@ -10,6 +10,7 @@
 #include "entities/player.hpp"
 #include "entities/enemy.hpp"
 #include "entities/boss.hpp"
+#include "systems/gamepad_manager.hpp"
 
 namespace Vimana {
 
@@ -81,6 +82,23 @@ public:
             input.use_vajra = IsKeyPressed(KEY_KP_3);
         }
         input.revive = IsKeyDown(KEY_E);
+
+        // ── Gamepad merge ────────────────────────────────────────────────────
+        // Left stick overrides movement, right stick overrides aim when no mouse.
+        // Buttons act as additional triggers (OR-merged with keyboard).
+        GamepadManager& gp = GamepadManager::instance();
+        Vector2 left  = gp.left_stick_for(m_player_idx);
+        Vector2 right = gp.right_stick_for(m_player_idx);
+        if (Vector2Length(left) > 0.05f)  input.move  = left;
+        if (Vector2Length(right) > 0.05f) input.aim   = { SCREEN_WIDTH * 0.5f + right.x * 200.0f,
+                                                            SCREEN_HEIGHT * 0.5f + right.y * 200.0f };
+        if (gp.action_held(m_player_idx, GpAction::FIRE))    input.fire = true;
+        if (gp.action_pressed(m_player_idx, GpAction::DASH))  input.dash = true;
+        if (gp.action_pressed(m_player_idx, GpAction::CHAKRAM)) input.chakram = true;
+        if (gp.action_pressed(m_player_idx, GpAction::SOMA))    input.use_soma = true;
+        if (gp.action_pressed(m_player_idx, GpAction::VAJRA))   input.use_vajra = true;
+        if (gp.action_held(m_player_idx, GpAction::REVIVE))   input.revive = true;
+
         update_from_input(dt, self, out_bullets, squad, input);
     }
 

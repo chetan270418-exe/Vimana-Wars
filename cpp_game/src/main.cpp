@@ -12,6 +12,7 @@
 #include "systems/account_system.hpp"
 #include "systems/achievement_system.hpp"
 #include "systems/transition_manager.hpp"
+#include "systems/gamepad_manager.hpp"
 #include "ui/debug_overlay.hpp"
 #include "views/boot_view.hpp"
 #include "views/pilot_setup_view.hpp"
@@ -56,6 +57,7 @@ int main() {
     NetworkManager::instance().init();
     AccountSystem::instance().init();
     AchievementSystem::instance().init();
+    GamepadManager::instance().init();
 
     // 3. Render Texture for 900x600 Logical Scaling
     RenderTexture2D target = LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -107,6 +109,7 @@ int main() {
         DebugOverlay::instance().update();
         AccountSystem::instance().update();
         AchievementSystem::instance().update(dt);
+        GamepadManager::instance().update(dt);
 
         // Calculate aspect ratio scaling
         float scale = std::min(static_cast<float>(GetScreenWidth()) / SCREEN_WIDTH,
@@ -280,6 +283,9 @@ int main() {
                 }
             }
         }
+        // Preserve this frame's button states only after views have queried
+        // action_pressed(), so rising-edge actions remain visible this frame.
+        GamepadManager::instance().tick_prev_held();
 
         // Check if transition manager has reached midpoint to trigger switch
         ViewType target_to_switch;

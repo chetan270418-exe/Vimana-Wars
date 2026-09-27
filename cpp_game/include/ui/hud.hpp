@@ -9,6 +9,7 @@
 #include "entities/boss.hpp"
 #include "entities/enemy.hpp"
 #include "ui/vedic_theme.hpp"
+#include "systems/gamepad_manager.hpp"
 
 namespace Vimana::UI {
 
@@ -30,6 +31,18 @@ public:
     ) {
         if (squad.empty()) return;
         const Player& player = squad[0];
+
+        // ── Gamepad connection badge (top-right corner) ────────────────────
+        if (GamepadManager::instance().any_connected()) {
+            const auto& pad = GamepadManager::instance().state_for_player(0);
+            Rectangle pad_box = { SCREEN_WIDTH - 200.0f, 16.0f, 184.0f, 18.0f };
+            DrawRectangleRec(pad_box, { 0x0E, 0x13, 0x20, 220 });
+            DrawRectangleLinesEx(pad_box, 1.0f, COLOR_GREEN_BRIGHT);
+            // Small filled circle as "controller LED" indicator
+            DrawCircle(static_cast<int>(pad_box.x + 9), static_cast<int>(pad_box.y + 9), 3.0f, COLOR_GREEN_BRIGHT);
+            const char* pad_label = pad.name.empty() ? "GAMEPAD P1" : pad.name.c_str();
+            DrawText(pad_label, static_cast<int>(pad_box.x + 18), static_cast<int>(pad_box.y + 4), 10, COLOR_GREEN_BRIGHT);
+        }
 
         // ── Top header: ship, mission, score, combo, contacts, and mode ──
         DrawYantraPanel({ 15, 12, 870, 36 }, COLOR_GOLD, COLOR_SURFACE_LOW, 6.0f, true);
@@ -166,10 +179,43 @@ public:
         std::string bomb_str = "x" + std::to_string(player.brahmastra_bombs);
         DrawTextEx(title_font, bomb_str.c_str(), { 410, SCREEN_HEIGHT - 27 }, 12, 1.0f, COLOR_GOLD_BRIGHT);
 
-        // 5. Consumables - hidden unless owned
+        // 5. Active Ability [E] cooldown indicator
+        if (player.archetype && player.archetype->active_ability.type != ShipAbilityType::NONE) {
+            const auto& ab = player.archetype->active_ability;
+            const float cd_ratio = (ab.cooldown > 0.0f)
+                ? std::clamp(1.0f - player.active_ability_cooldown_timer / ab.cooldown, 0.0f, 1.0f)
+                : 1.0f;
+            const bool ready = player.active_ability_cooldown_timer <= 0.0f;
+
+            DrawText("ABILITY [E]", 435, SCREEN_HEIGHT - 34, 8, COLOR_MUTED);
+            // Background trough
+            DrawRectangle(435, SCREEN_HEIGHT - 26, 90, 12, { 25, 30, 45, 255 });
+            // Fill bar (ready = full gold, cooling = partial accent)
+            DrawRectangle(435, SCREEN_HEIGHT - 26, static_cast<int>(90 * cd_ratio), 12,
+                          ready ? COLOR_GOLD_BRIGHT : ColorAlpha(player.archetype->accent_color, 0.7f));
+            DrawRectangleLines(435, SCREEN_HEIGHT - 26, 90, 12,
+                               ready ? COLOR_GOLD : COLOR_SURFACE_HIGH);
+
+            // Ability name short label (clipped at 12 chars)
+            std::string ab_short = ab.name.size() > 12 ? ab.name.substr(0, 12) : ab.name;
+            if (ready) {
+                // Pulse glow when ready
+                float pulse = 0.6f + 0.4f * std::sin(static_cast<float>(GetTime()) * 6.0f);
+                DrawTextEx(body_font, ab_short.c_str(), { 437, SCREEN_HEIGHT - 23.0f }, 9, 1.0f,
+                           ColorAlpha(COLOR_GOLD_BRIGHT, pulse));
+            } else {
+                // Cooldown countdown in seconds
+                char cd_buf[8];
+                std::snprintf(cd_buf, sizeof(cd_buf), "%.1fs", player.active_ability_cooldown_timer);
+                DrawText(cd_buf, 437, SCREEN_HEIGHT - 23, 9, COLOR_MUTED);
+            }
+        }
+
+        // 6. Consumables - hidden unless owned
         if (player.inventory.soma_vials > 0 || player.inventory.vajra_flares > 0 || player.inventory.kavach_charges > 0) {
-            DrawText("ITEMS", 470, SCREEN_HEIGHT - 34, 8, COLOR_MUTED);
-            float ix = 470;
+            DrawText("ITEMS", 540, SCREEN_HEIGHT - 34, 8, COLOR_MUTED);
+            float ix = 540;
+
             if (player.inventory.soma_vials > 0) {
                 std::string soma_str = "SOMA x" + std::to_string(player.inventory.soma_vials);
                 DrawText(soma_str.c_str(), (int)ix, SCREEN_HEIGHT - 27, 10, COLOR_GREEN_BRIGHT);

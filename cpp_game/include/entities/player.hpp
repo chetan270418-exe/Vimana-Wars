@@ -33,12 +33,14 @@ struct Player {
     int bullet_damage = 25;
     int shot_counter = 0; // For Surya 7th shot pierce
     int signature_shot_counter = 0; // Per-ship cadence, separate from boon cadence
+    bool vata_quickdraw_ready = false;
 
     // Vayu Dash
     int dash_charges = 2;
     int max_dash_charges = 2;
     float dash_cooldown = 1.6f;
     float dash_distance_multiplier = 1.0f;
+    float ship_dash_distance_multiplier = 1.0f;
     float dash_timer = 0.0f;
     float dash_duration_timer = 0.0f;
     bool is_dashing = false;
@@ -94,6 +96,14 @@ struct Player {
     int lives = 3;
     bool is_spectator = false;
 
+    // Active Ability (Q key) — per-ship active with cooldown
+    float active_ability_cooldown_timer = 0.0f;   // counts down from archetype->active_ability.cooldown
+    float active_ability_effect_timer   = 0.0f;   // > 0 while the effect is active
+    bool  active_ability_active         = false;   // true while effect is running
+    // Null-field: multiplier applied to enemy bullet speed (set to 0.5 while active, 1.0 otherwise)
+    float null_field_bullet_slow        = 1.0f;
+
+
     void init(const ShipArchetype* ship_arch) {
         archetype = ship_arch ? ship_arch : &SHIP_FLEET[0];
         ship_upgrade_level = CurrencySystem::instance().ship_upgrade_level(archetype->id);
@@ -108,7 +118,8 @@ struct Player {
         max_dash_charges = archetype->dash_charges;
         dash_charges = max_dash_charges;
         dash_cooldown = std::max(0.55f, archetype->dash_cooldown * (1.0f - 0.02f * upgrade));
-        dash_distance_multiplier = 1.0f;
+        ship_dash_distance_multiplier = archetype->id == "marut" ? 1.25f : 1.0f;
+        dash_distance_multiplier = ship_dash_distance_multiplier;
 
         pos = { SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT * 0.78f };
         vel = { 0, 0 };
@@ -121,13 +132,15 @@ struct Player {
         invincibility_timer = 0.0f;
         has_kavach_shield = false;
         kavach_timer = 0.0f;
+        chakram_cooldown = CHAKRAM_COOLDOWN;
         chakram_timer = 0.0f;
-        brahmastra_bombs = 1;
+        brahmastra_bombs = 1 + (archetype->ability.type == ShipAbilityType::EXTRA_BRAHMASTRA ? static_cast<int>(archetype->ability.magnitude) : 0);
         buff_agneyastra_timer = 0.0f;
         buff_speed_timer = 0.0f;
         buff_overdrive_timer = 0.0f;
         shot_counter = 0;
         signature_shot_counter = 0;
+        vata_quickdraw_ready = false;
         score = 0;
         last_damage_source.clear();
         combo = 1;
@@ -138,7 +151,12 @@ struct Player {
         shots_hit = 0;
         downed_count = 0;
         revives_given = 0;
+        active_ability_cooldown_timer = 0.0f;
+        active_ability_effect_timer   = 0.0f;
+        active_ability_active         = false;
+        null_field_bullet_slow        = 1.0f;
         is_downed = false;
+
         downed_timer = 0.0f;
         self_revive_timer = 0.0f;
         last_stand_timer = 0.0f;
@@ -180,6 +198,24 @@ struct Player {
         }
         if (buff_agneyastra_timer > 0) buff_agneyastra_timer -= dt;
         if (buff_overdrive_timer > 0) buff_overdrive_timer -= dt;
+
+        // Active ability cooldown tick
+        if (active_ability_cooldown_timer > 0) active_ability_cooldown_timer -= dt;
+
+        // Active ability effect tick — expire running effects
+        if (active_ability_active && active_ability_effect_timer > 0) {
+            active_ability_effect_timer -= dt;
+            if (active_ability_effect_timer <= 0) {
+                active_ability_active = false;
+                // Expire OVERDRIVE (fire rate returns to normal via buff_overdrive_timer check)
+                // Expire NULL_FIELD
+                null_field_bullet_slow = 1.0f;
+                // REPAIR_AURA regen is handled via regen_bank separately
+                // BERSERK: reset back to normal damage (handled in fire logic check)
+            }
+        }
+
+
         if (buff_speed_timer > 0) {
             buff_speed_timer -= dt;
             current_speed = base_speed * 1.4f;
@@ -195,19 +231,26 @@ struct Player {
         if (archetype && archetype->id == "dhanvantari") {
             regen_rate += 4.0f;
         }
+        if (archetype && archetype->id == "matsya") {
+            regen_rate += 1.5f;
+        }
         if (has_boon(BoonType::VARUNA_OCEANIC_WARD)) {
             regen_rate += 2.0f;
         }
         if (regen_rate > 0.0f && hp < max_hp) {
             regen_bank += regen_rate * dt;
+        }
+        // Always drain regen_bank (populated by passive regen OR REPAIR_AURA active ability)
+        if (regen_bank > 0.0f && hp < max_hp) {
             int whole = static_cast<int>(regen_bank);
             if (whole > 0) {
                 hp = std::min(max_hp, hp + whole);
                 regen_bank -= static_cast<float>(whole);
             }
-        } else {
-            regen_bank = 0.0f;
+        } else if (regen_bank < 0.01f && regen_rate <= 0.0f) {
+            regen_bank = 0.0f; // clear residual float only when no passive regen
         }
+
 
         // Signature defensive passives: Pushpaka's longer ward and Nandi's compact aegis.
         if (archetype && (archetype->id == "pushpaka" || archetype->id == "nandi_aegis" || archetype->id == "soma") && !is_downed) {
@@ -266,7 +309,73 @@ struct Player {
         pos.y = std::max(HUD_TOP + radius * 0.5f, std::min(HUD_BOTTOM - radius * 0.5f, pos.y));
     }
 
+    // ── Active ability trigger (called from game_view on Q key press) ─────────
+    // Returns the ability type that was activated (NONE if on cooldown/no ability).
+    // For BLINK: caller must move player pos toward mouse_pos by active_ability.magnitude.
+    // For NOVA:  caller must apply radial AoE damage in the game world.
+    ShipAbilityType trigger_active_ability(Vector2 mouse_pos) {
+        if (!archetype) return ShipAbilityType::NONE;
+        const ActiveAbility& ab = archetype->active_ability;
+        if (ab.type == ShipAbilityType::NONE) return ShipAbilityType::NONE;
+        if (active_ability_cooldown_timer > 0.0f) return ShipAbilityType::NONE; // still cooling down
+        if (is_downed || is_spectator) return ShipAbilityType::NONE;
+
+        // Start cooldown
+        active_ability_cooldown_timer = ab.cooldown;
+        active_ability_active = true;
+        active_ability_effect_timer = ab.duration > 0.0f ? ab.duration : 0.0f;
+
+        switch (ab.type) {
+            case ShipAbilityType::OVERDRIVE:
+                buff_overdrive_timer = ab.duration; // reuse overdrive buff timer
+                SoundSystem::instance().play_sfx("thrusterFire.wav");
+                break;
+            case ShipAbilityType::AEGIS:
+                has_kavach_shield = true;
+                kavach_timer = ab.duration > 0 ? ab.duration : 2.0f;
+                SoundSystem::instance().play_sfx("forceField.wav");
+                break;
+            case ShipAbilityType::REPAIR_AURA:
+                regen_bank += ab.magnitude; // total HP to regenerate
+                SoundSystem::instance().play_sfx("powerUp.wav");
+                break;
+            case ShipAbilityType::NULL_FIELD:
+                null_field_bullet_slow = 1.0f - ab.magnitude; // e.g. 0.5 for 50% slow
+                SoundSystem::instance().play_sfx("zap.wav");
+                break;
+            case ShipAbilityType::BERSERK:
+                SoundSystem::instance().play_sfx("thrusterFire.wav");
+                break; // BERSERK: damage multiplier applied in fire logic
+            case ShipAbilityType::BLINK: {
+                // Teleport toward mouse — caller handles screen bounds
+                Vector2 dir = { mouse_pos.x - pos.x, mouse_pos.y - pos.y };
+                float len = std::sqrt(dir.x * dir.x + dir.y * dir.y);
+                if (len > 1.0f) {
+                    float dist = std::min(ab.magnitude, len);
+                    pos.x += dir.x / len * dist;
+                    pos.y += dir.y / len * dist;
+                    // Clamp
+                    pos.x = std::max(radius, std::min(SCREEN_WIDTH - radius, pos.x));
+                    pos.y = std::max(70.0f + radius, std::min(530.0f - radius, pos.y));
+                }
+                invincibility_timer = std::max(invincibility_timer, 0.3f); // brief i-frames
+                active_ability_active = false; // instant — no duration
+                SoundSystem::instance().play_sfx("dashSwipe.wav");
+                break;
+            }
+            case ShipAbilityType::NOVA:
+                // NOVA: caller checks this return value and applies radial AoE
+                SoundSystem::instance().play_sfx("explosion.wav");
+                active_ability_active = false; // instant activation
+                break;
+            default:
+                break;
+        }
+        return ab.type;
+    }
+
     void handle_input(float dt, Vector2 mouse_pos, std::vector<Bullet>& out_bullets, bool is_p2 = false) {
+
         Vector2 input_dir = { 0, 0 };
 
         if (!is_p2) {
@@ -293,6 +402,14 @@ struct Player {
             if (IsKeyPressed(KEY_Q)) {
                 try_chakram(out_bullets);
             }
+
+            // Ship Active Ability [E] — per-ship special (OVERDRIVE, AEGIS, BLINK, NOVA, etc.)
+            if (IsKeyPressed(KEY_E) || IsMouseButtonPressed(MOUSE_BUTTON_MIDDLE)) {
+                trigger_active_ability(mouse_pos);
+                // NOTE: NOVA AoE damage is applied in game_view::update()
+                //       which checks player.active_ability_cooldown_timer just reset
+            }
+
 
             // Consumables: Soma Vial (C) and Vajra Flare (V)
             if (IsKeyPressed(KEY_C)) {
@@ -339,25 +456,46 @@ struct Player {
     void try_shoot(std::vector<Bullet>& out_bullets) {
         float cd = (buff_overdrive_timer > 0) ? shoot_cooldown * 0.45f : shoot_cooldown;
         if (shoot_timer > 0) return;
+        const bool vata_quickdraw = archetype && archetype->ability.type == ShipAbilityType::DASH_QUICKDRAW && vata_quickdraw_ready;
+        if (vata_quickdraw) vata_quickdraw_ready = false;
         shoot_timer = cd;
         firing_recoil = 5.0f;
         just_shot = true;
         shot_counter = (shot_counter % 7) + 1;
         const bool is_amogha = archetype && archetype->id == "amogha_lancer";
+        const bool is_yamaduta = archetype && archetype->id == "yamaduta";
+        const bool is_chakravyuha = archetype && archetype->id == "chakravyuha";
+        const bool is_vayu_cyclone = archetype && archetype->id == "vayu_cyclone";
+        const ShipAbilityType ability_type = archetype ? archetype->ability.type : ShipAbilityType::NONE;
         if (is_amogha) signature_shot_counter = (signature_shot_counter % 5) + 1;
+        else if (is_yamaduta || is_chakravyuha || ability_type == ShipAbilityType::CADENCE_PIERCE) signature_shot_counter = (signature_shot_counter % 5) + 1;
+        else if (is_vayu_cyclone) signature_shot_counter = (signature_shot_counter % 4) + 1;
 
         float rad = angle * (3.14159f / 180.0f);
         Vector2 nose = { pos.x + std::cos(rad) * radius, pos.y + std::sin(rad) * radius };
 
         // Damage calculation
         int dmg = bullet_damage;
+        if (vata_quickdraw) dmg = static_cast<int>(std::round(dmg * 1.25f));
+        if (ability_type == ShipAbilityType::DASH_DAMAGE && is_dashing) dmg = static_cast<int>(std::round(dmg * archetype->ability.magnitude));
         const bool amogha_needle = is_amogha && signature_shot_counter == 5;
         if (amogha_needle) dmg = static_cast<int>(std::round(dmg * 1.25f));
-        // Narasimha Archetype trait: low HP scaling
-        if (archetype && archetype->id == "narasimha") {
-            float missing_hp = 1.0f - (static_cast<float>(hp) / max_hp);
-            dmg += static_cast<int>(missing_hp * 25);
+        const bool yamaduta_execution = is_yamaduta && signature_shot_counter == 5;
+        if (yamaduta_execution) dmg = static_cast<int>(std::round(dmg * 1.45f));
+
+        // BERSERK active ability: damage scales with missing hull while active
+        if (active_ability_active && archetype && archetype->active_ability.type == ShipAbilityType::BERSERK && max_hp > 0) {
+            const float missing_ratio = 1.0f - std::clamp(static_cast<float>(hp) / max_hp, 0.0f, 1.0f);
+            const float berserk_boost = 1.0f + archetype->active_ability.magnitude * missing_ratio;
+            dmg = static_cast<int>(std::round(dmg * berserk_boost));
         }
+        // Narasimha passive righteous fury (always-on)
+        if (archetype && archetype->id == "narasimha" && max_hp > 0) {
+            const float missing_ratio = 1.0f - std::clamp(static_cast<float>(hp) / max_hp, 0.0f, 1.0f);
+            dmg = static_cast<int>(std::round(dmg * (1.0f + 0.8f * missing_ratio)));
+        }
+
+
         // Narasimha 9th Boon: +40% damage when HP < 35%
         if (has_boon(BoonType::NARASIMHA_BERSERK_MIGHT) && (static_cast<float>(hp) / max_hp) < 0.35f) {
             dmg = static_cast<int>(dmg * 1.4f);
@@ -367,7 +505,11 @@ struct Player {
         bool is_pierce = ((surya_flare || has_boon(BoonType::SURYA_RADIANT_PIERCE)) && (shot_counter % 7 == 0));
         bool is_tripura = (archetype && archetype->id == "tripura");
         bool is_garuda = (archetype && (archetype->id == "garuda" || archetype->id == "garuda_prime" || archetype->id == "garuda_apex"));
+        const bool varuna_thread = ability_type == ShipAbilityType::CADENCE_PIERCE && signature_shot_counter == archetype->ability.cadence;
+        const bool chakravyuha_volley = is_chakravyuha && signature_shot_counter == 5;
+        const bool vayu_gust = is_vayu_cyclone && signature_shot_counter == 4;
         const int garuda_pierce_bonus = is_garuda ? 2 : 0;
+        const int signature_pierce_bonus = varuna_thread ? static_cast<int>(archetype->ability.magnitude) : 0;
 
         if (is_tripura && buff_agneyastra_timer <= 0) {
             // Tripura Dreadnought: native 3-shot heavy spread
@@ -381,9 +523,24 @@ struct Player {
                 b.damage = dmg;
                 b.radius = 6.5f;
                 b.color = COLOR_ORANGE_BRIGHT;
-                b.pierce_remaining = (is_pierce ? 2 : 0) + garuda_pierce_bonus;
+                b.pierce_remaining = (is_pierce ? 2 : 0) + garuda_pierce_bonus + signature_pierce_bonus;
                 b.owner_player_id = player_id;
                 b.is_player_owned = true;
+                out_bullets.push_back(b);
+            }
+        } else if (chakravyuha_volley || vayu_gust) {
+            const int spread = chakravyuha_volley ? 12 : 9;
+            const float damage_scale = chakravyuha_volley ? 0.75f : 0.70f;
+            shots_fired += 3;
+            for (int off : { -spread, 0, spread }) {
+                const float a = (angle + off) * (3.14159f / 180.0f);
+                Bullet b;
+                b.active = true; b.pos = nose;
+                b.vel = { std::cos(a) * PLAYER_BULLET_SPEED, std::sin(a) * PLAYER_BULLET_SPEED };
+                b.damage = static_cast<int>(std::round(dmg * damage_scale)); b.radius = 5.0f;
+                b.color = chakravyuha_volley ? COLOR_PURPLE_BRIGHT : COLOR_CYAN_BRIGHT;
+                b.pierce_remaining = (is_pierce ? 2 : 0) + garuda_pierce_bonus + signature_pierce_bonus;
+                b.owner_player_id = player_id; b.is_player_owned = true;
                 out_bullets.push_back(b);
             }
         } else if (archetype && archetype->gun_type == "BURST") {
@@ -396,7 +553,7 @@ struct Player {
                 b.vel = { std::cos(a) * PLAYER_BULLET_SPEED * 1.05f, std::sin(a) * PLAYER_BULLET_SPEED * 1.05f };
                 b.damage = dmg; b.radius = 4.0f;
                 b.color = COLOR_CYAN_BRIGHT;
-                b.pierce_remaining = (is_pierce ? 2 : 0) + garuda_pierce_bonus;
+                b.pierce_remaining = (is_pierce ? 2 : 0) + garuda_pierce_bonus + signature_pierce_bonus;
                 b.owner_player_id = player_id; b.is_player_owned = true;
                 out_bullets.push_back(b);
             }
@@ -408,7 +565,7 @@ struct Player {
             b.vel = { std::cos(rad) * PLAYER_BULLET_SPEED * 1.15f, std::sin(rad) * PLAYER_BULLET_SPEED * 1.15f };
             b.damage = dmg; b.radius = 7.0f;
             b.color = COLOR_GREEN_BRIGHT;
-            b.pierce_remaining = (amogha_needle ? 8 : (is_pierce ? 4 : 3)) + garuda_pierce_bonus;
+            b.pierce_remaining = (amogha_needle ? 8 : (is_pierce ? 4 : 3)) + garuda_pierce_bonus + signature_pierce_bonus;
             b.owner_player_id = player_id; b.is_player_owned = true;
             out_bullets.push_back(b);
         } else if (archetype && archetype->gun_type == "BURN") {
@@ -421,7 +578,7 @@ struct Player {
                 b.vel = { std::cos(a) * PLAYER_BULLET_SPEED * 0.9f, std::sin(a) * PLAYER_BULLET_SPEED * 0.9f };
                 b.damage = dmg; b.radius = 5.5f;
                 b.color = COLOR_RED_BRIGHT;
-                b.pierce_remaining = (is_pierce ? 2 : 0) + garuda_pierce_bonus;
+                b.pierce_remaining = (is_pierce ? 2 : 0) + garuda_pierce_bonus + signature_pierce_bonus;
                 b.owner_player_id = player_id; b.is_player_owned = true;
                 out_bullets.push_back(b);
             }
@@ -437,7 +594,7 @@ struct Player {
                     b.damage = dmg;
                     b.radius = 6.0f;
                     b.color = COLOR_RED_BRIGHT;
-                    b.pierce_remaining = (is_pierce ? 3 : 0) + garuda_pierce_bonus;
+                    b.pierce_remaining = (is_pierce ? 3 : 0) + garuda_pierce_bonus + signature_pierce_bonus;
                     b.owner_player_id = player_id;
                     b.is_player_owned = true;
                     out_bullets.push_back(b);
@@ -447,11 +604,12 @@ struct Player {
                 Bullet b;
                 b.active = true;
                 b.pos = nose;
-                b.vel = { std::cos(rad) * PLAYER_BULLET_SPEED, std::sin(rad) * PLAYER_BULLET_SPEED };
+                const float speed = PLAYER_BULLET_SPEED * (ability_type == ShipAbilityType::PROJECTILE_SPEED ? archetype->ability.magnitude : 1.0f);
+                b.vel = { std::cos(rad) * speed, std::sin(rad) * speed };
                 b.damage = dmg;
                 b.radius = is_pierce ? 8.0f : PLAYER_BULLET_RADIUS;
                 b.color = is_pierce ? COLOR_GOLD_BRIGHT : (archetype ? archetype->accent_color : COLOR_GOLD);
-                b.pierce_remaining = (is_pierce ? 4 : 0) + garuda_pierce_bonus;
+                b.pierce_remaining = (is_pierce ? 4 : 0) + garuda_pierce_bonus + signature_pierce_bonus;
                 b.owner_player_id = player_id;
                 b.is_player_owned = true;
                 if (archetype && archetype->id == "narasimha") b.type = BulletType::NARASIMHA_CLAW;
@@ -467,7 +625,8 @@ struct Player {
         is_dashing = true;
         just_dashed = true;
         dash_duration_timer = DASH_DURATION;
-        invincibility_timer = DASH_DURATION + 0.1f;
+        if (archetype && archetype->ability.type == ShipAbilityType::DASH_QUICKDRAW) vata_quickdraw_ready = true;
+        invincibility_timer = DASH_DURATION + (archetype && archetype->id == "kinnara" ? 0.35f : 0.1f);
         if (archetype && archetype->id == "varaha") {
             has_kavach_shield = true;
             kavach_timer = std::max(kavach_timer, 0.65f);
@@ -479,21 +638,30 @@ struct Player {
     void try_chakram(std::vector<Bullet>& out_bullets) {
         if (chakram_timer > 0) return;
         chakram_timer = chakram_cooldown;
-        shots_fired += 1;
-
-        Bullet b;
-        b.active = true;
-        b.pos = pos;
-        float rad = angle * (3.14159f / 180.0f);
-        b.vel = { std::cos(rad) * 420.0f, std::sin(rad) * 420.0f };
-        b.radius = has_boon(BoonType::SUDARSHANA_KEEN_EDGE) ? 22.0f : 16.0f;
-        b.damage = has_boon(BoonType::SUDARSHANA_KEEN_EDGE) ? CHAKRAM_DAMAGE * 2 : CHAKRAM_DAMAGE;
-        b.type = BulletType::CHAKRAM;
-        b.pierce_remaining = 999;
-        b.max_lifetime = 5.0f;
-        b.owner_player_id = player_id;
-        b.is_player_owned = true;
-        out_bullets.push_back(b);
+        const bool keen_edge = has_boon(BoonType::SUDARSHANA_KEEN_EDGE);
+        const bool vishnu_disc = archetype && archetype->id == "vishnu_disc";
+        const bool matsya_tide = archetype && archetype->id == "matsya";
+        const float base_rad = angle * (3.14159f / 180.0f);
+        const int count = vishnu_disc ? 3 : 1;
+        const float signature_damage_scale = vishnu_disc ? 0.4f : (matsya_tide ? 1.5f : 1.0f);
+        const int chakram_damage = static_cast<int>(std::round(CHAKRAM_DAMAGE * signature_damage_scale)) * (keen_edge ? 2 : 1);
+        shots_fired += count;
+        for (int i = 0; i < count; ++i) {
+            const float spread = vishnu_disc ? (static_cast<float>(i) - 1.0f) * 18.0f : 0.0f;
+            const float rad = base_rad + spread * (3.14159f / 180.0f);
+            Bullet b;
+            b.active = true;
+            b.pos = pos;
+            b.vel = { std::cos(rad) * (matsya_tide ? 350.0f : 420.0f), std::sin(rad) * (matsya_tide ? 350.0f : 420.0f) };
+            b.radius = keen_edge ? 22.0f : (vishnu_disc ? 12.0f : (matsya_tide ? 22.0f : 16.0f));
+            b.damage = chakram_damage;
+            b.type = BulletType::CHAKRAM;
+            b.pierce_remaining = 999;
+            b.max_lifetime = matsya_tide ? 5.5f : 5.0f;
+            b.owner_player_id = player_id;
+            b.is_player_owned = true;
+            out_bullets.push_back(b);
+        }
         SoundSystem::instance().play_sfx("online_laser_small.ogg", 0.7f);
     }
 
@@ -529,6 +697,9 @@ struct Player {
 
     bool take_damage(int amount, const char* damage_source = "Unknown hostile") {
         if (amount <= 0 || invincibility_timer > 0 || is_dashing || is_downed) return false;
+        if (archetype && archetype->id == "airavata") {
+            amount = std::max(1, static_cast<int>(std::ceil(amount * 0.85f)));
+        }
 
         if (has_kavach_shield) {
             has_kavach_shield = false;
@@ -558,8 +729,10 @@ struct Player {
     }
 
     void add_combo() {
-        combo = std::min(50, combo + 1);
-        combo_timer = 2.8f;
+        const bool extended_cadence = archetype && archetype->ability.type == ShipAbilityType::COMBO_CADENCE;
+        const int combo_step = 1 + (extended_cadence ? static_cast<int>(archetype->ability.magnitude) : 0);
+        combo = std::min(50, combo + combo_step);
+        combo_timer = extended_cadence ? archetype->ability.duration : 2.8f;
         if (combo > max_combo) max_combo = combo;
     }
 

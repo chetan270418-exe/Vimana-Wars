@@ -46,10 +46,10 @@ public:
         m_btn_upgrade = UI::Button({ 520, 276, 320, 34 }, "UPGRADE SHIP FRAME", COLOR_GOLD_BRIGHT, "", UI::ButtonKind::PRIMARY);
         m_btn_toggle_fleet = UI::Button({ 35, 478, 200, 32 }, "VIEW FULL FLEET [TAB]", COLOR_MUTED, "", UI::ButtonKind::GHOST);
 
-        // Consumable store buttons
-        m_btn_buy_kavach = UI::Button({ 520, 362, 95, 32 }, "KAVACH", COLOR_CYAN, "", UI::ButtonKind::SECONDARY);
-        m_btn_buy_soma = UI::Button({ 630, 362, 95, 32 }, "SOMA", COLOR_GREEN_BRIGHT, "", UI::ButtonKind::SECONDARY);
-        m_btn_buy_vajra = UI::Button({ 740, 362, 95, 32 }, "VAJRA", COLOR_ORANGE_BRIGHT, "", UI::ButtonKind::SECONDARY);
+        // Consumable store buttons — moved down to y=435 to make room for ability panel
+        m_btn_buy_kavach = UI::Button({ 520, 435, 95, 32 }, "KAVACH", COLOR_CYAN, "", UI::ButtonKind::SECONDARY);
+        m_btn_buy_soma = UI::Button({ 630, 435, 95, 32 }, "SOMA", COLOR_GREEN_BRIGHT, "", UI::ButtonKind::SECONDARY);
+        m_btn_buy_vajra = UI::Button({ 740, 435, 95, 32 }, "VAJRA", COLOR_ORANGE_BRIGHT, "", UI::ButtonKind::SECONDARY);
         m_btn_buy_kavach.set_label("KAVACH (" + std::to_string(COST_KAVACH_SHIELD) + ")");
         m_btn_buy_soma.set_label("SOMA (" + std::to_string(COST_SOMA_VIAL) + ")");
         m_btn_buy_vajra.set_label("VAJRA (" + std::to_string(COST_VAJRA_FLARE) + ")");
@@ -258,15 +258,41 @@ public:
             DrawTextEx(body_f, "UNLOCK THIS VIMANA TO REFORGE ITS FRAME", { 535, 341 }, 10, 1.0f, PAL_TEXT_MUTED);
         }
 
-        // Consumable Armory section
+        // Consumable Armory section — pushed down slightly to make room for abilities
         DrawLine(510, 318, 850, 318, PAL_OUTLINE_VARIANT);
-        DrawTextEx(title_f, "TACTICAL CONSUMABLES (PRANA ARMORY)", { 515, 326 }, 10, 1.0f, PAL_PRIMARY);
+
+        // ── Passive & Active Ability Summary ──────────────────────────────────
+        const std::string passive_name = ShipSignatureName(ship);
+        const std::string passive_desc = ShipSignatureDescription(ship);
+        DrawTextEx(title_f, "PASSIVE SIGNATURE", { 515, 290 }, 10, 1.0f, ship_accent);
+        DrawTextEx(body_f, passive_name.c_str(), { 515, 304 }, 11, 1.0f, PAL_SECONDARY_BRIGHT);
+        // Truncate passive desc for space
+        std::string pd_short = passive_desc.size() > 60 ? passive_desc.substr(0, 57) + "..." : passive_desc;
+        DrawTextEx(body_f, pd_short.c_str(), { 515, 318 }, 9, 1.0f, PAL_TEXT_BODY);
+
+        DrawLine(510, 336, 850, 336, PAL_OUTLINE_VARIANT);
+        if (ship.active_ability.type != ShipAbilityType::NONE) {
+            DrawTextEx(title_f, "[E] ACTIVE ABILITY", { 515, 340 }, 10, 1.0f, COLOR_GOLD_BRIGHT);
+            DrawTextEx(body_f, ship.active_ability.name.c_str(), { 515, 354 }, 11, 1.0f, COLOR_GOLD_BRIGHT);
+            std::string ad_short = ship.active_ability.description.size() > 60
+                ? ship.active_ability.description.substr(0, 57) + "..."
+                : ship.active_ability.description;
+            DrawTextEx(body_f, ad_short.c_str(), { 515, 368 }, 9, 1.0f, PAL_TEXT_BODY);
+            std::string cd_label = "COOLDOWN: " + std::to_string(static_cast<int>(ship.active_ability.cooldown)) + "s";
+            DrawTextEx(body_f, cd_label.c_str(), { 515, 382 }, 9, 1.0f, COLOR_CYAN_BRIGHT);
+        } else {
+            DrawTextEx(body_f, "[E] NO ACTIVE ABILITY", { 515, 340 }, 10, 1.0f, PAL_TEXT_MUTED);
+        }
+
+        DrawLine(510, 395, 850, 395, PAL_OUTLINE_VARIANT);
+        DrawTextEx(title_f, "TACTICAL CONSUMABLES (PRANA ARMORY)", { 515, 402 }, 10, 1.0f, PAL_PRIMARY);
+
 
         // Consumables inventory counts
         std::string inv_str = "OWNED: [KAVACH: " + std::to_string(m_temp_inv.kavach_charges) +
                               "]  [SOMA: " + std::to_string(m_temp_inv.soma_vials) +
                               "]  [VAJRA: " + std::to_string(m_temp_inv.vajra_flares) + "]";
-        DrawTextEx(body_f, inv_str.c_str(), { 515, 344 }, 11, 1.0f, PAL_SECONDARY_BRIGHT);
+        DrawTextEx(body_f, inv_str.c_str(), { 515, 416 }, 11, 1.0f, PAL_SECONDARY_BRIGHT);
 
         m_btn_buy_kavach.draw(title_f);
         m_btn_buy_soma.draw(title_f);

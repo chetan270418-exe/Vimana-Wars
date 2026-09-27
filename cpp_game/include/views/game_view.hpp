@@ -489,7 +489,7 @@ if (p.is_downed) {
                 continue;
             }
             p.current_speed = p.base_speed * realm_spd_mult;
-            p.dash_distance_multiplier = dash_distance_mult;
+            p.dash_distance_multiplier = dash_distance_mult * p.ship_dash_distance_multiplier;
             if (m_team_transcendence_timer > 0) p.current_speed *= 1.10f; // Team Transcendence buff
 
             if (i < m_controllers.size()) {
@@ -514,6 +514,55 @@ if (p.is_downed) {
             if (p.just_dashed) {
                 m_particles.emit_dash_ghost(p.pos, p.archetype ? p.archetype->sprite_file : "pushpaka.png", p.angle + 90.0f, p.archetype ? p.archetype->accent_color : COLOR_CYAN_BRIGHT);
                 p.just_dashed = false;
+            }
+        }
+
+
+        // -- Active Ability Effects: NOVA AoE, NULL_FIELD bullet slow -----------
+        for (auto& p : m_squad) {
+            if (!p.archetype || p.is_spectator) continue;
+            const auto& ab = p.archetype->active_ability;
+
+            // NOVA: freshly activated this frame (cooldown timer just set to ab.cooldown)
+            if (ab.type == ShipAbilityType::NOVA &&
+                p.active_ability_cooldown_timer > 0.0f &&
+                p.active_ability_cooldown_timer >= ab.cooldown - dt * 2.0f) {
+                const float nova_radius = 180.0f;
+                const int   nova_dmg    = static_cast<int>(40.0f * ab.magnitude);
+                for (auto& e : m_enemies) {
+                    if (!e.active) continue;
+                    const float dx = e.pos.x - p.pos.x;
+                    const float dy = e.pos.y - p.pos.y;
+                    const float dist = std::sqrt(dx * dx + dy * dy);
+                    if (dist < nova_radius) {
+                        e.hp -= nova_dmg;
+                        p.total_damage_dealt += nova_dmg;
+                        if (dist > 1.0f) {
+                            const float knock = 280.0f * (1.0f - dist / nova_radius);
+                            e.vel.x += dx / dist * knock;
+                            e.vel.y += dy / dist * knock;
+                        }
+                        m_particles.emit_explosion(e.pos, p.archetype->accent_color, 6, 80.0f);
+                    }
+                }
+                for (auto& b : m_bullets) {
+                    if (!b.is_enemy || !b.active) continue;
+                    const float dx = b.pos.x - p.pos.x;
+                    const float dy = b.pos.y - p.pos.y;
+                    if (std::sqrt(dx * dx + dy * dy) < nova_radius) b.active = false;
+                }
+                m_particles.emit_explosion(p.pos, p.archetype->accent_color, 22, nova_radius);
+                if (g_screen_shake_enabled) m_particles.trigger_screen_shake(10.0f, 0.4f);
+                m_particles.add_floating_text(p.pos, "NOVA!", p.archetype->accent_color);
+            }
+
+            // NULL_FIELD: per-frame bullet slow while effect active
+            if (p.null_field_bullet_slow < 0.99f) {
+                for (auto& b : m_bullets) {
+                    if (!b.is_enemy || !b.active) continue;
+                    b.vel.x *= p.null_field_bullet_slow;
+                    b.vel.y *= p.null_field_bullet_slow;
+                }
             }
         }
 

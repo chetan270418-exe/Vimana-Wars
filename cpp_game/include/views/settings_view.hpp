@@ -9,17 +9,19 @@
 #include "systems/asset_manager.hpp"
 #include "ui/button.hpp"
 #include "ui/vedic_theme.hpp"
+#include "systems/gamepad_manager.hpp"
 
 namespace Vimana {
 
 class SettingsView : public IView {
 public:
-    SettingsView() 
-        : m_next_view(ViewType::SETTINGS), 
+    SettingsView()
+        : m_next_view(ViewType::SETTINGS),
           m_active_tab(0),
           m_tab_audio({ 60, 95, 120, 32 }, "AUDIO", COLOR_GOLD_BRIGHT),
           m_tab_controls({ 190, 95, 120, 32 }, "CONTROLS", COLOR_CYAN_BRIGHT),
-          m_tab_access({ 320, 95, 140, 32 }, "ACCESSIBILITY", COLOR_GREEN_BRIGHT)
+          m_tab_access({ 320, 95, 140, 32 }, "ACCESSIBILITY", COLOR_GREEN_BRIGHT),
+          m_tab_controller({ 470, 95, 140, 32 }, "CONTROLLER", COLOR_PURPLE_BRIGHT)
     {
         init();
     }
@@ -51,6 +53,11 @@ public:
 
         m_btn_back = UI::Button({ 40, 520, 110, 36 }, "SAVE & BACK", COLOR_MUTED, "", UI::ButtonKind::PRIMARY);
         m_btn_reset_defaults = UI::Button({ SCREEN_WIDTH - 230, 520, 190, 36 }, "RESET DEFAULTS", COLOR_RED_BRIGHT, "", UI::ButtonKind::DESTRUCTIVE);
+
+        // Controller tab buttons
+        m_btn_dz_down = UI::Button({ cx + 20, 175, 40, 30 }, "-", COLOR_GOLD, "", UI::ButtonKind::SECONDARY);
+        m_btn_dz_up   = UI::Button({ cx + 220, 175, 40, 30 }, "+", COLOR_GOLD, "", UI::ButtonKind::SECONDARY);
+        m_btn_rumble_toggle = UI::Button({ cx + 20, 220, 240, 34 }, "TOGGLE RUMBLE", COLOR_PURPLE_BRIGHT, "", UI::ButtonKind::SECONDARY);
     }
 
     void update(float dt, Vector2 mouse_pos) override {
@@ -78,11 +85,23 @@ public:
         if (m_tab_audio.update(mouse_pos)) m_active_tab = 0;
         if (m_tab_controls.update(mouse_pos)) m_active_tab = 1;
         if (m_tab_access.update(mouse_pos)) m_active_tab = 2;
+        if (m_tab_controller.update(mouse_pos)) m_active_tab = 3;
         if (IsKeyPressed(KEY_ONE)) m_active_tab = 0;
         if (IsKeyPressed(KEY_TWO)) m_active_tab = 1;
         if (IsKeyPressed(KEY_THREE)) m_active_tab = 2;
+        if (IsKeyPressed(KEY_FOUR)) m_active_tab = 3;
         if (IsKeyPressed(KEY_LEFT)) m_active_tab = std::max(0, m_active_tab - 1);
-        if (IsKeyPressed(KEY_RIGHT)) m_active_tab = std::min(2, m_active_tab + 1);
+        if (IsKeyPressed(KEY_RIGHT)) m_active_tab = std::min(3, m_active_tab + 1);
+
+        // Controller tab interactions
+        if (m_active_tab == 3) {
+            float dz = GamepadManager::instance().deadzone();
+            if (m_btn_dz_down.update(mouse_pos)) GamepadManager::instance().set_deadzone(dz - 0.05f);
+            if (m_btn_dz_up.update(mouse_pos))   GamepadManager::instance().set_deadzone(dz + 0.05f);
+            if (m_btn_rumble_toggle.update(mouse_pos)) {
+                GamepadManager::instance().set_rumble_enabled(!GamepadManager::instance().rumble_enabled());
+            }
+        }
 
         if (m_active_tab == 0) {
             // Master Volume
@@ -159,7 +178,8 @@ public:
         m_tab_audio.draw(title_font);
         m_tab_controls.draw(title_font);
         m_tab_access.draw(title_font);
-        DrawText("[1-3] SELECT TAB  ·  [LEFT/RIGHT] CYCLE", 500, 105, 10, COLOR_MUTED);
+        m_tab_controller.draw(title_font);
+        DrawText("[1-4] SELECT TAB  ·  [LEFT/RIGHT] CYCLE", 480, 105, 10, COLOR_MUTED);
 
         // Content Area
         Rectangle content_box = { 30, 135, 840, 365 };
@@ -253,6 +273,39 @@ public:
             DrawTextEx(body_font, display_status.c_str(), { cx - 220, 415 }, 11, 1.0f,
                        fullscreen ? COLOR_CYAN_BRIGHT : COLOR_MUTED);
             m_btn_fullscreen.draw(title_font);
+        } else if (m_active_tab == 3) {
+            // ── CONTROLLER TAB ──
+            GamepadManager& gp = GamepadManager::instance();
+            int connected = gp.connected_count();
+            std::string conn_str = connected > 0
+                ? "[CONNECTED] " + std::to_string(connected) + " GAMEPAD" +
+                  (connected == 1 ? "" : "S") + " // " +
+                  gp.state_for_player(0).name
+                : "[NOT CONNECTED] // PLUG IN A GAMEPAD";
+            DrawTextEx(body_font, "GAMEPAD STATUS", { cx - 220, 155 }, 13, 1.0f, COLOR_PARCHMENT);
+            DrawTextEx(body_font, conn_str.c_str(), { cx - 220, 175 }, 11, 1.0f,
+                       connected > 0 ? COLOR_GREEN_BRIGHT : COLOR_MUTED);
+
+            float dz = gp.deadzone();
+            char dz_buf[32];
+            std::snprintf(dz_buf, sizeof(dz_buf), "STICK DEADZONE: %.0f%%", dz * 100.0f);
+            DrawTextEx(body_font, dz_buf, { cx - 220, 200 }, 11, 1.0f, COLOR_CYAN_BRIGHT);
+            m_btn_dz_down.draw(title_font);
+            m_btn_dz_up.draw(title_font);
+
+            std::string rumble_str = gp.rumble_enabled()
+                ? "RUMBLE: ENABLED (HAPTIC FEEDBACK ACTIVE)"
+                : "RUMBLE: DISABLED";
+            DrawTextEx(body_font, rumble_str.c_str(), { cx - 220, 245 }, 11, 1.0f,
+                       gp.rumble_enabled() ? COLOR_PURPLE_BRIGHT : COLOR_MUTED);
+            m_btn_rumble_toggle.draw(title_font);
+
+            // Default button mapping reference
+            DrawTextEx(body_font, "DEFAULT LAYOUT", { cx - 220, 290 }, 13, 1.0f, COLOR_PARCHMENT);
+            std::string layout = std::string("FIRE: RT   DASH: A   CHAKRAM: X   SOMA: Y\n") +
+                                 "VAJRA: LB  BRAHMASTRA: RB  REVIVE: LT\n" +
+                                 "PAUSE: START   CONFIRM: A   BACK: B";
+            DrawTextEx(body_font, layout.c_str(), { cx - 220, 312 }, 11, 1.0f, COLOR_GOLD_BRIGHT);
         }
 
         m_btn_back.draw(title_font);
@@ -270,6 +323,10 @@ private:
     UI::Button m_tab_audio;
     UI::Button m_tab_controls;
     UI::Button m_tab_access;
+    UI::Button m_tab_controller;
+    UI::Button m_btn_dz_down;
+    UI::Button m_btn_dz_up;
+    UI::Button m_btn_rumble_toggle;
 
     UI::Button m_btn_vol_down;
     UI::Button m_btn_vol_up;
