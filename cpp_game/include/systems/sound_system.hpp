@@ -28,9 +28,31 @@ public:
         Sound snd = AssetManager::instance().get_sound(sound_file);
         if (snd.stream.buffer != nullptr) {
             SetSoundVolume(snd, m_sfx_volume * volume_mult);
+            SetSoundPitch(snd, 1.0f);
             PlaySound(snd);
         }
     }
+
+    void play_sfx_pitched(const std::string& sound_file, float pitch = 1.0f, float volume_mult = 1.0f) {
+        if (!IsAudioDeviceReady()) return;
+        Sound snd = AssetManager::instance().get_sound(sound_file);
+        if (snd.stream.buffer != nullptr) {
+            SetSoundVolume(snd, m_sfx_volume * volume_mult);
+            SetSoundPitch(snd, std::clamp(pitch, 0.5f, 2.5f));
+            PlaySound(snd);
+        }
+    }
+
+    void play_kill_confirm(int combo = 1) {
+        // Arcade combo kill confirm: pitch rises from 1.0 to 1.8 with combo
+        float pitch = 1.0f + std::min(0.80f, (combo - 1) * 0.04f);
+        play_sfx_pitched("explosion.wav", pitch, 0.65f);
+        if (combo >= 5) {
+            float chime_pitch = 1.0f + std::min(0.70f, (combo - 5) * 0.035f);
+            play_sfx_pitched("coinPickup.wav", chime_pitch, 0.40f);
+        }
+    }
+
 
     void play_ui(const std::string& sound_file, float volume_mult = 1.0f) {
         if (!IsAudioDeviceReady()) return;
@@ -71,6 +93,23 @@ public:
     void update_music() {
         AssetManager::instance().update_music();
     }
+
+    // ── DYNAMIC MUSIC LAYERING (§9 spec) ────────────────────────────────────
+    void update_combat_tension(int active_enemy_count, bool boss_active) {
+        if (boss_active) {
+            AssetManager::instance().set_music_volume(m_music_volume);
+            AssetManager::instance().set_ambience_volume(m_music_volume * 0.35f);
+        } else if (active_enemy_count >= 3) {
+            // Combat intensity: combat drums dominant, ambient ducked
+            AssetManager::instance().set_music_volume(m_music_volume * 0.95f);
+            AssetManager::instance().set_ambience_volume(m_music_volume * 0.40f);
+        } else {
+            // Calm / explore: ambient pad prominent, combat rhythm dialed down
+            AssetManager::instance().set_music_volume(m_music_volume * 0.60f);
+            AssetManager::instance().set_ambience_volume(m_music_volume * 0.70f);
+        }
+    }
+
 
     // ── DYNAMIC BOSS PHASE ESCALATION ───────────────────────────────────────
     void set_boss_phase(int phase) {

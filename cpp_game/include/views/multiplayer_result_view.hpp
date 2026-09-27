@@ -38,9 +38,11 @@ public:
         }
     }
 
-    void set_results(bool victory, int team_score, const std::vector<Player>& squad) {
+    void set_results(bool victory, int team_score, const std::vector<Player>& squad, int prana_earned = 0, int xp_earned = 0) {
         m_is_victory = victory;
         m_team_score = team_score;
+        m_prana_earned = prana_earned;
+        m_xp_earned = xp_earned;
         m_squad_stats.clear();
 
         if (squad.empty()) return;
@@ -106,8 +108,8 @@ public:
 
         std::string sub_text = m_is_victory ? "ALL OBJECTIVES SECURED - CELESTIAL ORDER RESTORED" : "TACTICAL RETREAT INITIATED - SQUADRON REGROUP REQUIRED";
         DrawTextEx(body_font, sub_text.c_str(), { 45, 50 }, 10, 1.0f, COLOR_CYAN_BRIGHT);
-        std::string score_str = "TEAM SCORE: " + std::to_string(m_team_score);
-        DrawTextEx(title_font, score_str.c_str(), { static_cast<float>(SCREEN_WIDTH - 250), 34.0f }, 15, 1.0f, COLOR_GOLD_BRIGHT);
+        std::string score_str = "TEAM: " + std::to_string(m_team_score) + "  //  +" + std::to_string(m_prana_earned) + " PRANA";
+        DrawTextEx(title_font, score_str.c_str(), { static_cast<float>(SCREEN_WIDTH - 320), 34.0f }, 14, 1.0f, COLOR_GOLD_BRIGHT);
 
         // Squad Performance Cards (4 columns)
         float start_x = 35.0f;
@@ -186,6 +188,8 @@ private:
     ViewType m_next_view;
     bool m_is_victory = true;
     int m_team_score = 0;
+    int m_prana_earned = 0;
+    int m_xp_earned = 0;
     std::vector<SquadMemberStat> m_squad_stats;
 
     UI::Button m_btn_rematch;

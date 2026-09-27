@@ -137,6 +137,16 @@ public:
                     if (owner) {
                         owner->total_damage_dealt += final_dmg;
                         owner->confirm_hit(enemy.pos, is_crit);
+
+                        // REFLECTIVE elite affix: 30% damage returned to attacker
+                        if (has_affix(enemy.affixes, EliteAffix::REFLECTIVE) && !owner->is_downed) {
+                            int reflected = std::max(1, static_cast<int>(final_dmg * 0.30f));
+                            int hp_before = owner->hp;
+                            if (owner->take_damage(reflected, "Reflective Hull")) {
+                                emit_player_hit_feedback(*owner, hp_before);
+                            }
+                            particles.add_floating_text(owner->pos, "REFLECTED! -" + std::to_string(reflected), COLOR_PURPLE_BRIGHT);
+                        }
                     }
 
                     particles.emit_explosion(b.pos, is_crit ? COLOR_GOLD_BRIGHT : b.color, is_crit ? 10 : 5, is_crit ? 130.0f : 80.0f);
@@ -161,11 +171,14 @@ public:
                     if (enemy.hp <= 0) {
                         enemy.active = false;
                         if (owner) {
-                            owner->kills++;
-                            owner->add_combo();
+                            int multi_bonus = owner->register_kill();
                             int elite_multiplier = enemy.is_miniboss ? 1 : enemy.is_elite ? 2 : 1;
                             int kill_score = enemy.score_value * elite_multiplier * owner->combo;
                             owner->score += kill_score;
+                            if (multi_bonus > 0) {
+                                std::string bonus_txt = "MULTI-KILL x" + std::to_string(owner->multikill_streak) + " +" + std::to_string(multi_bonus);
+                                particles.add_floating_text({ enemy.pos.x, enemy.pos.y - 18.0f }, bonus_txt, COLOR_GOLD_BRIGHT);
+                            }
                         }
                         int prana_drop = enemy.is_miniboss ? 50 : enemy.is_elite ? 8 : 2;
                         out_prana_earned += prana_drop;
@@ -176,13 +189,35 @@ public:
                                 enemy.is_miniboss ? COLOR_RED_BRIGHT : COLOR_GOLD_BRIGHT);
                         }
 
+                        // VOLATILE elite affix: violent death explosion damaging players & enemies in radius
+                        if (has_affix(enemy.affixes, EliteAffix::VOLATILE) && !enemy.volatile_exploded) {
+                            enemy.volatile_exploded = true;
+                            particles.emit_explosion(enemy.pos, COLOR_ORANGE_BRIGHT, 45, 280.0f);
+                            particles.add_floating_text(enemy.pos, "VOLATILE BURST!", COLOR_RED_BRIGHT);
+                            if (g_screen_shake_enabled) particles.trigger_screen_shake(10.0f, 0.28f);
+                            for (auto* p : squad) {
+                                if (p && !p->is_downed && Vector2Distance(p->pos, enemy.pos) < 110.0f) {
+                                    int hp_before = p->hp;
+                                    if (p->take_damage(20, "Volatile Detonation")) {
+                                        emit_player_hit_feedback(*p, hp_before);
+                                    }
+                                }
+                            }
+                            for (auto& other_e : enemies) {
+                                if (other_e.active && &other_e != &enemy && Vector2Distance(other_e.pos, enemy.pos) < 130.0f) {
+                                    other_e.hp -= 30;
+                                    other_e.hit_flash = 0.25f;
+                                }
+                            }
+                        }
+
                         const int explosion_particles = enemy.is_miniboss ? 65 : enemy.is_elite ? 35 : 22;
                         const float shake_strength = enemy.is_miniboss ? 13.0f : enemy.is_elite ? 9.0f : 5.0f;
                         particles.emit_explosion(enemy.pos,
                             enemy.is_miniboss ? COLOR_RED_BRIGHT : enemy.is_elite ? COLOR_GOLD_BRIGHT : COLOR_ORANGE_BRIGHT,
                             explosion_particles, 260.0f);
                         if (g_screen_shake_enabled) particles.trigger_screen_shake(shake_strength, enemy.is_miniboss ? 0.32f : enemy.is_elite ? 0.24f : 0.12f);
-                        SoundSystem::instance().play_sfx("explosion.wav", 0.6f);
+                        SoundSystem::instance().play_kill_confirm(owner ? owner->combo : 1);
 
                         // Mini-bosses guarantee a supply drop; elites have a better chance.
                         int drop_chance = enemy.is_miniboss ? 100 : enemy.is_elite ? 50 : 22;
@@ -252,6 +287,7 @@ public:
                 if (!p || p->is_downed) continue;
                 if (Vector2Distance(pw.pos, p->pos) < (pw.radius + p->radius + 10.0f)) {
                     pw.active = false;
+                    p->powerups_collected++;
                     SoundSystem::instance().play_sfx("powerup.wav", 0.7f);
                     particles.emit_explosion(pw.pos, COLOR_CYAN_BRIGHT, 15, 140.0f);
 

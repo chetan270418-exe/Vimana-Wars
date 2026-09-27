@@ -9,13 +9,30 @@
 
 namespace Vimana {
 
+// ── Elite Affixes (§2 spec) ───────────────────────────────────────────────
+enum class EliteAffix : uint8_t {
+    NONE       = 0,
+    REFLECTIVE = 1 << 0,  // 30% damage returned to attacker
+    SWIFT      = 1 << 1,  // speed ×1.5
+    REGEN      = 1 << 2,  // 2% HP/s regeneration
+    VOLATILE   = 1 << 3   // explodes on death (handled in game_view)
+};
+inline EliteAffix operator|(EliteAffix a, EliteAffix b) {
+    return static_cast<EliteAffix>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b));
+}
+inline bool has_affix(EliteAffix flags, EliteAffix bit) {
+    return (static_cast<uint8_t>(flags) & static_cast<uint8_t>(bit)) != 0;
+}
+
 enum class EnemyType {
     ASURA_CHASER,
     ASURA_TANK,
     ASURA_SHOOTER,
     ASURA_KAMIKAZE,
     ASURA_HEALER,
-    ASURA_SNIPER
+    ASURA_SNIPER,
+    ASURA_MINELAYER,   // drops proximity mines
+    ASURA_CARRIER      // launches Chaser squads every 8s
 };
 
 struct Enemy {
@@ -42,6 +59,17 @@ struct Enemy {
     std::string miniboss_name;
     Color elite_tint = COLOR_GOLD_BRIGHT;
 
+    // Elite affixes (per §2 spec — randomly assigned 1-2 per elite)
+    EliteAffix affixes = EliteAffix::NONE;
+    float regen_timer = 0.0f;          // REGEN: accumulates HP/s
+    bool volatile_exploded = false;    // VOLATILE: death explosion guard
+    std::string affix_label;           // display string e.g. "[SWIFT+REGEN]"
+
+    // Minelayer / Carrier state
+    float mine_timer = 0.0f;
+    float launch_timer = 0.0f;
+    int mines_placed = 0;
+
     const char* damage_source_name() const {
         if (is_miniboss) {
             if (miniboss_name == "RIFT MAULER") return "Rift Mauler";
@@ -49,14 +77,46 @@ struct Enemy {
             if (miniboss_name == "EMBER TYRANT") return "Ember Tyrant";
         }
         switch (type) {
-            case EnemyType::ASURA_CHASER: return "Asura Chaser";
-            case EnemyType::ASURA_TANK: return "Asura Tank";
-            case EnemyType::ASURA_SHOOTER: return "Asura Shooter";
-            case EnemyType::ASURA_KAMIKAZE: return "Asura Kamikaze";
-            case EnemyType::ASURA_HEALER: return "Asura Healer";
-            case EnemyType::ASURA_SNIPER: return "Asura Sniper";
+            case EnemyType::ASURA_CHASER:     return "Asura Chaser";
+            case EnemyType::ASURA_TANK:       return "Asura Tank";
+            case EnemyType::ASURA_SHOOTER:    return "Asura Shooter";
+            case EnemyType::ASURA_KAMIKAZE:   return "Asura Kamikaze";
+            case EnemyType::ASURA_HEALER:     return "Asura Healer";
+            case EnemyType::ASURA_SNIPER:     return "Asura Sniper";
+            case EnemyType::ASURA_MINELAYER:  return "Asura Minelayer";
+            case EnemyType::ASURA_CARRIER:    return "Asura Carrier";
             default: return "Asura hostile";
         }
+    }
+
+    // Assign random 1-2 affixes to an elite enemy
+    void assign_affixes() {
+        if (!is_elite || is_miniboss) return;
+        // Use position as simple seed for variety
+        int seed = static_cast<int>(pos.x * 7 + pos.y * 13);
+        static const EliteAffix pool[4] = {
+            EliteAffix::REFLECTIVE, EliteAffix::SWIFT,
+            EliteAffix::REGEN,      EliteAffix::VOLATILE
+        };
+        int a1 = ((seed >> 2) & 3);
+        int a2 = ((seed ^ (seed >> 5)) & 3);
+        affixes = pool[a1];
+        if (a2 != a1) affixes = affixes | pool[a2]; // 50% chance of 2nd affix
+        // Apply SWIFT immediately
+        if (has_affix(affixes, EliteAffix::SWIFT)) speed *= 1.5f;
+        // Build label string
+        affix_label = "[";
+        if (has_affix(affixes, EliteAffix::REFLECTIVE)) affix_label += "REF+";
+        if (has_affix(affixes, EliteAffix::SWIFT))      affix_label += "SWF+";
+        if (has_affix(affixes, EliteAffix::REGEN))      affix_label += "REG+";
+        if (has_affix(affixes, EliteAffix::VOLATILE))   affix_label += "VOL+";
+        if (affix_label.back() == '+') affix_label.pop_back();
+        affix_label += "]";
+        // Tint elite by affix combo
+        if (has_affix(affixes, EliteAffix::REFLECTIVE)) elite_tint = { 200, 200, 255, 255 };
+        else if (has_affix(affixes, EliteAffix::REGEN)) elite_tint = { 80, 255, 130, 255 };
+        else if (has_affix(affixes, EliteAffix::VOLATILE)) elite_tint = { 255, 120, 50, 255 };
+        else elite_tint = COLOR_GOLD_BRIGHT;
     }
 
     void init(EnemyType t, Vector2 spawn_pos, float speed_mult = 1.0f, float hp_mult = 1.0f,
@@ -67,13 +127,22 @@ struct Enemy {
         hit_flash = 0.0f;
         is_charging = false;
         special_timer = 0.0f;
+        mine_timer = 0.0f;
+        launch_timer = 0.0f;
+        mines_placed = 0;
+        regen_timer = 0.0f;
+        volatile_exploded = false;
+        affixes = EliteAffix::NONE;
+        affix_label.clear();
         is_elite = elite;
         is_miniboss = miniboss;
         miniboss_name.clear();
+        elite_tint = COLOR_GOLD_BRIGHT;
         if (is_elite) {
             hp_mult *= ELITE_HP_MULT;
             speed_mult *= ELITE_SPEED_MULT;
         }
+
 
         switch (type) {
             case EnemyType::ASURA_CHASER:
@@ -124,16 +193,37 @@ struct Enemy {
                 shoot_interval = 3.5f;
                 sprite_key = "asura_sniper.png";
                 break;
+            case EnemyType::ASURA_MINELAYER:
+                radius = 18.0f;
+                max_hp = static_cast<int>(55 * hp_mult);
+                speed = 110.0f * speed_mult;
+                score_value = 220;
+                shoot_interval = 4.5f;  // mine-drop timer
+                mine_timer = 2.0f;      // first mine after 2s
+                sprite_key = "asura_ranged.png";  // reuse art
+                break;
+            case EnemyType::ASURA_CARRIER:
+                radius = 30.0f;
+                max_hp = static_cast<int>(200 * hp_mult);
+                speed = 55.0f * speed_mult;
+                score_value = 450;
+                shoot_interval = 999.0f;
+                launch_timer = 8.0f;    // first launch at 8s
+                sprite_key = "asura_tank.png";    // reuse art
+                break;
         }
         hp = max_hp;
         if (is_miniboss) {
             radius = std::min(38.0f, radius * 1.35f);
             max_hp = static_cast<int>(std::round(max_hp * 2.3f));
+
             hp = max_hp;
             score_value *= 4;
         }
         shoot_timer = ((std::rand() % 100) / 100.0f) * shoot_interval;
+        assign_affixes();  // set elite affix flags + label + tint
     }
+
 
     void update(float dt, Vector2 player_pos, std::vector<Bullet>& out_bullets,
                 std::vector<Enemy>& all_enemies, int extra_flak_projectiles = 0,
@@ -141,10 +231,20 @@ struct Enemy {
         if (!active) return;
         if (hit_flash > 0) hit_flash -= dt;
 
+        // REGEN affix: 2% HP/s regeneration
+        if (has_affix(affixes, EliteAffix::REGEN) && hp < max_hp) {
+            regen_timer += dt;
+            if (regen_timer >= 0.5f) {
+                hp = std::min(max_hp, hp + std::max(1, static_cast<int>(max_hp * 0.01f)));
+                regen_timer = 0.0f;
+            }
+        }
+
         Vector2 to_player = Vector2Subtract(player_pos, pos);
         float dist = Vector2Length(to_player);
         Vector2 dir = Vector2Normalize(to_player);
         angle = Vector2AngleDeg(pos, player_pos);
+
 
         // AI Behaviors
         switch (type) {
@@ -302,6 +402,56 @@ struct Enemy {
                     }
                 }
                 break;
+
+            case EnemyType::ASURA_MINELAYER:
+                // Drift sideways slowly, drop mines periodically
+                pos.x += -dir.y * speed * 0.6f * dt;
+                pos.y = std::max(60.0f, pos.y - speed * 0.15f * dt);  // stay upper area
+                mine_timer -= dt;
+                if (mine_timer <= 0 && mines_placed < 6) {
+                    mine_timer = shoot_interval;
+                    ++mines_placed;
+                    // Mine = slow enemy bullet that hovers near drop point
+                    Bullet mine;
+                    mine.active = true;
+                    mine.is_enemy = true;
+                    mine.damage_source = "Asura Mine";
+                    mine.pos = pos;
+                    mine.vel = { 0.0f, 20.0f };   // slow drift downward
+                    mine.damage = 22;
+                    mine.radius = 10.0f;
+                    mine.color = COLOR_ORANGE_BRIGHT;
+                    mine.type = BulletType::ENEMY_PROXIMITY_MINE;
+                    out_bullets.push_back(mine);
+                }
+                break;
+
+            case EnemyType::ASURA_CARRIER:
+                // Slow drift down + clockwise orbit
+                pos.y += speed * 0.3f * dt;
+                special_timer += dt;
+                pos.x += std::sin(special_timer * 0.4f) * speed * 0.5f * dt;
+                launch_timer -= dt;
+                if (launch_timer <= 0) {
+                    launch_timer = 8.0f;
+                    // Spawn 3 Chasers around the carrier via bullets the game_view can handle
+                    for (int i = 0; i < 3; ++i) {
+                        float spawn_rad = (i * 120.0f) * (3.14159f / 180.0f);
+                        Bullet spawn_beacon;
+                        spawn_beacon.active = true;
+                        spawn_beacon.is_enemy = true;
+                        spawn_beacon.damage_source = "Carrier Squad";
+                        spawn_beacon.pos = { pos.x + std::cos(spawn_rad) * 30.0f,
+                                             pos.y + std::sin(spawn_rad) * 30.0f };
+                        spawn_beacon.vel = { 0.0f, 0.0f };
+                        spawn_beacon.damage = 0;
+                        spawn_beacon.radius = 5.0f;
+                        spawn_beacon.color = COLOR_RED_BRIGHT;
+                        spawn_beacon.type = BulletType::CARRIER_SPAWN_SIGNAL;
+                        out_bullets.push_back(spawn_beacon);
+                    }
+                }
+                break;
         }
 
         // Clamp inside screen bounds
@@ -322,10 +472,23 @@ struct Enemy {
             DrawText(miniboss_name.c_str(), static_cast<int>(pos.x - name_width * 0.5f), static_cast<int>(pos.y - radius - 31.0f), 9, COLOR_PARCHMENT);
         } else if (is_elite) {
             float pulse = 0.5f + 0.5f * std::sin(GetTime() * 8.0f);
-            DrawCircleLines(static_cast<int>(pos.x), static_cast<int>(pos.y), radius + 6.0f + 3.0f * pulse, COLOR_GOLD_BRIGHT);
-            DrawCircle(static_cast<int>(pos.x), static_cast<int>(pos.y), radius + 4.0f, ColorAlpha(COLOR_GOLD, 0.15f));
-            DrawText("ELITE", static_cast<int>(pos.x - 14.0f), static_cast<int>(pos.y - radius - 18.0f), 9, COLOR_GOLD_BRIGHT);
+            DrawCircleLines(static_cast<int>(pos.x), static_cast<int>(pos.y), radius + 6.0f + 3.0f * pulse, elite_tint);
+            DrawCircle(static_cast<int>(pos.x), static_cast<int>(pos.y), radius + 4.0f, ColorAlpha(elite_tint, 0.12f));
+            DrawText("ELITE", static_cast<int>(pos.x - 14.0f), static_cast<int>(pos.y - radius - 26.0f), 9, elite_tint);
+            if (!affix_label.empty()) {
+                int aw = MeasureText(affix_label.c_str(), 8);
+                DrawText(affix_label.c_str(), static_cast<int>(pos.x - aw * 0.5f),
+                         static_cast<int>(pos.y - radius - 15.0f), 8, ColorAlpha(elite_tint, 0.9f));
+            }
         }
+        // Carrier nameplate
+        if (type == EnemyType::ASURA_CARRIER) {
+            DrawText("CARRIER", static_cast<int>(pos.x - 22.0f), static_cast<int>(pos.y - radius - 16.0f), 9, COLOR_RED_BRIGHT);
+        }
+        if (type == EnemyType::ASURA_MINELAYER) {
+            DrawText("MINELAYER", static_cast<int>(pos.x - 28.0f), static_cast<int>(pos.y - radius - 16.0f), 9, COLOR_ORANGE_BRIGHT);
+        }
+
 
         // Sniper telegraph laser
         if (type == EnemyType::ASURA_SNIPER && is_charging) {
@@ -377,6 +540,14 @@ struct Enemy {
                 break;
             case EnemyType::ASURA_SHOOTER:
                 DrawPoly(glyph, 4, 6.0f, 45.0f, COLOR_PURPLE_BRIGHT);
+                break;
+            case EnemyType::ASURA_MINELAYER:
+                DrawCircle(static_cast<int>(glyph.x), static_cast<int>(glyph.y), 4, COLOR_ORANGE_BRIGHT);
+                DrawCircleLines(static_cast<int>(glyph.x), static_cast<int>(glyph.y), 7, COLOR_RED_BRIGHT);
+                break;
+            case EnemyType::ASURA_CARRIER:
+                DrawRectangle(static_cast<int>(glyph.x - 6), static_cast<int>(glyph.y - 3), 12, 6, COLOR_RED_BRIGHT);
+                DrawRectangleLines(static_cast<int>(glyph.x - 7), static_cast<int>(glyph.y - 4), 14, 8, COLOR_GOLD_BRIGHT);
                 break;
         }
 

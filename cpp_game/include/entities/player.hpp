@@ -44,6 +44,9 @@ struct Player {
     float dash_timer = 0.0f;
     float dash_duration_timer = 0.0f;
     bool is_dashing = false;
+    Vector2 dash_ghosts[3] = { {0,0}, {0,0}, {0,0} };
+    float dash_ghost_angles[3] = { 0, 0, 0 };
+    float dash_ghost_timer = 0.0f;
 
     bool just_shot = false;
     bool just_dashed = false;
@@ -85,6 +88,9 @@ struct Player {
     long long shots_hit = 0;
     int downed_count = 0;
     int revives_given = 0;
+    int powerups_collected = 0;
+    float multikill_timer = 0.0f;
+    int multikill_streak = 0;
 
     // Co-op Downed & Lives System
     bool is_downed = false;
@@ -151,6 +157,10 @@ struct Player {
         shots_hit = 0;
         downed_count = 0;
         revives_given = 0;
+        powerups_collected = 0;
+        max_combo = 1;
+        multikill_timer = 0.0f;
+        multikill_streak = 0;
         active_ability_cooldown_timer = 0.0f;
         active_ability_effect_timer   = 0.0f;
         active_ability_active         = false;
@@ -278,8 +288,18 @@ struct Player {
             }
         }
 
-        // Dash movement execution
+        // Dash movement execution & afterimage sampling
         if (is_dashing) {
+            dash_ghost_timer += dt;
+            if (dash_ghost_timer >= 0.025f) {
+                dash_ghost_timer = 0.0f;
+                dash_ghosts[2] = dash_ghosts[1];
+                dash_ghost_angles[2] = dash_ghost_angles[1];
+                dash_ghosts[1] = dash_ghosts[0];
+                dash_ghost_angles[1] = dash_ghost_angles[0];
+                dash_ghosts[0] = pos;
+                dash_ghost_angles[0] = angle;
+            }
             dash_duration_timer -= dt;
             if (dash_duration_timer <= 0) {
                 is_dashing = false;
@@ -291,6 +311,14 @@ struct Player {
             combo_timer -= dt;
             if (combo_timer <= 0) {
                 combo = 1;
+            }
+        }
+
+        // Multi-kill window timer (1.5s per §1 spec)
+        if (multikill_timer > 0.0f) {
+            multikill_timer -= dt;
+            if (multikill_timer <= 0.0f) {
+                multikill_streak = 0;
             }
         }
 
@@ -736,6 +764,27 @@ struct Player {
         if (combo > max_combo) max_combo = combo;
     }
 
+    // ── Multi-Kill Step Bonus (§1 spec) ─────────────────────────
+    // +50 for 2 kills within 1.5s, +150 for 3, +300 for 4, +500 for 5+
+    int register_kill() {
+        kills++;
+        add_combo();
+        int bonus = 0;
+        if (multikill_timer > 0.0f) {
+            multikill_streak++;
+            if (multikill_streak == 2)      bonus = 50;
+            else if (multikill_streak == 3) bonus = 150;
+            else if (multikill_streak == 4) bonus = 300;
+            else if (multikill_streak >= 5) bonus = 500;
+        } else {
+            multikill_streak = 1;
+        }
+        multikill_timer = 1.5f;
+        score += bonus;
+        return bonus;
+    }
+
+
     void confirm_hit(Vector2 target, bool critical = false) {
         hit_confirm_pos = target;
         hit_confirm_timer = 0.16f;
@@ -760,6 +809,26 @@ struct Player {
         if (has_kavach_shield) {
             DrawCircleLines(static_cast<int>(pos.x), static_cast<int>(pos.y), radius * 1.5f, COLOR_CYAN_BRIGHT);
             DrawCircle(static_cast<int>(pos.x), static_cast<int>(pos.y), radius * 1.45f, ColorAlpha(COLOR_CYAN, 0.2f));
+        }
+
+        // ── Dash Afterimage Ghosts (§9 spec: 3 fading ghost sprites) ──────
+        if (is_dashing) {
+            static const float ghost_alphas[3] = { 0.55f, 0.35f, 0.18f };
+            for (int g = 2; g >= 0; --g) {
+                Vector2 gpos = dash_ghosts[g];
+                float gang = dash_ghost_angles[g];
+                if (gpos.x != 0.0f || gpos.y != 0.0f) {
+                    Color gcol = ColorAlpha(COLOR_CYAN_BRIGHT, ghost_alphas[g]);
+                    if (tex.id > 0) {
+                        Rectangle src = { 0.0f, 0.0f, static_cast<float>(tex.width), static_cast<float>(tex.height) };
+                        Rectangle dest = { gpos.x, gpos.y, radius * 2.1f, radius * 2.1f };
+                        Vector2 orig = { dest.width * 0.5f, dest.height * 0.5f };
+                        DrawTexturePro(tex, src, dest, orig, gang + 90.0f, gcol);
+                    } else {
+                        DrawCircle(static_cast<int>(gpos.x), static_cast<int>(gpos.y), radius * 0.9f, gcol);
+                    }
+                }
+            }
         }
 
         Color tint = WHITE;

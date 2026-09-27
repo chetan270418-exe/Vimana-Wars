@@ -298,6 +298,19 @@ public:
                 if (std::abs(diff) < 15.0f && self.chakram_timer <= 0) {
                     self.try_chakram(out_bullets);
                 }
+                // AI Wingman uses Active Ability on cooldown when engaged
+                if (self.active_ability_cooldown_timer <= 0.0f && self.archetype &&
+                    self.archetype->active_ability.type != ShipAbilityType::NONE) {
+                    self.trigger_active_ability(target_pos);
+                }
+            }
+
+            // Defensive ability trigger when hull is compromised
+            if (self.hp < static_cast<int>(self.max_hp * 0.45f) && self.active_ability_cooldown_timer <= 0.0f &&
+                self.archetype && (self.archetype->active_ability.type == ShipAbilityType::AEGIS ||
+                                   self.archetype->active_ability.type == ShipAbilityType::REPAIR_AURA ||
+                                   self.archetype->active_ability.type == ShipAbilityType::NULL_FIELD)) {
+                self.trigger_active_ability(self.pos);
             }
         } else {
             self.angle = -90.0f;

@@ -29,6 +29,7 @@
 #include "systems/parallax_background.hpp"
 #include "systems/achievement_system.hpp"
 #include "systems/boon_system.hpp"
+#include "systems/squad_formation_system.hpp"
 #include "ui/hud.hpp"
 #include "ui/button.hpp"
 #include "ui/vedic_theme.hpp"
@@ -130,6 +131,24 @@ public:
         DBSystem::instance().consume_armory_inventory();
         m_squad[0].player_id = 0;
         m_squad[0].callsign = DBSystem::instance().player_name();
+
+        // Pilot Veteran Perks (§1 spec & roadmap #12)
+        const int p_lvl = DBSystem::instance().pilot_level();
+        if (p_lvl > 1) {
+            const int bonus_lvl = p_lvl - 1;
+            const float perk_hp_mult = 1.0f + 0.02f * bonus_lvl;
+            const float perk_dmg_mult = 1.0f + 0.015f * bonus_lvl;
+            const float perk_spd_mult = 1.0f + 0.01f * bonus_lvl;
+            m_squad[0].max_hp = static_cast<int>(std::round(m_squad[0].max_hp * perk_hp_mult));
+            m_squad[0].hp = m_squad[0].max_hp;
+            m_squad[0].bullet_damage = static_cast<int>(std::round(m_squad[0].bullet_damage * perk_dmg_mult));
+            m_squad[0].base_speed *= perk_spd_mult;
+            m_squad[0].current_speed = m_squad[0].base_speed;
+            if (p_lvl >= 5) {
+                m_squad[0].brahmastra_bombs += 1;
+            }
+        }
+
         m_controllers.push_back(std::make_unique<HumanController>(0));
 
         // Slots 1..num_players-1: Teammates / Wingmen
@@ -257,6 +276,10 @@ void apply_boon_and_resume(BoonType boon) {
     }
 
     void update(float dt, Vector2 mouse_pos) override {
+        if (m_slowmo_timer > 0.0f) {
+            m_slowmo_timer = std::max(0.0f, m_slowmo_timer - dt);
+            dt *= 0.35f; // Cinematic slow-mo per spec §2
+        }
         m_aim_pos = mouse_pos;
         NetworkManager::instance().update(dt);
         CoOpAstraSystem::instance().update(dt);
@@ -643,6 +666,9 @@ if (p.is_downed) {
         // -- 7. Bullets Update ---------------------------------------------------
         const int current_wave_num = m_wave_mgr.current_wave();
         sync_realm_ambience();
+        int active_enemy_count = 0;
+        for (const auto& e : m_enemies) { if (e.active) active_enemy_count++; }
+        SoundSystem::instance().update_combat_tension(active_enemy_count, boss_ptr && boss_ptr->active);
         const bool vortex_drift = RealmModifierSystem::has_vortex_drift(current_wave_num);
         const bool reality_distortion = RealmModifierSystem::has_reality_distortion(current_wave_num);
         for (auto& b : m_bullets) {
@@ -656,7 +682,11 @@ if (p.is_downed) {
         }
 
         // -- 8. Wave Manager & Threat-targeted Enemies ---------------------------
+        m_wave_mgr.update_director_ai(dt, m_squad);
         m_wave_mgr.update(dt, m_enemies, m_bullets, m_squad[0].pos);
+
+        // Apply squad formation AI tactics (SWARM, PINCER, SCREEN, FOCUS_FIRE, ESCORT)
+        SquadFormationSystem::instance().update(dt, m_enemies, m_squad);
 
         for (auto& e : m_enemies) {
             Vector2 target_pos = AIThreatTable::get_highest_threat_target(e.pos, m_squad);
@@ -665,13 +695,29 @@ if (p.is_downed) {
                      RealmModifierSystem::sniper_telegraph_multiplier(current_wave_num));
         }
 
+        // Process Carrier spawn signals into new Chaser reinforcements
+        for (auto& b : m_bullets) {
+            if (b.active && b.type == BulletType::CARRIER_SPAWN_SIGNAL) {
+                b.active = false;
+                Enemy chaser;
+                chaser.init(EnemyType::ASURA_CHASER, b.pos, 1.1f, 0.9f);
+                m_enemies.push_back(chaser);
+                m_particles.emit_explosion(b.pos, COLOR_RED_BRIGHT, 10, 50.0f);
+            }
+        }
+
+
         if (boss_ptr && boss_ptr->active) {
             Vector2 target_pos = AIThreatTable::get_highest_threat_target(boss_ptr->pos, m_squad);
             boss_ptr->update(dt, target_pos, m_bullets);
             if (boss_ptr->phase != m_last_boss_phase) {
                 m_last_boss_phase = boss_ptr->phase;
                 m_boss_phase_flash_timer = 1.4f;
+                m_slowmo_timer = 0.8f; // Spec §2: 0.8s slow-mo + roar + arena flash + music sting
+                m_particles.trigger_screen_shake(14.0f, 0.5f);
                 m_particles.emit_boss_phase_transition(boss_ptr->pos, boss_ptr->theme_color, boss_ptr->phase);
+                m_particles.add_floating_text(boss_ptr->pos, "PHASE " + std::to_string(boss_ptr->phase) + " ENRAGE!", COLOR_GOLD_BRIGHT);
+                SoundSystem::instance().play_downed_alert();
                 SoundSystem::instance().set_boss_phase(boss_ptr->phase);
             }
         } else {
@@ -901,10 +947,18 @@ if (p.is_downed) {
         }
 
         // -- Low-HP Vignette & Critical Warning (above hull bar, not on it) -
-        if (m_squad[0].hp <= 35 && !m_squad[0].is_downed) {
-            float pulse = g_reduce_flashes ? 0.5f : 0.5f + 0.5f * std::sin(GetTime() * 10.0f);
-            DrawRectangleLinesEx({ 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT }, 10.0f, ColorAlpha(COLOR_RED_BRIGHT, g_reduce_flashes ? 0.3f : 0.2f + 0.4f * pulse));
-            DrawText("[!] HULL CRITICAL // SOMA [C] [!]", SCREEN_WIDTH / 2 - 130, SCREEN_HEIGHT - 90, 12, ColorAlpha(COLOR_RED_BRIGHT, g_reduce_flashes ? 0.85f : 0.8f + 0.2f * pulse));
+        // -- Low-HP Heartbeat & Vignette (<25% HP) (§9 spec) -----------------
+        if (!m_squad.empty() && !m_squad[0].is_downed && m_squad[0].max_hp > 0 &&
+            m_squad[0].hp <= static_cast<int>(m_squad[0].max_hp * 0.25f)) {
+            float pulse = g_reduce_flashes ? 0.5f : 0.5f + 0.5f * std::sin(GetTime() * 8.0f);
+            DrawRectangle(0, 0, SCREEN_WIDTH, 14, ColorAlpha(COLOR_RED_BRIGHT, 0.2f + 0.3f * pulse));
+            DrawRectangle(0, SCREEN_HEIGHT - 14, SCREEN_WIDTH, 14, ColorAlpha(COLOR_RED_BRIGHT, 0.2f + 0.3f * pulse));
+            DrawRectangle(0, 0, 14, SCREEN_HEIGHT, ColorAlpha(COLOR_RED_BRIGHT, 0.2f + 0.3f * pulse));
+            DrawRectangle(SCREEN_WIDTH - 14, 0, 14, SCREEN_HEIGHT, ColorAlpha(COLOR_RED_BRIGHT, 0.2f + 0.3f * pulse));
+            DrawRectangleLinesEx({ 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT }, 10.0f, ColorAlpha(COLOR_OBSIDIAN, 0.6f * pulse));
+            DrawText("[!] HULL INTEGRITY CRITICAL (<25%) // DEPLOY SOMA [C] [!]",
+                     SCREEN_WIDTH / 2 - 180, SCREEN_HEIGHT - 90, 12,
+                     ColorAlpha(COLOR_RED_BRIGHT, g_reduce_flashes ? 0.85f : 0.75f + 0.25f * pulse));
         }
 
         // Story Transmission
@@ -921,20 +975,21 @@ if (p.is_downed) {
             DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, { 0, 0, 0, 205 });
 
             if (!m_confirm_abort) {
-                Rectangle pause_box = { SCREEN_WIDTH / 2.0f - 230, 95, 460, 365 };
+                Rectangle pause_box = { SCREEN_WIDTH / 2.0f - 240, 85, 480, 380 };
                 UI::DrawChamferedPanel(pause_box, COLOR_GOLD, COLOR_SURFACE_HIGH, 8.0f);
 
-                DrawTextEx(title_f, "COMBAT SUSPENDED // PAUSE", { SCREEN_WIDTH / 2.0f - 130, pause_box.y + 16 }, 18, 1.0f, COLOR_GOLD_BRIGHT);
+                DrawTextEx(title_f, "COMBAT SUSPENDED // PAUSE", { SCREEN_WIDTH / 2.0f - 130, pause_box.y + 14 }, 18, 1.0f, COLOR_GOLD_BRIGHT);
 
-                Rectangle info_rec = { pause_box.x + 20, pause_box.y + 44, pause_box.width - 40, 68 };
+                Rectangle info_rec = { pause_box.x + 15, pause_box.y + 40, pause_box.width - 30, 78 };
                 UI::DrawChamferedPanel(info_rec, COLOR_MUTED, COLOR_SURFACE_MID, 4.0f);
-                DrawTextEx(body_f, "PILOT FLIGHT CONTROLS:", { info_rec.x + 10, info_rec.y + 6 }, 10, 1.0f, COLOR_MUTED);
-                DrawTextEx(body_f, "[WASD] Move  -  [LMB/Space] Fire  -  [Shift/RMB] Dash", { info_rec.x + 10, info_rec.y + 22 }, 11, 1.0f, COLOR_GOLD_BRIGHT);
-                DrawTextEx(body_f, "[Q] Chakram  -  [F] Bomb  -  [C] Soma  -  [V] Flare  -  [E] Revive", { info_rec.x + 10, info_rec.y + 38 }, 11, 1.0f, COLOR_CYAN_BRIGHT);
+                DrawTextEx(body_f, "PILOT FLIGHT CONTROLS & WEAPON SYSTEMS:", { info_rec.x + 10, info_rec.y + 6 }, 10, 1.0f, COLOR_MUTED);
+                DrawTextEx(body_f, "[WASD / Arrows] Move  -  [LMB / Space] Fire  -  [Shift / RMB] Dash", { info_rec.x + 10, info_rec.y + 22 }, 11, 1.0f, COLOR_GOLD_BRIGHT);
+                DrawTextEx(body_f, "[E / MMB] Active Ability  -  [Q] Chakram Cleaver  -  [F] Brahmastra Bomb", { info_rec.x + 10, info_rec.y + 38 }, 11, 1.0f, COLOR_CYAN_BRIGHT);
+                DrawTextEx(body_f, "[C] Soma Heal  -  [V] Vajra Flare  -  [Hold R] Revive Ally (Co-op)", { info_rec.x + 10, info_rec.y + 54 }, 11, 1.0f, COLOR_GREEN_BRIGHT);
 
                 if (m_is_coop_mode) {
                     std::string ping_str = "LAN CO-OP ONLINE // PING: " + std::to_string(NetworkManager::instance().ping_ms()) + "ms";
-                    DrawText(ping_str.c_str(), static_cast<int>(pause_box.x + 25), static_cast<int>(pause_box.y + 118), 10, COLOR_GREEN_BRIGHT);
+                    DrawText(ping_str.c_str(), static_cast<int>(pause_box.x + 25), static_cast<int>(pause_box.y + 124), 10, COLOR_GREEN_BRIGHT);
                 }
 
                 m_btn_resume.draw(title_f);
@@ -1014,6 +1069,7 @@ private:
     Difficulty m_difficulty = Difficulty::KSHATRIYA;
     float m_run_duration = 0.0f;
     bool m_run_recorded = false;
+    float m_slowmo_timer = 0.0f;
     int m_team_combo;
     float m_team_transcendence_timer;
     int m_total_team_score;

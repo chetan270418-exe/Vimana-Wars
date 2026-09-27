@@ -38,7 +38,8 @@ GameOverView(bool is_victory = false)
 
 void set_results(bool victory, int score, int wave, int kills, int damage, const std::string& ship_name,
                       float duration_seconds = 0.0f, const std::string& difficulty = "normal",
-                      const std::string& death_cause = "", int prana_reward = 0, int pilot_xp_reward = 0) {
+                      const std::string& death_cause = "", int prana_reward = 0, int pilot_xp_reward = 0,
+                      int accuracy_pct = 0, int best_combo = 1, int cubes_collected = 0) {
         m_is_victory = victory;
         m_score = score;
         m_wave = wave;
@@ -50,6 +51,9 @@ void set_results(bool victory, int score, int wave, int kills, int damage, const
         m_killed_by = victory ? "" : death_cause;
         m_prana_reward = std::max(0, prana_reward);
         m_pilot_xp_reward = std::max(0, pilot_xp_reward);
+        m_accuracy = std::clamp(accuracy_pct, 0, 100);
+        m_best_combo = std::max(1, best_combo);
+        m_cubes_collected = std::max(0, cubes_collected);
         // Reset animated prana counter
         m_prana_display_f = 0.0f;
         m_prana_display   = 0;
@@ -139,7 +143,7 @@ void set_results(bool victory, int score, int wave, int kills, int damage, const
 
         // Main Result Card
         Color header_col = m_is_victory ? COLOR_GOLD_BRIGHT : COLOR_RED_BRIGHT;
-        Rectangle card = { SCREEN_WIDTH / 2.0f - 270, 45, 540, 410 };
+        Rectangle card = { SCREEN_WIDTH / 2.0f - 270, 32, 540, 425 };
         UI::DrawChamferedPanel(card, header_col, COLOR_SURFACE_LOW, 8.0f);
 
         if (m_is_victory) {
@@ -205,7 +209,28 @@ void set_results(bool victory, int score, int wave, int kills, int damage, const
         DrawTextEx(body_font, "VESSEL CLASS :", { lx, cy }, 13, 1.0f, COLOR_PARCHMENT);
         DrawTextEx(title_font, m_ship.c_str(), { rx, cy - 2 }, 15, 1.0f, COLOR_GOLD);
 
-        cy += 28.0f;
+        // ── Tactical Telemetry Grid (§12 spec) ──────────────────────
+        cy += 24.0f;
+        const float grid_x = card.x + 30.0f;
+        const float grid_w = card.width - 60.0f;
+        const float tile_w = (grid_w - 18.0f) * 0.25f;
+        const float tile_h = 32.0f;
+        struct MetricTile { const char* label; std::string value; Color col; };
+        const MetricTile tiles[4] = {
+            { "ACCURACY", std::to_string(m_accuracy) + "%", COLOR_CYAN_BRIGHT },
+            { "MAX COMBO", std::to_string(m_best_combo) + "x", COLOR_GOLD_BRIGHT },
+            { "ASTRAL CUBES", std::to_string(m_cubes_collected), COLOR_GREEN_BRIGHT },
+            { "TOTAL DAMAGE", std::to_string(m_damage), COLOR_ORANGE_BRIGHT }
+        };
+        for (int i = 0; i < 4; ++i) {
+            Rectangle tile_r = { grid_x + i * (tile_w + 6.0f), cy, tile_w, tile_h };
+            DrawRectangleRec(tile_r, ColorAlpha(COLOR_SURFACE_MID, 0.7f));
+            DrawRectangleLinesEx(tile_r, 1.0f, COLOR_SURFACE_HIGH);
+            DrawText(tiles[i].label, static_cast<int>(tile_r.x + 6), static_cast<int>(tile_r.y + 3), 8, COLOR_MUTED);
+            DrawTextEx(title_font, tiles[i].value.c_str(), { tile_r.x + 6, tile_r.y + 14 }, 12, 1.0f, tiles[i].col);
+        }
+
+        cy += 36.0f;
         DrawTextEx(body_font, "SORTIE REWARDS :", { lx, cy }, 13, 1.0f, COLOR_PARCHMENT);
         // Animated prana count-up with pulse while ticking
         float prana_pulse = (!m_prana_counted && m_prana_reward > 0)
@@ -215,7 +240,6 @@ void set_results(bool victory, int score, int wave, int kills, int damage, const
         DrawTextEx(title_font, reward_text.c_str(), { card.x + 265.0f, cy - 2 }, 13, 1.0f,
                    ColorAlpha(COLOR_GOLD_BRIGHT, prana_pulse));
 
-
         // Mission Duration
         int mins = static_cast<int>(m_duration) / 60;
         int secs = static_cast<int>(m_duration) % 60;
@@ -223,8 +247,8 @@ void set_results(bool victory, int score, int wave, int kills, int damage, const
         std::snprintf(dur_buf, sizeof(dur_buf), "%02d:%02d", mins, secs);
 
         // Performance Rank Medal Display
-        cy += 36.0f;
-        Rectangle rank_box = { card.x + 30, cy, card.width - 60, 52 };
+        cy += 30.0f;
+        Rectangle rank_box = { card.x + 30, cy, card.width - 60, 48 };
         UI::DrawChamferedPanel(rank_box, COLOR_GOLD, COLOR_SURFACE_MID, 4.0f);
 
         const char* rank_letter = (m_rank == PerformanceRank::S_RANK) ? "S" :
@@ -274,6 +298,9 @@ private:
     bool  m_prana_counted   = false; // true once count-up is done
 
     std::string m_ship = "Pushpaka";
+    int m_accuracy = 0;
+    int m_best_combo = 1;
+    int m_cubes_collected = 0;
     PerformanceRank m_rank = PerformanceRank::B_RANK;
     std::string m_rank_reason = "";
 

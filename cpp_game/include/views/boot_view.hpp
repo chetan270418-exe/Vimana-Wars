@@ -155,11 +155,26 @@ public:
         DrawRectangleLinesEx(bar_bg, 1.0f, ColorAlpha(COLOR_MUTED, 0.75f));
 
         const std::string loaded = std::to_string(m_load_index) + " / " + std::to_string(m_load_assets.size()) + " ASSETS";
-        DrawText(loaded.c_str(), 76, 521, 9, COLOR_MUTED);
-        const char* prompt = m_load_index >= m_load_assets.size() ? "READY // PRESS KEY OR AUTOLAUNCH" : "LOADING ASSETS // PLEASE WAIT";
+        DrawText(loaded.c_str(), 78, 502, 9, COLOR_MUTED);
+        const char* prompt = m_load_index >= m_load_assets.size() ? "READY // PRESS KEY OR AUTOLAUNCH" : "PRELOADING ASSETS // PLEASE WAIT";
         const int prompt_width = MeasureText(prompt, 9);
-        DrawText(prompt, SCREEN_WIDTH - prompt_width - 78, 521, 9,
+        DrawText(prompt, SCREEN_WIDTH - prompt_width - 78, 502, 9,
                  ColorAlpha(COLOR_PARCHMENT, 0.65f + 0.3f * pulse));
+
+        // ── Rotating Lore / Combat Intel Tips (§8 & Roadmap #27) ────
+        static const char* s_tips[] = {
+            "INTEL: Hold [R] to channel Soma and revive a downed wingman in co-op sorties.",
+            "DOCTRINE: Press [E] to trigger your vessel's unique active ability when ready.",
+            "SENSOR SCAN: Enemies with [REF] affix return 30% damage - prioritize precision fire.",
+            "AVOIDANCE: Minelayers lay contact mines; keep moving to maintain safe airspace.",
+            "ARSENAL: Launch [Q] Chakram Cleaver through dense swarms for multiple hits.",
+            "HARVEST: Astral cubes restore hull and grant temporary tactical overdrive.",
+            "TRANSCENDENCE: Keep combo multipliers rolling to enter Mahayuddha supreme state."
+        };
+        const int tip_idx = static_cast<int>(GetTime() * 0.45f) % 7;
+        const char* tip = s_tips[tip_idx];
+        const int tip_w = MeasureText(tip, 10);
+        DrawText(tip, static_cast<int>((SCREEN_WIDTH - tip_w) * 0.5f), 524, 10, COLOR_GOLD_BRIGHT);
 
         if (g_scanlines_enabled) UI::DrawScanlines();
     }

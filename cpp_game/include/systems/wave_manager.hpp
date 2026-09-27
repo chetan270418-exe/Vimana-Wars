@@ -11,6 +11,7 @@
 #include "core/campaign_content.hpp"
 #include "entities/enemy.hpp"
 #include "entities/boss.hpp"
+#include "entities/player.hpp"
 
 namespace Vimana {
 
@@ -50,8 +51,48 @@ public:
         m_is_wave_in_progress = false;
         m_boss_active = false;
         m_banner_timer = 2.5f;
+        m_director_scale = 1.0f;
+        m_director_timer = 10.0f;
+        m_director_heal_drop_bonus = 0.0f;
         prepare_wave(m_current_wave);
     }
+
+    // ── Director AI (§6 spec) ──────────────────────────────────
+    void update_director_ai(float dt, const std::vector<Player>& squad) {
+        if (squad.empty()) return;
+        m_director_timer -= dt;
+        if (m_director_timer <= 0.0f) {
+            m_director_timer = 10.0f;
+            float total_hp_ratio = 0.0f;
+            int max_combo = 1;
+            int living_count = 0;
+            for (const auto& p : squad) {
+                if (!p.is_downed && !p.is_spectator && p.max_hp > 0) {
+                    total_hp_ratio += static_cast<float>(p.hp) / p.max_hp;
+                    living_count++;
+                }
+                max_combo = std::max(max_combo, p.combo);
+            }
+            float avg_hp = living_count > 0 ? (total_hp_ratio / living_count) : 0.0f;
+
+            if (avg_hp > 0.75f && max_combo >= 8) {
+                // Squad dominating -> +15% pressure
+                m_director_scale = std::min(1.20f, m_director_scale + 0.10f);
+                m_director_heal_drop_bonus = 0.0f;
+            } else if (avg_hp < 0.40f || living_count == 0) {
+                // Squad struggling -> ease budget by 10%, boost heal drops
+                m_director_scale = std::max(0.80f, m_director_scale - 0.10f);
+                m_director_heal_drop_bonus = 0.20f;
+            } else {
+                m_director_scale += (1.0f - m_director_scale) * 0.25f;
+                m_director_heal_drop_bonus = 0.0f;
+            }
+        }
+    }
+
+    float director_scale() const { return m_director_scale; }
+    float heal_drop_bonus() const { return m_director_heal_drop_bonus; }
+
 
     void prepare_wave(int wave) {
         m_current_wave = wave;
@@ -189,8 +230,8 @@ public:
         int base_enemies = 12 + act_wave * 3 + m_difficulty_profile.min_enemies_bonus + static_cast<int>(act_pressure * 6.0f);
         if (m_wave_pattern == WavePattern::INTERCEPTOR_SWARM || m_wave_pattern == WavePattern::RIFT_AMBUSH) base_enemies = static_cast<int>(base_enemies * 1.35f);
         if (m_wave_pattern == WavePattern::SIEGE_LINE || m_wave_pattern == WavePattern::ELITE_HUNT) base_enemies = static_cast<int>(base_enemies * 0.9f);
-        // Co-op enemy count scaling: EnemyCount = BaseCount * (1 + 0.35 * (Players - 1))
-        int total_enemies = std::clamp(static_cast<int>(base_enemies * (1.0f + CO_OP_ENEMY_SCALE_PER_PLAYER * (m_player_count - 1))), 12, 180);
+        // Co-op & Director AI enemy count scaling: Base * Director * CoOpScale
+        int total_enemies = std::clamp(static_cast<int>(base_enemies * m_director_scale * (1.0f + CO_OP_ENEMY_SCALE_PER_PLAYER * (m_player_count - 1))), 12, 180);
         m_wave_enemy_goal = total_enemies;
         float current_delay = 0.35f;
         int spawned = 0;
@@ -205,35 +246,40 @@ public:
             int roll = std::rand() % 100;
 
             if (m_wave_pattern == WavePattern::INTERCEPTOR_SWARM) {
-                // Swarm: 60% fast chasers + kamikazes, 25% shooters for support fire
-                type = roll < 60 ? EnemyType::ASURA_CHASER : roll < 80 ? EnemyType::ASURA_KAMIKAZE : EnemyType::ASURA_SHOOTER;
+                // Swarm: 50% fast chasers, 25% kamikazes, 15% shooters, 10% minelayers
+                type = roll < 50 ? EnemyType::ASURA_CHASER : roll < 75 ? EnemyType::ASURA_KAMIKAZE
+                     : roll < 90 ? EnemyType::ASURA_SHOOTER : EnemyType::ASURA_MINELAYER;
             } else if (m_wave_pattern == WavePattern::SIEGE_LINE) {
-                // Siege: tanks anchor the line, shooters+snipers fire from behind, healers keep them alive
-                type = roll < 35 ? EnemyType::ASURA_TANK : roll < 60 ? EnemyType::ASURA_SHOOTER
-                       : roll < 80 ? EnemyType::ASURA_HEALER : EnemyType::ASURA_SNIPER;
+                // Siege: tanks anchor line, shooters/snipers in rear, healers protect, carriers deploy wings
+                type = roll < 30 ? EnemyType::ASURA_TANK : roll < 50 ? EnemyType::ASURA_SHOOTER
+                     : roll < 70 ? EnemyType::ASURA_HEALER : roll < 88 ? EnemyType::ASURA_SNIPER
+                     : EnemyType::ASURA_CARRIER;
             } else if (m_wave_pattern == WavePattern::ELITE_HUNT) {
-                // Elite: all dangerous, mixed - tanks + snipers + shooters + kamikazes together
-                type = roll < 30 ? EnemyType::ASURA_TANK : roll < 55 ? EnemyType::ASURA_SNIPER
-                       : roll < 78 ? EnemyType::ASURA_SHOOTER : EnemyType::ASURA_KAMIKAZE;
+                // Elite: all dangerous, mixed - tanks + snipers + minelayers + carriers
+                type = roll < 25 ? EnemyType::ASURA_TANK : roll < 45 ? EnemyType::ASURA_SNIPER
+                     : roll < 65 ? EnemyType::ASURA_SHOOTER : roll < 85 ? EnemyType::ASURA_MINELAYER
+                     : EnemyType::ASURA_CARRIER;
             } else if (m_wave_pattern == WavePattern::RIFT_AMBUSH) {
-                // Ambush: snipers in back, kamikazes rush in, healers patch them up
-                type = roll < 30 ? EnemyType::ASURA_SNIPER : roll < 60 ? EnemyType::ASURA_KAMIKAZE
-                       : roll < 80 ? EnemyType::ASURA_HEALER : EnemyType::ASURA_CHASER;
+                // Ambush: snipers in back, kamikazes rush in, minelayers deny area
+                type = roll < 25 ? EnemyType::ASURA_SNIPER : roll < 50 ? EnemyType::ASURA_KAMIKAZE
+                     : roll < 70 ? EnemyType::ASURA_MINELAYER : roll < 85 ? EnemyType::ASURA_HEALER : EnemyType::ASURA_CHASER;
             } else if (act_wave >= 22) {
-                // Late-act mixed assault: ALL 6 types in coordinated wave
-                type = roll < 22 ? EnemyType::ASURA_SNIPER : roll < 42 ? EnemyType::ASURA_KAMIKAZE
-                       : roll < 60 ? EnemyType::ASURA_HEALER : roll < 75 ? EnemyType::ASURA_SHOOTER
-                       : roll < 90 ? EnemyType::ASURA_TANK : EnemyType::ASURA_CHASER;
+                // Late-act mixed assault: ALL 8 types in coordinated wave
+                type = roll < 18 ? EnemyType::ASURA_SNIPER : roll < 34 ? EnemyType::ASURA_KAMIKAZE
+                     : roll < 48 ? EnemyType::ASURA_HEALER : roll < 62 ? EnemyType::ASURA_SHOOTER
+                     : roll < 74 ? EnemyType::ASURA_TANK : roll < 86 ? EnemyType::ASURA_MINELAYER
+                     : roll < 94 ? EnemyType::ASURA_CARRIER : EnemyType::ASURA_CHASER;
             } else if (act_wave >= 15) {
-                // Mid-late: 4 types together
-                type = roll < 28 ? EnemyType::ASURA_SNIPER : roll < 52 ? EnemyType::ASURA_KAMIKAZE
-                       : roll < 74 ? EnemyType::ASURA_HEALER : roll < 90 ? EnemyType::ASURA_SHOOTER : EnemyType::ASURA_TANK;
+                // Mid-late: Includes Minelayer and occasional Carrier
+                type = roll < 22 ? EnemyType::ASURA_SNIPER : roll < 42 ? EnemyType::ASURA_KAMIKAZE
+                     : roll < 60 ? EnemyType::ASURA_HEALER : roll < 76 ? EnemyType::ASURA_SHOOTER
+                     : roll < 88 ? EnemyType::ASURA_TANK : EnemyType::ASURA_MINELAYER;
             } else if (act_wave >= 9) {
                 type = roll < 22 ? EnemyType::ASURA_SNIPER : roll < 42 ? EnemyType::ASURA_HEALER
-                       : roll < 64 ? EnemyType::ASURA_KAMIKAZE : roll < 84 ? EnemyType::ASURA_SHOOTER : EnemyType::ASURA_TANK;
+                     : roll < 64 ? EnemyType::ASURA_KAMIKAZE : roll < 84 ? EnemyType::ASURA_SHOOTER : EnemyType::ASURA_TANK;
             } else if (act_wave >= 5) {
                 type = roll < 25 ? EnemyType::ASURA_HEALER : roll < 55 ? EnemyType::ASURA_KAMIKAZE
-                       : roll < 78 ? EnemyType::ASURA_SHOOTER : EnemyType::ASURA_TANK;
+                     : roll < 78 ? EnemyType::ASURA_SHOOTER : EnemyType::ASURA_TANK;
             } else if (act_wave >= 3) {
                 type = roll < 30 ? EnemyType::ASURA_SHOOTER : roll < 60 ? EnemyType::ASURA_KAMIKAZE : EnemyType::ASURA_TANK;
             } else if (act_wave >= 2) {
@@ -251,7 +297,8 @@ public:
             float act_elite_bonus = std::min(0.40f, 0.03f * act_pressure);
             if (m_wave_pattern == WavePattern::ELITE_HUNT) act_elite_bonus += 0.20f;
             if (m_wave_pattern == WavePattern::RIFT_AMBUSH) act_elite_bonus += 0.08f;
-            float elite_chance = std::min(0.82f, m_difficulty_profile.elite_chance_bonus + 0.04f * (m_player_count - 1) + act_elite_bonus);
+            float base_elite_chance = m_difficulty_profile.elite_chance_bonus + 0.04f * (m_player_count - 1) + act_elite_bonus;
+            float elite_chance = std::min(0.85f, base_elite_chance * (m_director_scale > 1.0f ? 1.15f : 1.0f));
             bool chance_elite = (std::rand() % 100) < static_cast<int>(elite_chance * 100.0f);
             // Members of a squadron arrive together; the queue spreads them over only a few frames.
             m_spawn_queue.push({ type, current_delay + member * 0.02f, pos, guaranteed_elite || chance_elite });
@@ -376,6 +423,11 @@ private:
     DifficultyProfile m_difficulty_profile;
     int m_player_count = 1;
     int m_wave_enemy_goal = 0;
+
+    // Director AI state
+    float m_director_scale = 1.0f;
+    float m_director_timer = 10.0f;
+    float m_director_heal_drop_bonus = 0.0f;
 };
 
 } // namespace Vimana

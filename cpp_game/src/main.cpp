@@ -233,10 +233,15 @@ int main() {
                 multiplayer_view->init();
                 current_view = multiplayer_view.get();
             } else if (next == ViewType::MULTIPLAYER_RESULT) {
+                bool is_vic = game_view->current_wave() >= WAVES_PER_ACT * static_cast<int>(CAMPAIGN_REALMS.size());
+                int pilot_xp_reward = 0;
+                const int prana_reward = game_view->grant_run_completion_reward(is_vic, pilot_xp_reward);
                 multiplayer_result_view->set_results(
-                    game_view->current_wave() >= WAVES_PER_ACT * static_cast<int>(CAMPAIGN_REALMS.size()),
+                    is_vic,
                     game_view->total_team_score(),
-                    game_view->squad()
+                    game_view->squad(),
+                    prana_reward,
+                    pilot_xp_reward
                 );
                 multiplayer_result_view->init();
                 current_view = multiplayer_result_view.get();
@@ -248,10 +253,14 @@ int main() {
                 const auto& p = game_view->player();
                 int pilot_xp_reward = 0;
                 const int prana_reward = game_view->grant_run_completion_reward(is_vic, pilot_xp_reward);
+                const int accuracy = (p.shots_fired > 0)
+                    ? static_cast<int>(std::clamp((p.shots_hit * 100LL) / p.shots_fired, 0LL, 100LL))
+                    : 0;
                 game_over_view->set_results(is_vic, p.score, game_view->current_wave(), p.kills, p.total_damage_dealt,
                                             p.archetype ? p.archetype->name : "Pushpaka",
                                             game_view->run_duration(), game_view->difficulty_string(),
-                                            is_vic ? "" : game_view->death_cause(), prana_reward, pilot_xp_reward);
+                                            is_vic ? "" : game_view->death_cause(), prana_reward, pilot_xp_reward,
+                                            accuracy, p.max_combo, p.powerups_collected);
                 game_over_view->set_killed_by(is_vic ? "" : game_view->death_cause());
                 if (DBSystem::instance().fetch_match_history(10).size() >= 10) {
                     AchievementSystem::instance().check_and_award("PLAY_10");

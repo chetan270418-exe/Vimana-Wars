@@ -66,6 +66,20 @@ struct Bullet {
             // Golden slash wave
             DrawCircleGradient(pos, radius * 1.5f, Color{ 255, 120, 30, 240 }, Color{ 255, 60, 0, 0 });
             DrawCircle(static_cast<int>(pos.x), static_cast<int>(pos.y), radius, Color{ 255, 230, 150, 255 });
+        } else if (type == BulletType::CARRIER_SPAWN_SIGNAL) {
+            // Signal beacon handled immediately by game_view, do not draw
+            return;
+        } else if (type == BulletType::ENEMY_PROXIMITY_MINE) {
+            // Proximity mine: pulsating spikes, warning beep glow ring
+            float pulse = 0.5f + 0.5f * std::sin(lifetime * 8.0f);
+            DrawCircleLines(static_cast<int>(pos.x), static_cast<int>(pos.y), radius * (1.3f + 0.4f * pulse), ColorAlpha(COLOR_RED_BRIGHT, 0.7f * pulse));
+            DrawCircle(static_cast<int>(pos.x), static_cast<int>(pos.y), radius, COLOR_ORANGE_BRIGHT);
+            DrawCircle(static_cast<int>(pos.x), static_cast<int>(pos.y), radius * 0.5f, COLOR_RED_BRIGHT);
+            for (int i = 0; i < 4; ++i) {
+                float a = (rotation + i * 90.0f) * (3.14159f / 180.0f);
+                Vector2 spk = { pos.x + std::cos(a) * (radius + 3.0f), pos.y + std::sin(a) * (radius + 3.0f) };
+                DrawLineEx(pos, spk, 2.0f, COLOR_GOLD_BRIGHT);
+            }
         } else {
             // Basic & Spread laser slug
             Color glow = shot_color;

@@ -200,7 +200,9 @@ enum class BulletType {
     ENEMY_SNIPER_BEAM,
     ENEMY_SEEKING,
     BOSS_VOID_ORB,
-    BOSS_LIGHTNING_STORM
+    BOSS_LIGHTNING_STORM,
+    ENEMY_PROXIMITY_MINE,    // Asura Minelayer — slow-drifting contact mine
+    CARRIER_SPAWN_SIGNAL     // Asura Carrier — zero-damage spawn beacon (handled in game_view)
 };
 
 enum class PowerupType {

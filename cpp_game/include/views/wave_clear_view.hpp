@@ -139,10 +139,9 @@ public:
         int display_dmg = static_cast<int>(m_result.damage_taken * roll);
         draw_row("HULL DAMAGE TAKEN:", std::to_string(display_dmg) + " HP", display_dmg == 0 ? COLOR_GREEN_BRIGHT : COLOR_RED_BRIGHT);
 
+        draw_row("SECTOR DEFENSE ACCURACY:", std::to_string(m_result.accuracy_pct) + "%", COLOR_CYAN_BRIGHT);
         if (m_result.no_damage) {
             draw_row("UNTOUCHED VALOR BONUS:", "+100 SCORE", COLOR_GOLD_BRIGHT);
-        } else {
-            draw_row("SECTOR DEFENSE ACCURACY:", std::to_string(m_result.accuracy_pct) + "%", COLOR_PARCHMENT);
         }
 
         DrawLine(static_cast<int>(px), static_cast<int>(py), static_cast<int>(panel.x + panel.width - 30), static_cast<int>(py), COLOR_MUTED);
