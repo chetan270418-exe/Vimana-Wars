@@ -3,6 +3,9 @@
 #include <chrono>
 #include <exception>
 #include "raylib.h"
+
+// HUD reads the shared squad lives pool; GameView::update() syncs this each frame.
+int g_coop_squad_lives = 6;
 #include "core/constants.hpp"
 #include "core/types.hpp"
 #include "systems/asset_manager.hpp"
@@ -34,6 +37,7 @@
 #include "views/profile_view.hpp"
 #include "views/achievements_view.hpp"
 #include "views/settings_view.hpp"
+#include "views/armory_view.hpp"
 #include "views/game_over_view.hpp"
 
 using namespace Vimana;
@@ -85,6 +89,7 @@ int main() {
     auto profile_view = std::make_unique<ProfileView>();
     auto achievements_view = std::make_unique<AchievementsView>();
     auto settings_view = std::make_unique<SettingsView>();
+    auto armory_view = std::make_unique<ArmoryView>();
     auto game_over_view = std::make_unique<GameOverView>(false);
 
     // Starting screen: BOOT splash
@@ -157,6 +162,9 @@ int main() {
             } else if (next == ViewType::ACHIEVEMENTS) {
                 achievements_view->init();
                 current_view = achievements_view.get();
+            } else if (next == ViewType::ARMORY) {
+                armory_view->init();
+                current_view = armory_view.get();
             } else if (next == ViewType::LOADOUT) {
                 if (current_view_type == ViewType::CAMPAIGN_MAP) {
                     loadout_view->set_mission_target(campaign_map_view->starting_wave(), &ship_select_view->selected_ship(), ship_select_view->consumables());

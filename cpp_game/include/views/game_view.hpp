@@ -34,6 +34,10 @@
 #include "ui/button.hpp"
 #include "ui/vedic_theme.hpp"
 
+// HUD reads the shared squad lives pool via this global; GameView::update() syncs it.
+// Defined in src/main.cpp at global namespace.
+extern int g_coop_squad_lives;
+
 namespace Vimana {
 
 class GameView : public IView {
@@ -276,6 +280,8 @@ void apply_boon_and_resume(BoonType boon) {
     }
 
     void update(float dt, Vector2 mouse_pos) override {
+        // Sync shared squad-lives pool to a global so the HUD can render hearts.
+        g_coop_squad_lives = m_squad_lives_remaining;
         if (m_slowmo_timer > 0.0f) {
             m_slowmo_timer = std::max(0.0f, m_slowmo_timer - dt);
             dt *= 0.35f; // Cinematic slow-mo per spec §2

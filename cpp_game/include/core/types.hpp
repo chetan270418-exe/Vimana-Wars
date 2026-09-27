@@ -49,6 +49,7 @@ enum class ViewType {
     MULTIPLAYER_RESULT, // Post-match co-op/PvP result
     PROFILE,            // Pilot profile + match history
     ACHIEVEMENTS,       // Browsable trophy gallery
+    ARMORY,             // Ship shop / consumables (closes the economy loop)
     CODEX,              // Bestiary / lore / synergy reference
     SETTINGS,           // Audio / Controls / Accessibility
     AUTH,               // Online Account Login / Registration

@@ -27,7 +27,8 @@ GameOverView(bool is_victory = false)
           m_btn_continue({ SCREEN_WIDTH / 2.0f - 220, 470, 135, 40 }, "CONTINUE THIS REALM", COLOR_GOLD_BRIGHT, "", Vimana::UI::ButtonKind::PRIMARY),
           m_btn_replay({ SCREEN_WIDTH / 2.0f - 75, 470, 150, 40 }, "FLY AGAIN", COLOR_CYAN_BRIGHT, "", Vimana::UI::ButtonKind::SECONDARY),
           m_btn_profile({ SCREEN_WIDTH / 2.0f + 85, 470, 135, 40 }, "PILOT PROFILE", COLOR_MUTED, "", Vimana::UI::ButtonKind::GHOST),
-          m_btn_menu({ SCREEN_WIDTH / 2.0f + 230, 470, 135, 40 }, "MAIN MENU", COLOR_MUTED, "", Vimana::UI::ButtonKind::GHOST)
+          m_btn_menu({ SCREEN_WIDTH / 2.0f + 230, 470, 135, 40 }, "MAIN MENU", COLOR_MUTED, "", Vimana::UI::ButtonKind::GHOST),
+          m_btn_armory({ SCREEN_WIDTH / 2.0f - 220, 522, 220, 36 }, "VISIT ARMORY // SPEND PRANA", COLOR_PURPLE_BRIGHT, "", Vimana::UI::ButtonKind::SECONDARY)
     {
         init();
     }
@@ -133,6 +134,9 @@ void set_results(bool victory, int score, int wave, int kills, int damage, const
         }
         if (m_btn_menu.update(mouse_pos) || IsKeyPressed(KEY_ESCAPE)) {
             m_next_view = ViewType::MENU;
+        }
+        if (m_btn_armory.update(mouse_pos)) {
+            m_next_view = ViewType::ARMORY;
         }
     }
 
@@ -273,6 +277,7 @@ void set_results(bool victory, int score, int wave, int kills, int damage, const
         m_btn_replay.draw(title_font);
         m_btn_profile.draw(title_font);
         m_btn_menu.draw(title_font);
+        m_btn_armory.draw(title_font);
 
         if (g_scanlines_enabled) UI::DrawScanlines();
     }
@@ -308,6 +313,7 @@ private:
     UI::Button m_btn_replay;
     UI::Button m_btn_profile;
     UI::Button m_btn_menu;
+    UI::Button m_btn_armory;
     std::string m_killed_by = "HULL INTEGRITY BREACHED";
 };
 

@@ -25,15 +25,16 @@ public:
     void init() override {
         m_next_view = ViewType::MENU;
         m_nav = {
-            { { 56, 181, 340, 31 }, "SINGLE PLAYER",      ViewType::CAMPAIGN_MAP,      UI::PAL_PRIMARY_BRIGHT,   "1" },
-            { { 56, 216, 340, 31 }, "MULTIPLAYER",        ViewType::MULTIPLAYER_LOBBY, UI::PAL_SECONDARY_BRIGHT, "2" },
-            { { 56, 251, 340, 31 }, "SELECT YOUR SHIP",   ViewType::SHIP_SELECT,       UI::PAL_SECONDARY_BRIGHT, "3" },
-            { { 56, 286, 340, 31 }, "ACHIEVEMENTS",       ViewType::ACHIEVEMENTS,      UI::PAL_PRIMARY_BRIGHT,   "4" },
-            { { 56, 321, 340, 31 }, "LEADERBOARDS",       ViewType::LEADERBOARD,       UI::PAL_SECONDARY_BRIGHT, "5" },
-            { { 56, 356, 340, 31 }, "CODEX / LORE",       ViewType::CODEX,              UI::PAL_SECONDARY_BRIGHT, "6" },
-            { { 56, 391, 340, 31 }, "DUEL / TRAINING",    ViewType::DUEL,               UI::PAL_SECONDARY_BRIGHT, "7" },
-            { { 56, 426, 340, 31 }, "SETTINGS",           ViewType::SETTINGS,           UI::PAL_TEXT_VARIANT,     "8" },
-            { { 56, 461, 340, 31 }, "QUIT",               ViewType::QUIT,               UI::PAL_DESTRUCTIVE_BRIGHT,"9" }
+            { { 56, 181, 340, 28 }, "SINGLE PLAYER",      ViewType::CAMPAIGN_MAP,      UI::PAL_PRIMARY_BRIGHT,   "1" },
+            { { 56, 212, 340, 28 }, "MULTIPLAYER",        ViewType::MULTIPLAYER_LOBBY, UI::PAL_SECONDARY_BRIGHT, "2" },
+            { { 56, 243, 340, 28 }, "SELECT YOUR SHIP",   ViewType::SHIP_SELECT,       UI::PAL_SECONDARY_BRIGHT, "3" },
+            { { 56, 274, 340, 28 }, "VISIT ARMORY",       ViewType::ARMORY,            UI::PAL_PRIMARY_BRIGHT,   "4" },
+            { { 56, 305, 340, 28 }, "ACHIEVEMENTS",       ViewType::ACHIEVEMENTS,      UI::PAL_PRIMARY_BRIGHT,   "5" },
+            { { 56, 336, 340, 28 }, "LEADERBOARDS",       ViewType::LEADERBOARD,       UI::PAL_SECONDARY_BRIGHT, "6" },
+            { { 56, 367, 340, 28 }, "CODEX / LORE",       ViewType::CODEX,              UI::PAL_SECONDARY_BRIGHT, "7" },
+            { { 56, 398, 340, 28 }, "DUEL / TRAINING",    ViewType::DUEL,               UI::PAL_SECONDARY_BRIGHT, "8" },
+            { { 56, 429, 340, 28 }, "SETTINGS",           ViewType::SETTINGS,           UI::PAL_TEXT_VARIANT,     "9" },
+            { { 56, 460, 340, 28 }, "QUIT",               ViewType::QUIT,               UI::PAL_DESTRUCTIVE_BRIGHT, "0" }
         };
         m_hover_anim.assign(m_nav.size(), 0.0f);
         m_selected = 0;
@@ -81,9 +82,9 @@ public:
         }
 
         // Numeric shortcuts preserve fast access; arrows/Enter provide a gamepad-like keyboard flow.
-        static constexpr std::array<int, 9> nav_keys = {
+        static constexpr std::array<int, 10> nav_keys = {
             KEY_ONE, KEY_TWO, KEY_THREE, KEY_FOUR, KEY_FIVE,
-            KEY_SIX, KEY_SEVEN, KEY_EIGHT, KEY_NINE
+            KEY_SIX, KEY_SEVEN, KEY_EIGHT, KEY_NINE, KEY_ZERO
         };
         for (size_t i = 0; i < nav_keys.size(); ++i) {
             if (IsKeyPressed(nav_keys[i])) {

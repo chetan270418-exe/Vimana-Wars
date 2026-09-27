@@ -11,6 +11,10 @@
 #include "ui/vedic_theme.hpp"
 #include "systems/gamepad_manager.hpp"
 
+// Shared squad lives pool — global so the HUD can read it without taking a
+// GameView pointer. Defined in src/main.cpp (global namespace).
+extern int g_coop_squad_lives;
+
 namespace Vimana::UI {
 
 class HUD {
@@ -42,6 +46,45 @@ public:
             DrawCircle(static_cast<int>(pad_box.x + 9), static_cast<int>(pad_box.y + 9), 3.0f, COLOR_GREEN_BRIGHT);
             const char* pad_label = pad.name.empty() ? "GAMEPAD P1" : pad.name.c_str();
             DrawText(pad_label, static_cast<int>(pad_box.x + 18), static_cast<int>(pad_box.y + 4), 10, COLOR_GREEN_BRIGHT);
+        }
+
+        // ── Shared squad lives (only when SQUAD_LIVES rule active) ─────────
+        if (coop_rule == CoopRule::SQUAD_LIVES) {
+            const int lives = ::g_coop_squad_lives;
+            const int max_lives = 6;
+            const float cx = SCREEN_WIDTH * 0.5f;
+            const float cy = SCREEN_HEIGHT - 78.0f;
+            const float heart_w = 22.0f;
+            const float gap = 4.0f;
+            const float total_w = max_lives * heart_w + (max_lives - 1) * gap;
+            float start_x = cx - total_w * 0.5f;
+
+            // Container backdrop
+            Rectangle hearts_box = { start_x - 14, cy - 6, total_w + 28, heart_w + 12 };
+            DrawRectangleRec(hearts_box, { 0x0E, 0x13, 0x20, 200 });
+            DrawRectangleLinesEx(hearts_box, 1.0f, COLOR_GOLD);
+
+            DrawText("SQUAD LIVES", static_cast<int>(hearts_box.x + 6),
+                     static_cast<int>(hearts_box.y - 12), 8, COLOR_GOLD_BRIGHT);
+
+            for (int i = 0; i < max_lives; ++i) {
+                const float hx = start_x + i * (heart_w + gap);
+                const bool filled = i < lives;
+                Color heart_col;
+                if (filled) heart_col = COLOR_RED_BRIGHT;
+                else        heart_col = { 0x40, 0x18, 0x18, 180 };
+                Color edge_col  = filled ? COLOR_GOLD_BRIGHT : COLOR_MUTED;
+                Vector2 c1 = { hx + 6.0f,            cy + 6.0f };
+                Vector2 c2 = { hx + heart_w - 6.0f,  cy + 6.0f };
+                Vector2 c3 = { hx + heart_w * 0.5f,  cy + heart_w - 1.0f };
+                DrawCircleV(c1, 6.0f, heart_col);
+                DrawCircleV(c2, 6.0f, heart_col);
+                DrawTriangle({ hx + 1.0f, cy + 6.0f },
+                             { hx + heart_w - 1.0f, cy + 6.0f },
+                             c3, heart_col);
+                DrawCircleLines(static_cast<int>(c1.x), static_cast<int>(c1.y), 6.0f, edge_col);
+                DrawCircleLines(static_cast<int>(c2.x), static_cast<int>(c2.y), 6.0f, edge_col);
+            }
         }
 
         // ── Top header: ship, mission, score, combo, contacts, and mode ──
