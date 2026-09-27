@@ -692,6 +692,7 @@ if (p.is_downed) {
         m_wave_mgr.update(dt, m_enemies, m_bullets, m_squad[0].pos);
 
         // Apply squad formation AI tactics (SWARM, PINCER, SCREEN, FOCUS_FIRE, ESCORT)
+        SquadFormationSystem::instance().set_current_wave(m_wave_mgr.current_wave());
         SquadFormationSystem::instance().update(dt, m_enemies, m_squad);
 
         for (auto& e : m_enemies) {

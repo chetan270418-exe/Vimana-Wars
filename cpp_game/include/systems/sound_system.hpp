@@ -49,7 +49,7 @@ public:
         play_sfx_pitched("explosion.wav", pitch, 0.65f);
         if (combo >= 5) {
             float chime_pitch = 1.0f + std::min(0.70f, (combo - 5) * 0.035f);
-            play_sfx_pitched("coinPickup.wav", chime_pitch, 0.40f);
+            play_sfx_pitched("dodge_chime.wav", chime_pitch, 0.40f);
         }
     }
 
@@ -133,6 +133,9 @@ public:
     void play_ui_click() { play_ui("ui_click.wav", 0.7f); }
     void play_ui_hover() { play_ui("ui_click.wav", 0.3f); }
     void play_ui_confirm() { play_ui("powerup.wav", 0.8f); }
+    // Coin/purchase chime — Kenney pack has no exact match; dodge_chime is the
+    // closest short "tink" sound. Used by Prana counter ticks on the result screen.
+    void play_coin_chime() { play_ui("dodge_chime.wav", 0.45f); }
     void play_dash() { play_sfx("dash.wav", 0.85f); }
     void play_hit() { play_sfx("hit.wav", 0.75f); }
     void play_explosion() { play_sfx("explosion.wav", 0.9f); }

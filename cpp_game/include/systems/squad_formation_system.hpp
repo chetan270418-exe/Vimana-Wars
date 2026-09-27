@@ -37,7 +37,14 @@ public:
         m_formation_tick_timer = 0.0f;
     }
 
-    // Automatically organises active unassigned enemies into tactical squads
+    // GameView calls this each frame so squad tactics scale with the current
+    // wave. Without this the formation system used to always pass `wave_num=1`,
+    // making squad behavior identical at wave 5 and wave 250.
+    void set_current_wave(int wave) { m_current_wave = std::max(1, wave); }
+
+    // Automatically organises active unassigned enemies into tactical squads.
+    // `wave_num` weights tactic selection: early waves skew SWARM (easier), late
+    // waves lean FOCUS_FIRE / PINCER / SCREEN (harder, smarter enemies).
     void rebuild_squads(const std::vector<Enemy>& enemies, int wave_num, size_t coop_players) {
         m_squads.clear();
         if (enemies.empty()) return;
@@ -79,10 +86,28 @@ public:
             } else if (has_tank && batch_size >= 3) {
                 sq.tactic = SquadTactic::SCREEN;
             } else if (coop_players > 1 && (squad_count % 2 == 0)) {
-                sq.tactic = SquadTactic::FOCUS_FIRE;
+                // FOCUS_FIRE only becomes common after wave 30 — earlier it
+                // feels unfair. Wave-based scaling makes squad AI progressively
+                // smarter instead of identical at wave 5 and wave 250.
+                int focus_fire_threshold = 30;
+                if (wave_num >= focus_fire_threshold) {
+                    sq.tactic = SquadTactic::FOCUS_FIRE;
+                } else if (squad_count % 2 == 1) {
+                    sq.tactic = SquadTactic::PINCER;
+                } else {
+                    sq.tactic = SquadTactic::SWARM;
+                }
             } else if (squad_count % 2 == 1) {
-                sq.tactic = SquadTactic::PINCER;
+                // PINCER scales in from wave 10 onward; before that the squad
+                // would be too punishing for new players.
+                if (wave_num >= 10) {
+                    sq.tactic = SquadTactic::PINCER;
+                } else {
+                    sq.tactic = SquadTactic::SWARM;
+                }
             } else {
+                // SWARM is the default. Late-game it gets outvoted by
+                // PINCER / FOCUS_FIRE above; early game it's the safety net.
                 sq.tactic = SquadTactic::SWARM;
             }
 
@@ -98,11 +123,15 @@ public:
         m_formation_tick_timer -= dt;
         if (m_formation_tick_timer <= 0.0f) {
             m_formation_tick_timer = 2.0f; // Refresh squad memberships periodically
-            rebuild_squads(enemies, 1, squad_players.size());
+            rebuild_squads(enemies, m_current_wave, squad_players.size());
         }
 
-        // Find lowest-HP player for FOCUS_FIRE
-        const Player* lowest_hp_player = &squad_players[0];
+        // Find lowest-HP ELIGIBLE player for FOCUS_FIRE / PINCER / SCREEN.
+        // Skip retarget this tick if every squadmate is downed or spectating,
+        // rather than falling back to squad_players[0] who may also be downed.
+        // Previously a wipe-state edge case would aim enemies at a body that's
+        // already out of the fight.
+        const Player* lowest_hp_player = nullptr;
         int min_hp = 999999;
         for (const auto& p : squad_players) {
             if (!p.is_downed && !p.is_spectator && p.hp < min_hp) {
@@ -110,6 +139,7 @@ public:
                 lowest_hp_player = &p;
             }
         }
+        if (!lowest_hp_player) return; // no eligible target right now
 
         for (auto& sq : m_squads) {
             sq.retask_timer -= dt;
@@ -232,6 +262,7 @@ public:
 private:
     SquadFormationSystem() = default;
     std::vector<EnemySquad> m_squads;
+    int m_current_wave = 1;
     float m_formation_tick_timer = 0.0f;
 };
 

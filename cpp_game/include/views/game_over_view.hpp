@@ -112,7 +112,7 @@ void set_results(bool victory, int score, int wave, int kills, int damage, const
             m_prana_display = std::min(m_prana_reward, static_cast<int>(m_prana_display_f));
             // Tick SFX every 10 prana
             if ((m_prana_display / 10) != (prev_display / 10)) {
-                SoundSystem::instance().play_sfx("coinPickup.wav");
+                SoundSystem::instance().play_coin_chime();
             }
             if (m_prana_display >= m_prana_reward) {
                 m_prana_display = m_prana_reward;

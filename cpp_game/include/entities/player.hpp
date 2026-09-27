@@ -356,23 +356,23 @@ struct Player {
         switch (ab.type) {
             case ShipAbilityType::OVERDRIVE:
                 buff_overdrive_timer = ab.duration; // reuse overdrive buff timer
-                SoundSystem::instance().play_sfx("thrusterFire.wav");
+                SoundSystem::instance().play_thruster();
                 break;
             case ShipAbilityType::AEGIS:
                 has_kavach_shield = true;
                 kavach_timer = ab.duration > 0 ? ab.duration : 2.0f;
-                SoundSystem::instance().play_sfx("forceField.wav");
+                SoundSystem::instance().play_force_field();
                 break;
             case ShipAbilityType::REPAIR_AURA:
                 regen_bank += ab.magnitude; // total HP to regenerate
-                SoundSystem::instance().play_sfx("powerUp.wav");
+                SoundSystem::instance().play_ui_confirm(); // uses powerup.wav (correct case)
                 break;
             case ShipAbilityType::NULL_FIELD:
                 null_field_bullet_slow = 1.0f - ab.magnitude; // e.g. 0.5 for 50% slow
-                SoundSystem::instance().play_sfx("zap.wav");
+                SoundSystem::instance().play_small_laser();
                 break;
             case ShipAbilityType::BERSERK:
-                SoundSystem::instance().play_sfx("thrusterFire.wav");
+                SoundSystem::instance().play_thruster();
                 break; // BERSERK: damage multiplier applied in fire logic
             case ShipAbilityType::BLINK: {
                 // Teleport toward mouse — caller handles screen bounds
@@ -388,7 +388,7 @@ struct Player {
                 }
                 invincibility_timer = std::max(invincibility_timer, 0.3f); // brief i-frames
                 active_ability_active = false; // instant — no duration
-                SoundSystem::instance().play_sfx("dashSwipe.wav");
+                SoundSystem::instance().play_dash();
                 break;
             }
             case ShipAbilityType::NOVA:

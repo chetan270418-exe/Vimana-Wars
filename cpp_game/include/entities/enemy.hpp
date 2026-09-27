@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <cmath>
+#include <random>
 #include "raylib.h"
 #include "core/types.hpp"
 #include "core/constants.hpp"
@@ -92,16 +93,24 @@ struct Enemy {
     // Assign random 1-2 affixes to an elite enemy
     void assign_affixes() {
         if (!is_elite || is_miniboss) return;
-        // Use position as simple seed for variety
-        int seed = static_cast<int>(pos.x * 7 + pos.y * 13);
+        // Real RNG via thread-local mt19937. The previous code seeded from
+        // spawn position alone, which gave every elite in the same lane the
+        // exact same affix combo. Now each elite gets an independent roll.
+        static thread_local std::mt19937 rng{std::random_device{}()};
         static const EliteAffix pool[4] = {
             EliteAffix::REFLECTIVE, EliteAffix::SWIFT,
             EliteAffix::REGEN,      EliteAffix::VOLATILE
         };
-        int a1 = ((seed >> 2) & 3);
-        int a2 = ((seed ^ (seed >> 5)) & 3);
+        std::uniform_int_distribution<int> affix_dist(0, 3);
+        std::uniform_int_distribution<int> second_affix_dist(0, 1);
+        int a1 = affix_dist(rng);
         affixes = pool[a1];
-        if (a2 != a1) affixes = affixes | pool[a2]; // 50% chance of 2nd affix
+        if (second_affix_dist(rng) == 0) {
+            // Pick a different affix for the second slot
+            int a2;
+            do { a2 = affix_dist(rng); } while (a2 == a1);
+            affixes = affixes | pool[a2];
+        }
         // Apply SWIFT immediately
         if (has_affix(affixes, EliteAffix::SWIFT)) speed *= 1.5f;
         // Build label string
