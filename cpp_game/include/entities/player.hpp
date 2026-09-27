@@ -537,8 +537,12 @@ struct Player {
         const bool chakravyuha_volley = is_chakravyuha && signature_shot_counter == 5;
         const bool vayu_gust = is_vayu_cyclone && signature_shot_counter == 4;
         const int garuda_pierce_bonus = is_garuda ? 2 : 0;
-        const int signature_pierce_bonus = varuna_thread && !is_amogha
-            ? static_cast<int>(archetype->ability.magnitude) : 0;
+        // Explicit parens: && binds tighter than ?: in C++ but the line break makes
+        // the intent ambiguous. Without parens a future "tidying" reformat could
+        // silently change semantics to varuna_thread && (!is_amogha ? magnitude : 0).
+        const int signature_pierce_bonus = (varuna_thread && !is_amogha)
+            ? static_cast<int>(archetype->ability.magnitude)
+            : 0;
 
         if (is_tripura && buff_agneyastra_timer <= 0) {
             // Tripura Dreadnought: native 3-shot heavy spread
