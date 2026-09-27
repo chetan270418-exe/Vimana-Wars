@@ -250,7 +250,7 @@ public:
             DrawTextEx(body_font, "- Winsock2 Non-blocking UDP (Port 7704)", { 580, 375 }, 11, 1.0f, COLOR_CYAN_BRIGHT);
             DrawTextEx(body_font, "- 30Hz Server Snapshots + 60Hz Inputs", { 580, 395 }, 11, 1.0f, COLOR_PARCHMENT);
             DrawTextEx(body_font, "- 15s Reconnect Window + AI Takeover", { 580, 415 }, 11, 1.0f, COLOR_GOLD_BRIGHT);
-            DrawTextEx(body_font, "- Downed Beacon [Hold E to Revive]", { 580, 435 }, 11, 1.0f, COLOR_GREEN_BRIGHT);
+            DrawTextEx(body_font, "- Downed Beacon [Hold R to Revive]", { 580, 435 }, 11, 1.0f, COLOR_GREEN_BRIGHT);
 
         } else {
             // -- SQUAD ROOM VIEW --
@@ -383,4 +383,5 @@ private:
     UI::Button m_btn_back;
 };
 
-} // namespace Vimana
+} // namespace Vimana
+

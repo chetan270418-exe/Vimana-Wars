@@ -328,7 +328,7 @@ void apply_boon_and_resume(BoonType boon) {
 
 if (p.is_downed) {
                 // Self-revive consumes a Soma and channels independently of bleed-out.
-                if (i == 0 && IsKeyDown(KEY_E) && p.inventory.soma_vials > 0) {
+                if (i == 0 && IsKeyDown(KEY_R) && p.inventory.soma_vials > 0) {
                     p.self_revive_timer += dt;
                     if (p.self_revive_timer >= REVIVE_TIME) {
                         p.inventory.soma_vials--;
@@ -585,7 +585,7 @@ if (p.is_downed) {
                 p.last_stand_timer = 0.0f;
                 p.downed_count++;
                 p.hp = 0;
-                m_particles.add_floating_text(p.pos, "PILOT DOWNED // HOLD E + SOMA!", COLOR_RED_BRIGHT);
+                m_particles.add_floating_text(p.pos, "PILOT DOWNED // HOLD R + SOMA!", COLOR_RED_BRIGHT);
                 SoundSystem::instance().play_downed_alert();
             }
         }

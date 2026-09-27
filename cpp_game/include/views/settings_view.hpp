@@ -239,11 +239,14 @@ public:
             draw_binding("SHIP GUN TYPES", "Vajra [BURST] · Naga [PIERCE] · Agneyastra [BURN]", COLOR_ORANGE_BRIGHT);
             draw_binding("WARP DASH / PERFECT DODGE", "[ LEFT SHIFT ] or [ RIGHT MOUSE ]", COLOR_GREEN_BRIGHT);
             draw_binding("CHAKRAM CLEAVER DEPLOY", "[ Q ]", COLOR_ORANGE_BRIGHT);
+            draw_binding("SHIP ACTIVE ABILITY (OVERDRIVE / AEGIS / etc.)", "[ E ] or [ MIDDLE MOUSE ]", COLOR_GOLD_BRIGHT);
             draw_binding("BRAHMASTRA SCREEN DETONATION", "[ F ]", COLOR_RED_BRIGHT);
             draw_binding("SOMA AMPOULE (EMERGENCY HEAL)", "[ C ]", COLOR_GREEN_BRIGHT);
             draw_binding("VAJRA FLARE (DEFENSE BARRIER)", "[ V ]", COLOR_PURPLE_BRIGHT);
+            draw_binding("REVIVE DOWNED SQUADMATE (CO-OP)", "[ HOLD R ] within 80px of downed pilot", COLOR_GREEN_BRIGHT);
             draw_binding("P2 CHAKRAM / SOMA / VAJRA", "[ NUMPAD 1 / 2 / 3 ]", COLOR_CYAN_BRIGHT);
             draw_binding("TACTICAL PAUSE & FLIGHT TELEMETRY", "[ ESC ]", COLOR_MUTED);
+
 
         } else if (m_active_tab == 2) {
             // ── ACCESSIBILITY TAB ──

@@ -11,6 +11,8 @@
 #include "ui/button.hpp"
 #include "ui/vedic_theme.hpp"
 #include "systems/account_system.hpp"
+#include "systems/sound_system.hpp"
+
 
 namespace Vimana {
 
@@ -48,6 +50,11 @@ void set_results(bool victory, int score, int wave, int kills, int damage, const
         m_killed_by = victory ? "" : death_cause;
         m_prana_reward = std::max(0, prana_reward);
         m_pilot_xp_reward = std::max(0, pilot_xp_reward);
+        // Reset animated prana counter
+        m_prana_display_f = 0.0f;
+        m_prana_display   = 0;
+        m_prana_counted   = false;
+
 
         int previous_high = DBSystem::instance().high_score();
         m_is_new_high_score = (score > previous_high && score > 0);
@@ -92,6 +99,23 @@ void set_results(bool victory, int score, int wave, int kills, int damage, const
     void set_killed_by(const std::string& reason) { m_killed_by = reason; }
 
     void update(float dt, Vector2 mouse_pos) override {
+        // Animated prana counter — count up from 0 to m_prana_reward over ~1.5 seconds
+        if (!m_prana_counted && m_prana_reward > 0) {
+            const float count_rate = m_prana_reward / 1.5f; // full fill in 1.5s
+            int prev_display = m_prana_display;
+            m_prana_display_f += count_rate * dt;
+            m_prana_display = std::min(m_prana_reward, static_cast<int>(m_prana_display_f));
+            // Tick SFX every 10 prana
+            if ((m_prana_display / 10) != (prev_display / 10)) {
+                SoundSystem::instance().play_sfx("coinPickup.wav");
+            }
+            if (m_prana_display >= m_prana_reward) {
+                m_prana_display = m_prana_reward;
+                m_prana_counted = true;
+            }
+        }
+
+
         if (!m_is_victory) {
             if (m_btn_continue.update(mouse_pos)) {
                 m_next_view = ViewType::CAMPAIGN_MAP;
@@ -183,9 +207,14 @@ void set_results(bool victory, int score, int wave, int kills, int damage, const
 
         cy += 28.0f;
         DrawTextEx(body_font, "SORTIE REWARDS :", { lx, cy }, 13, 1.0f, COLOR_PARCHMENT);
-        const std::string reward_text = "+" + std::to_string(m_prana_reward) + " PRANA  /  +" +
+        // Animated prana count-up with pulse while ticking
+        float prana_pulse = (!m_prana_counted && m_prana_reward > 0)
+            ? 0.7f + 0.3f * std::sin(static_cast<float>(GetTime()) * 16.0f) : 1.0f;
+        const std::string reward_text = "+" + std::to_string(m_prana_display) + " PRANA  /  +" +
                                         std::to_string(m_pilot_xp_reward) + " PILOT XP";
-        DrawTextEx(title_font, reward_text.c_str(), { card.x + 265.0f, cy - 2 }, 13, 1.0f, COLOR_GOLD_BRIGHT);
+        DrawTextEx(title_font, reward_text.c_str(), { card.x + 265.0f, cy - 2 }, 13, 1.0f,
+                   ColorAlpha(COLOR_GOLD_BRIGHT, prana_pulse));
+
 
         // Mission Duration
         int mins = static_cast<int>(m_duration) / 60;
@@ -239,6 +268,11 @@ private:
     int m_damage = 0;
     int m_prana_reward = 0;
     int m_pilot_xp_reward = 0;
+    // Animated prana counter
+    float m_prana_display_f = 0.0f;  // float accumulator for smooth count-up
+    int   m_prana_display   = 0;     // shown value
+    bool  m_prana_counted   = false; // true once count-up is done
+
     std::string m_ship = "Pushpaka";
     PerformanceRank m_rank = PerformanceRank::B_RANK;
     std::string m_rank_reason = "";

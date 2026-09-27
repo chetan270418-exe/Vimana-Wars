@@ -37,6 +37,7 @@ struct PlayerControlInput {
     bool use_soma = false;
     bool use_vajra = false;
     bool revive = false;
+    bool active_ability = false;   // Ship E-key active ability
 };
 
 // -- Human Controller (Local Player) ------------------------------------------
@@ -81,7 +82,14 @@ public:
             input.use_soma = IsKeyPressed(KEY_KP_2);
             input.use_vajra = IsKeyPressed(KEY_KP_3);
         }
-        input.revive = IsKeyDown(KEY_E);
+        input.revive = IsKeyDown(KEY_R); // Changed revive hold from E to R to avoid conflict
+
+        // Active ability: [E] or middle mouse (pressed only — not held)
+        if (!self.is_downed) {
+            input.active_ability = IsKeyPressed(KEY_E) || IsMouseButtonPressed(MOUSE_BUTTON_MIDDLE);
+        }
+
+
 
         // ── Gamepad merge ────────────────────────────────────────────────────
         // Left stick overrides movement, right stick overrides aim when no mouse.
@@ -126,14 +134,17 @@ public:
         if (input.chakram) self.try_chakram(out_bullets);
         if (input.use_soma) self.use_soma_vial();
         if (input.use_vajra) self.use_vajra_flare(out_bullets);
+        if (input.active_ability) self.trigger_active_ability(input.aim);
+
+
 
         input_dir = Vector2Normalize(input_dir);
         float spd = self.is_dashing ? DASH_SPEED_BURST * self.dash_distance_multiplier : self.current_speed;
         self.vel.x = input_dir.x * spd;
         self.vel.y = input_dir.y * spd;
 
-        // Revive Interaction: Hold E within 80px of any downed squadmate
-        bool holding_e = input.revive;
+        // Revive Interaction: Hold R within 80px of any downed squadmate
+        bool holding_r = input.revive;
         Player* target_downed = nullptr;
         for (auto& mate : squad) {
             if (&mate != &self && mate.is_downed) {
@@ -145,7 +156,7 @@ public:
             }
         }
 
-        if (holding_e && target_downed) {
+        if (holding_r && target_downed) {
             m_revive_hold_timer += dt;
             if (m_revive_hold_timer >= REVIVE_TIME) {
                 target_downed->is_downed = false;

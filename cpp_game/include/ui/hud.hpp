@@ -300,7 +300,31 @@ public:
                 if (g_colorblind_mode) DrawTriangleLines(tip, l, r, WHITE);
             }
         }
+        // ── Active Ability running overlay: edge-glow while ability effect active ─
+        if (!squad.empty() && squad[0].active_ability_active && squad[0].archetype) {
+            const auto& ab = squad[0].archetype->active_ability;
+            Color glow_col = COLOR_GOLD_BRIGHT;
+            switch (ab.type) {
+                case ShipAbilityType::OVERDRIVE:    glow_col = { 255, 220,  50, 255 }; break;
+                case ShipAbilityType::AEGIS:        glow_col = {  50, 180, 255, 255 }; break;
+                case ShipAbilityType::BERSERK:      glow_col = { 255,  50,  50, 255 }; break;
+                case ShipAbilityType::REPAIR_AURA:  glow_col = {  80, 255, 130, 255 }; break;
+                case ShipAbilityType::NULL_FIELD:   glow_col = { 180,  60, 255, 255 }; break;
+                default: break;
+            }
+            float pulse_a = 0.12f + 0.08f * std::sin(static_cast<float>(GetTime()) * 8.0f);
+            DrawRectangle(0, 0, SCREEN_WIDTH, 6, ColorAlpha(glow_col, pulse_a + 0.08f));
+            DrawRectangle(0, SCREEN_HEIGHT - 6, SCREEN_WIDTH, 6, ColorAlpha(glow_col, pulse_a + 0.08f));
+            DrawRectangle(0, 0, 6, SCREEN_HEIGHT, ColorAlpha(glow_col, pulse_a));
+            DrawRectangle(SCREEN_WIDTH - 6, 0, 6, SCREEN_HEIGHT, ColorAlpha(glow_col, pulse_a));
+            // Ability name badge
+            std::string active_label = "[ " + ab.name + " ACTIVE ]";
+            Vector2 badge_sz = MeasureTextEx(body_font, active_label.c_str(), 11, 1.0f);
+            float badge_x = SCREEN_WIDTH / 2.0f - badge_sz.x / 2.0f;
+            DrawTextEx(body_font, active_label.c_str(), { badge_x, 55.0f }, 11, 1.0f, ColorAlpha(glow_col, 0.7f + 0.3f * std::sin(static_cast<float>(GetTime()) * 6.0f)));
+        }
     }
+
 };
 
 } // namespace Vimana::UI

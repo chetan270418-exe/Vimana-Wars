@@ -808,7 +808,7 @@ struct Player {
             float pulse = 0.5f + 0.5f * std::sin(GetTime() * 10.0f);
             DrawCircleLines(static_cast<int>(pos.x), static_cast<int>(pos.y), radius + 15.0f + 5.0f * pulse, COLOR_RED_BRIGHT);
             DrawCircle(static_cast<int>(pos.x), static_cast<int>(pos.y), radius + 8.0f, ColorAlpha(COLOR_RED_BRIGHT, 0.25f));
-            DrawText("⚠ DOWNED [HOLD E TO REVIVE]", static_cast<int>(pos.x - 75.0f), static_cast<int>(pos.y - radius - 20.0f), 10, COLOR_RED_BRIGHT);
+            DrawText("⚠ DOWNED [HOLD R TO REVIVE]", static_cast<int>(pos.x - 75.0f), static_cast<int>(pos.y - radius - 20.0f), 10, COLOR_RED_BRIGHT);
             if (self_revive_timer > 0.0f) {
                 float pct = std::clamp(self_revive_timer / REVIVE_TIME, 0.0f, 1.0f);
                 DrawRectangle(static_cast<int>(pos.x - 50.0f), static_cast<int>(pos.y + radius + 10.0f), 100, 8, DARKGRAY);
@@ -816,7 +816,7 @@ struct Player {
                 DrawText(TextFormat("SELF-REVIVING: %.0f%% [E]", pct * 100.0f), static_cast<int>(pos.x - 55.0f), static_cast<int>(pos.y + radius + 22.0f), 10, COLOR_GOLD_BRIGHT);
             } else {
                 const char* self_revive_hint = inventory.soma_vials > 0
-                    ? "[HOLD E + SOMA TO REVIVE (3.5s)]"
+                    ? "[HOLD R + SOMA TO REVIVE (3.5s)]"
                     : "[NO SOMA // WAIT FOR A REVIVE]";
                 DrawText(self_revive_hint, static_cast<int>(pos.x - 92.0f), static_cast<int>(pos.y + radius + 10.0f), 9,
                          inventory.soma_vials > 0 ? COLOR_GOLD : COLOR_MUTED);
